@@ -220,3 +220,256 @@ export async function getCrsByStructure(
   );
   return data;
 }
+
+// ─── Comptes (2.4A) ───────────────────────────────────────────────
+
+export type SensCompte = 'D' | 'C' | 'M';
+
+export interface ParentCompte {
+  id: string;
+  codeCompte: string;
+  libelle: string;
+}
+
+export interface Compte {
+  id: string;
+  codeCompte: string;
+  libelle: string;
+  classe: number;
+  sousClasse: string | null;
+  fkCompteParent: string | null;
+  parentCourant?: ParentCompte;
+  niveau: number;
+  sens: SensCompte | null;
+  codePosteBudgetaire: string | null;
+  estCompteCollectif: boolean;
+  estPorteurInterets: boolean;
+  versionCourante: boolean;
+  dateDebutValidite: string;
+  dateFinValidite: string | null;
+  estActif: boolean;
+  dateCreation: string;
+  utilisateurCreation: string;
+  dateModification: string | null;
+  utilisateurModification: string | null;
+}
+
+export interface ListComptesQuery {
+  classe?: number;
+  search?: string;
+  codePosteBudgetaire?: string;
+  estCompteCollectif?: boolean;
+  estPorteurInterets?: boolean;
+  page?: number;
+  limit?: number;
+  versionCouranteUniquement?: boolean;
+}
+
+export async function listComptes(
+  query: ListComptesQuery = {},
+): Promise<PaginatedResponse<Compte>> {
+  const { data } = await apiClient.get<PaginatedResponse<Compte>>(
+    '/referentiels/comptes',
+    { params: query },
+  );
+  return data;
+}
+
+export async function getCompteByCode(codeCompte: string): Promise<Compte> {
+  const { data } = await apiClient.get<Compte>(
+    `/referentiels/comptes/par-code/${codeCompte}`,
+  );
+  return data;
+}
+
+export async function getCompteHistorique(
+  codeCompte: string,
+): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    `/referentiels/comptes/par-code/${codeCompte}/historique`,
+  );
+  return data;
+}
+
+// ─── Lignes de métier (2.4B) ──────────────────────────────────────
+
+export interface ParentLigneMetier {
+  id: string;
+  codeLigneMetier: string;
+  libelle: string;
+}
+
+export interface LigneMetier {
+  id: string;
+  codeLigneMetier: string;
+  libelle: string;
+  fkLigneMetierParent: string | null;
+  parentCourant?: ParentLigneMetier;
+  niveau: number;
+  versionCourante: boolean;
+  dateDebutValidite: string;
+  dateFinValidite: string | null;
+  estActif: boolean;
+  dateCreation: string;
+  utilisateurCreation: string;
+  dateModification: string | null;
+  utilisateurModification: string | null;
+}
+
+export interface ListLignesMetierQuery {
+  search?: string;
+  page?: number;
+  limit?: number;
+  versionCouranteUniquement?: boolean;
+}
+
+export async function listLignesMetier(
+  query: ListLignesMetierQuery = {},
+): Promise<PaginatedResponse<LigneMetier>> {
+  const { data } = await apiClient.get<PaginatedResponse<LigneMetier>>(
+    '/referentiels/lignes-metier',
+    { params: query },
+  );
+  return data;
+}
+
+export async function getLigneMetierByCode(
+  codeLigneMetier: string,
+): Promise<LigneMetier> {
+  const { data } = await apiClient.get<LigneMetier>(
+    `/referentiels/lignes-metier/par-code/${codeLigneMetier}`,
+  );
+  return data;
+}
+
+export async function getLigneMetierHistorique(
+  codeLigneMetier: string,
+): Promise<LigneMetier[]> {
+  const { data } = await apiClient.get<LigneMetier[]>(
+    `/referentiels/lignes-metier/par-code/${codeLigneMetier}/historique`,
+  );
+  return data;
+}
+
+// ─── Produits (2.4B) ──────────────────────────────────────────────
+
+export type TypeProduit = 'credit' | 'depot' | 'service' | 'marche' | 'autre';
+
+export interface ParentProduit {
+  id: string;
+  codeProduit: string;
+  libelle: string;
+}
+
+export interface Produit {
+  id: string;
+  codeProduit: string;
+  libelle: string;
+  typeProduit: TypeProduit;
+  fkProduitParent: string | null;
+  parentCourant?: ParentProduit;
+  niveau: number;
+  estPorteurInterets: boolean;
+  versionCourante: boolean;
+  dateDebutValidite: string;
+  dateFinValidite: string | null;
+  estActif: boolean;
+  dateCreation: string;
+  utilisateurCreation: string;
+  dateModification: string | null;
+  utilisateurModification: string | null;
+}
+
+export interface ListProduitsQuery {
+  typeProduit?: TypeProduit;
+  search?: string;
+  estPorteurInterets?: boolean;
+  page?: number;
+  limit?: number;
+  versionCouranteUniquement?: boolean;
+}
+
+export async function listProduits(
+  query: ListProduitsQuery = {},
+): Promise<PaginatedResponse<Produit>> {
+  const { data } = await apiClient.get<PaginatedResponse<Produit>>(
+    '/referentiels/produits',
+    { params: query },
+  );
+  return data;
+}
+
+export async function getProduitByCode(codeProduit: string): Promise<Produit> {
+  const { data } = await apiClient.get<Produit>(
+    `/referentiels/produits/par-code/${codeProduit}`,
+  );
+  return data;
+}
+
+export async function getProduitHistorique(
+  codeProduit: string,
+): Promise<Produit[]> {
+  const { data } = await apiClient.get<Produit[]>(
+    `/referentiels/produits/par-code/${codeProduit}/historique`,
+  );
+  return data;
+}
+
+// ─── Segments (2.4B — plat) ───────────────────────────────────────
+
+export type CategorieSegment =
+  | 'particulier'
+  | 'professionnel'
+  | 'pme'
+  | 'grande_entreprise'
+  | 'institutionnel'
+  | 'secteur_public';
+
+export interface Segment {
+  id: string;
+  codeSegment: string;
+  libelle: string;
+  categorie: CategorieSegment;
+  versionCourante: boolean;
+  dateDebutValidite: string;
+  dateFinValidite: string | null;
+  estActif: boolean;
+  dateCreation: string;
+  utilisateurCreation: string;
+  dateModification: string | null;
+  utilisateurModification: string | null;
+}
+
+export interface ListSegmentsQuery {
+  categorie?: CategorieSegment;
+  search?: string;
+  page?: number;
+  limit?: number;
+  versionCouranteUniquement?: boolean;
+}
+
+export async function listSegments(
+  query: ListSegmentsQuery = {},
+): Promise<PaginatedResponse<Segment>> {
+  const { data } = await apiClient.get<PaginatedResponse<Segment>>(
+    '/referentiels/segments',
+    { params: query },
+  );
+  return data;
+}
+
+export async function getSegmentByCode(codeSegment: string): Promise<Segment> {
+  const { data } = await apiClient.get<Segment>(
+    `/referentiels/segments/par-code/${codeSegment}`,
+  );
+  return data;
+}
+
+export async function getSegmentHistorique(
+  codeSegment: string,
+): Promise<Segment[]> {
+  const { data } = await apiClient.get<Segment[]>(
+    `/referentiels/segments/par-code/${codeSegment}/historique`,
+  );
+  return data;
+}

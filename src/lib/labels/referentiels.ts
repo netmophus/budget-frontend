@@ -73,3 +73,126 @@ export function badgeClassTypeCr(value: string): string {
       return 'bg-gray-300 text-gray-800 border-transparent';
   }
 }
+
+// ─── Comptes (PCB UMOA Révisé) ────────────────────────────────────
+
+export const CLASSES_COMPTE = [
+  { value: 1, libelle: 'Classe 1 — Trésorerie & interbancaire' },
+  { value: 2, libelle: 'Classe 2 — Clientèle' },
+  { value: 4, libelle: 'Classe 4 — Immobilisations' },
+  { value: 5, libelle: 'Classe 5 — Provisions / Fonds propres' },
+  { value: 6, libelle: 'Classe 6 — Charges' },
+  { value: 7, libelle: 'Classe 7 — Produits' },
+] as const;
+
+export function libelleClasseCompte(value: number): string {
+  return (
+    CLASSES_COMPTE.find((c) => c.value === value)?.libelle ?? `Classe ${value}`
+  );
+}
+
+/** Couleur Tailwind du badge selon la classe PCB. */
+export function badgeClassClasseCompte(value: number): string {
+  switch (value) {
+    case 1:
+      return 'bg-blue-500 text-white border-transparent';
+    case 2:
+      return 'bg-violet-500 text-white border-transparent';
+    case 4:
+      return 'bg-green-500 text-white border-transparent';
+    case 5:
+      return 'bg-yellow-500 text-white border-transparent';
+    case 6:
+      return 'bg-orange-500 text-white border-transparent';
+    case 7:
+      return 'bg-cyan-500 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
+
+export function libelleSensCompte(value: string | null): string {
+  switch (value) {
+    case 'D':
+      return 'Débit';
+    case 'C':
+      return 'Crédit';
+    case 'M':
+      return 'Mixte';
+    default:
+      return '—';
+  }
+}
+
+// ─── Produits (typologie bancaire) ────────────────────────────────
+
+export const TYPES_PRODUIT = [
+  { value: 'credit', libelle: 'Crédit' },
+  { value: 'depot', libelle: 'Dépôt' },
+  { value: 'service', libelle: 'Service' },
+  { value: 'marche', libelle: 'Marché' },
+  { value: 'autre', libelle: 'Autre' },
+] as const;
+
+const PRODUIT_BY_VALUE = new Map<string, string>(
+  TYPES_PRODUIT.map((t) => [t.value, t.libelle]),
+);
+
+export function libelleTypeProduit(value: string): string {
+  return PRODUIT_BY_VALUE.get(value) ?? value;
+}
+
+export function badgeClassTypeProduit(value: string): string {
+  switch (value) {
+    case 'credit':
+      return 'bg-red-500 text-white border-transparent';
+    case 'depot':
+      return 'bg-green-500 text-white border-transparent';
+    case 'service':
+      return 'bg-blue-500 text-white border-transparent';
+    case 'marche':
+      return 'bg-violet-500 text-white border-transparent';
+    case 'autre':
+      return 'bg-gray-400 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
+
+// ─── Segments (catégories clientèle) ──────────────────────────────
+
+export const CATEGORIES_SEGMENT = [
+  { value: 'particulier', libelle: 'Particulier' },
+  { value: 'professionnel', libelle: 'Professionnel' },
+  { value: 'pme', libelle: 'PME' },
+  { value: 'grande_entreprise', libelle: 'Grande entreprise' },
+  { value: 'institutionnel', libelle: 'Institutionnel' },
+  { value: 'secteur_public', libelle: 'Secteur public' },
+] as const;
+
+const SEGMENT_BY_VALUE = new Map<string, string>(
+  CATEGORIES_SEGMENT.map((c) => [c.value, c.libelle]),
+);
+
+export function libelleCategorieSegment(value: string): string {
+  return SEGMENT_BY_VALUE.get(value) ?? value;
+}
+
+export function badgeClassCategorieSegment(value: string): string {
+  switch (value) {
+    case 'particulier':
+      return 'bg-sky-500 text-white border-transparent';
+    case 'professionnel':
+      return 'bg-teal-500 text-white border-transparent';
+    case 'pme':
+      return 'bg-emerald-500 text-white border-transparent';
+    case 'grande_entreprise':
+      return 'bg-indigo-500 text-white border-transparent';
+    case 'institutionnel':
+      return 'bg-purple-500 text-white border-transparent';
+    case 'secteur_public':
+      return 'bg-amber-500 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
