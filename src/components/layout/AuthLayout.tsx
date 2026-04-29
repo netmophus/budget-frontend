@@ -1,13 +1,17 @@
 import {
+  BookOpen,
   Briefcase,
   Building2,
+  Calculator,
   Calendar,
   Coins,
   LayoutDashboard,
   Library,
   LogOut,
   Menu,
+  Package,
   ScrollText,
+  Target,
   User as UserIcon,
   Users,
 } from 'lucide-react';
@@ -40,6 +44,7 @@ const NAV_TOP: NavItem[] = [
   { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
 ];
 
+// Tri alphabétique (cohérence Lot 2.4C).
 const NAV_REFERENTIELS: NavItem[] = [
   {
     to: '/referentiels/temps',
@@ -54,9 +59,33 @@ const NAV_REFERENTIELS: NavItem[] = [
     permission: 'REFERENTIEL.LIRE',
   },
   {
+    to: '/referentiels/comptes',
+    label: 'Comptes',
+    icon: Calculator,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
     to: '/referentiels/devises',
     label: 'Devises',
     icon: Coins,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/referentiels/lignes-metier',
+    label: 'Lignes de métier',
+    icon: BookOpen,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/referentiels/produits',
+    label: 'Produits',
+    icon: Package,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/referentiels/segments',
+    label: 'Segments',
+    icon: Target,
     permission: 'REFERENTIEL.LIRE',
   },
   {

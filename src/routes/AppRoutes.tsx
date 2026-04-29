@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
@@ -13,6 +14,28 @@ import { UsersPage } from '@/pages/UsersPage';
 import { useIsAuthenticated } from '@/lib/auth/auth-store';
 import { PermissionRoute } from './PermissionRoute';
 import { ProtectedRoute } from './ProtectedRoute';
+
+// Lazy-loaded — les 4 pages 2.4C ne sont pas dans le bundle initial.
+const ComptesPage = lazy(() =>
+  import('@/pages/ComptesPage').then((m) => ({ default: m.ComptesPage })),
+);
+const LignesMetierPage = lazy(() =>
+  import('@/pages/LignesMetierPage').then((m) => ({
+    default: m.LignesMetierPage,
+  })),
+);
+const ProduitsPage = lazy(() =>
+  import('@/pages/ProduitsPage').then((m) => ({ default: m.ProduitsPage })),
+);
+const SegmentsPage = lazy(() =>
+  import('@/pages/SegmentsPage').then((m) => ({ default: m.SegmentsPage })),
+);
+
+function PageFallback() {
+  return (
+    <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
+  );
+}
 
 function RootRedirect() {
   const isAuth = useIsAuthenticated();
@@ -79,6 +102,46 @@ export function AppRoutes() {
           element={
             <PermissionRoute permission="REFERENTIEL.LIRE">
               <CentresResponsabilitePage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/comptes"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ComptesPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/lignes-metier"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <LignesMetierPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/produits"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ProduitsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/segments"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <SegmentsPage />
+              </Suspense>
             </PermissionRoute>
           }
         />
