@@ -1,5 +1,8 @@
 import {
+  Calendar,
+  Coins,
   LayoutDashboard,
+  Library,
   LogOut,
   Menu,
   ScrollText,
@@ -19,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Toaster } from '@/components/ui/sonner';
+import { Can } from '@/components/common/Can';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { useHasPermission } from '@/lib/auth/permissions';
@@ -30,8 +34,26 @@ interface NavItem {
   permission?: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const NAV_TOP: NavItem[] = [
   { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+];
+
+const NAV_REFERENTIELS: NavItem[] = [
+  {
+    to: '/referentiels/temps',
+    label: 'Calendrier',
+    icon: Calendar,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/referentiels/devises',
+    label: 'Devises',
+    icon: Coins,
+    permission: 'REFERENTIEL.LIRE',
+  },
+];
+
+const NAV_ADMIN: NavItem[] = [
   { to: '/users', label: 'Utilisateurs', icon: Users, permission: 'USER.LIRE' },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];
@@ -139,7 +161,23 @@ export function AuthLayout() {
             collapsed ? 'w-16' : 'w-60',
           )}
         >
-          {NAV_ITEMS.map((item) => (
+          {NAV_TOP.map((item) => (
+            <NavLink key={item.to} item={item} collapsed={collapsed} />
+          ))}
+
+          <Can permission="REFERENTIEL.LIRE">
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
+                <Library className="h-3.5 w-3.5" />
+                Référentiels
+              </div>
+            )}
+            {NAV_REFERENTIELS.map((item) => (
+              <NavLink key={item.to} item={item} collapsed={collapsed} />
+            ))}
+          </Can>
+
+          {NAV_ADMIN.map((item) => (
             <NavLink key={item.to} item={item} collapsed={collapsed} />
           ))}
         </aside>

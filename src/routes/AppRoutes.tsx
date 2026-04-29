@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
+import { CalendrierPage } from '@/pages/CalendrierPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { DevisesPage } from '@/pages/DevisesPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProfilePage } from '@/pages/ProfilePage';
@@ -43,6 +45,22 @@ export function AppRoutes() {
           element={
             <PermissionRoute permission="AUDIT.LIRE">
               <AuditLogsPage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/temps"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <CalendrierPage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/devises"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <DevisesPage />
             </PermissionRoute>
           }
         />
