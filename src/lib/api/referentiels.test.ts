@@ -8,10 +8,16 @@ vi.mock('./client', () => ({
 
 import { apiClient } from './client';
 import {
+  getCrByCode,
+  getCrsByStructure,
   getDevisePivot,
   getJourByDate,
+  getStructureByCode,
+  getStructureRacines,
+  listCrs,
   listDevises,
   listJoursTemps,
+  listStructures,
 } from './referentiels';
 
 const mockedGet = apiClient.get as unknown as ReturnType<typeof vi.fn>;
@@ -50,5 +56,75 @@ describe('referentiels API', () => {
     const result = await getDevisePivot();
     expect(mockedGet).toHaveBeenCalledWith('/referentiels/devises/pivot');
     expect(result.codeIso).toBe('XOF');
+  });
+
+  // ─── Structures (2.3A)
+
+  it('listStructures GETs /referentiels/structures with filters', async () => {
+    await listStructures({
+      codePays: 'CIV',
+      typeStructure: 'agence',
+      search: 'plat',
+      page: 1,
+      limit: 100,
+    });
+    expect(mockedGet).toHaveBeenCalledWith('/referentiels/structures', {
+      params: {
+        codePays: 'CIV',
+        typeStructure: 'agence',
+        search: 'plat',
+        page: 1,
+        limit: 100,
+      },
+    });
+  });
+
+  it('getStructureByCode GETs /referentiels/structures/par-code/:code', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { id: '1', codeStructure: 'AG_X' },
+    });
+    await getStructureByCode('AG_X');
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/referentiels/structures/par-code/AG_X',
+    );
+  });
+
+  it('getStructureRacines GETs /referentiels/structures/racines', async () => {
+    mockedGet.mockResolvedValueOnce({ data: [] });
+    await getStructureRacines();
+    expect(mockedGet).toHaveBeenCalledWith('/referentiels/structures/racines');
+  });
+
+  // ─── Centres de responsabilité (2.3B)
+
+  it('listCrs GETs /referentiels/cr with filters', async () => {
+    await listCrs({
+      codeStructure: 'DIR_RETAIL',
+      typeCr: 'cdp',
+      page: 1,
+      limit: 50,
+    });
+    expect(mockedGet).toHaveBeenCalledWith('/referentiels/cr', {
+      params: {
+        codeStructure: 'DIR_RETAIL',
+        typeCr: 'cdp',
+        page: 1,
+        limit: 50,
+      },
+    });
+  });
+
+  it('getCrByCode GETs /referentiels/cr/par-code/:code', async () => {
+    mockedGet.mockResolvedValueOnce({ data: { id: '1', codeCr: 'CR_X' } });
+    await getCrByCode('CR_X');
+    expect(mockedGet).toHaveBeenCalledWith('/referentiels/cr/par-code/CR_X');
+  });
+
+  it('getCrsByStructure GETs /referentiels/cr/par-structure/:codeStructure', async () => {
+    mockedGet.mockResolvedValueOnce({ data: [] });
+    await getCrsByStructure('DIR_RETAIL');
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/referentiels/cr/par-structure/DIR_RETAIL',
+    );
   });
 });

@@ -2,11 +2,13 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { CalendrierPage } from '@/pages/CalendrierPage';
+import { CentresResponsabilitePage } from '@/pages/CentresResponsabilitePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DevisesPage } from '@/pages/DevisesPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { StructuresPage } from '@/pages/StructuresPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { useIsAuthenticated } from '@/lib/auth/auth-store';
 import { PermissionRoute } from './PermissionRoute';
@@ -61,6 +63,22 @@ export function AppRoutes() {
           element={
             <PermissionRoute permission="REFERENTIEL.LIRE">
               <DevisesPage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/structures"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <StructuresPage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/referentiels/centres-responsabilite"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <CentresResponsabilitePage />
             </PermissionRoute>
           }
         />

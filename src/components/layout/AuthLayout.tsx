@@ -1,4 +1,6 @@
 import {
+  Briefcase,
+  Building2,
   Calendar,
   Coins,
   LayoutDashboard,
@@ -46,9 +48,21 @@ const NAV_REFERENTIELS: NavItem[] = [
     permission: 'REFERENTIEL.LIRE',
   },
   {
+    to: '/referentiels/centres-responsabilite',
+    label: 'Centres de responsabilité',
+    icon: Briefcase,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
     to: '/referentiels/devises',
     label: 'Devises',
     icon: Coins,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/referentiels/structures',
+    label: 'Structures',
+    icon: Building2,
     permission: 'REFERENTIEL.LIRE',
   },
 ];
