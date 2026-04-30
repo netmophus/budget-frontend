@@ -157,6 +157,74 @@ export async function getStructureAncetres(id: string): Promise<Structure[]> {
   return data;
 }
 
+/** Mode d'application d'un PATCH structure (cf. backend 2.3A.1). */
+export type StructureModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
+
+export interface CreateStructureDto {
+  codeStructure: string;
+  libelle: string;
+  libelleCourt?: string;
+  typeStructure: TypeStructure;
+  niveauHierarchique: number;
+  fkStructureParent?: string;
+  codePays?: string;
+}
+
+export interface UpdateStructureDto {
+  libelle?: string;
+  libelleCourt?: string | null;
+  typeStructure?: TypeStructure;
+  niveauHierarchique?: number;
+  fkStructureParent?: string | null;
+  codePays?: string | null;
+  estActif?: boolean;
+}
+
+/** Réponse étendue avec modeMaj côté PATCH (cf. structure.service backend). */
+export interface StructureUpdateResponse extends Structure {
+  modeMaj?: StructureModeMaj;
+  /** Lot 2.3B : nb de CR repointés en cas de nouvelle_version (auto-référence). */
+  crsRelinked?: number;
+}
+
+export async function createStructure(
+  dto: CreateStructureDto,
+): Promise<Structure> {
+  const { data } = await apiClient.post<Structure>(
+    '/referentiels/structures',
+    dto,
+  );
+  return data;
+}
+
+export async function updateStructure(
+  codeStructure: string,
+  dto: UpdateStructureDto,
+): Promise<StructureUpdateResponse> {
+  const { data } = await apiClient.patch<StructureUpdateResponse>(
+    `/referentiels/structures/par-code/${codeStructure}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteStructure(codeStructure: string): Promise<void> {
+  await apiClient.delete(`/referentiels/structures/par-code/${codeStructure}`);
+}
+
+export async function getStructureHistorique(
+  codeStructure: string,
+): Promise<Structure[]> {
+  const { data } = await apiClient.get<Structure[]>(
+    `/referentiels/structures/par-code/${codeStructure}/historique`,
+  );
+  return data;
+}
+
 // ─── Centres de responsabilité (2.3B) ─────────────────────────────
 
 export type TypeCr = 'cdc' | 'cdp' | 'cdr' | 'autre';
