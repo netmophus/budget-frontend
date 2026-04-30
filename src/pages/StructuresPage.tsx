@@ -1,10 +1,15 @@
 import { type ColumnDef } from '@tanstack/react-table';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DataTable } from '@/components/common/DataTable';
+import { DetailDrawer } from '@/components/common/DetailDrawer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { StructureFormDrawer } from '@/components/structures/StructureFormDrawer';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -14,7 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listStructures, type Structure } from '@/lib/api/referentiels';
+import {
+  deleteStructure,
+  getStructureHistorique,
+  listStructures,
+  type Structure,
+} from '@/lib/api/referentiels';
+import { useHasPermission } from '@/lib/auth/permissions';
 import {
   badgeClassTypeStructure,
   libelleTypeStructure,
@@ -113,6 +124,8 @@ const columns: ColumnDef<Structure, unknown>[] = [
 ];
 
 export function StructuresPage() {
+  const canGerer = useHasPermission('REFERENTIEL.GERER');
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pays, setPays] = useState<string>(ALL);
@@ -120,6 +133,14 @@ export function StructuresPage() {
   const [data, setData] = useState<Structure[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Drawer detail (lecture)
+  const [selected, setSelected] = useState<Structure | null>(null);
+  // Mode édition / création
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  // Confirmation désactivation
+  const [confirmDelete, setConfirmDelete] = useState<Structure | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -143,7 +164,7 @@ export function StructuresPage() {
         toast.error('Impossible de charger les structures');
       })
       .finally(() => setLoading(false));
-  }, [pays, type, debouncedSearch]);
+  }, [pays, type, debouncedSearch, refreshKey]);
 
   // Tri client : niveau ASC puis code ASC pour rendre la table lisible
   // comme un arbre indenté.
@@ -156,11 +177,50 @@ export function StructuresPage() {
     });
   }, [data]);
 
+  async function handleDeleteConfirmed(): Promise<void> {
+    if (!confirmDelete) return;
+    try {
+      await deleteStructure(confirmDelete.codeStructure);
+      toast.success(
+        `Structure ${confirmDelete.codeStructure} désactivée.`,
+      );
+      setConfirmDelete(null);
+      setSelected(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      // ConfirmDialog rethrow ne ferme pas la modale — on
+      // affiche le toast ici puis re-throw pour le pattern.
+      const status = (err as { response?: { status?: number } }).response
+        ?.status;
+      const message = (
+        (err as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message ?? 'Désactivation refusée.'
+      );
+      const text = Array.isArray(message) ? message.join(' ; ') : message;
+      if (status === 409) {
+        toast.error(text);
+      } else if (status === 404) {
+        toast.error('Structure introuvable.');
+      } else {
+        toast.error(text);
+      }
+      throw err;
+    }
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Structures organisationnelles"
         description="Hiérarchie de la banque (entités juridiques, branches, directions, départements, agences)."
+        actions={
+          canGerer ? (
+            <Button onClick={() => setFormMode('create')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle structure
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="flex items-end gap-4 flex-wrap">
@@ -218,7 +278,175 @@ export function StructuresPage() {
         limit={200}
         isLoading={loading}
         onPageChange={() => undefined}
+        onRowClick={setSelected}
       />
+
+      <DetailDrawer<Structure, Structure>
+        open={selected !== null}
+        onOpenChange={(o) => !o && setSelected(null)}
+        entity={selected ?? undefined}
+        title={selected ? `Structure ${selected.codeStructure}` : ''}
+        description={selected?.libelle}
+        fields={
+          selected
+            ? [
+                {
+                  label: 'Type',
+                  value: (
+                    <Badge
+                      className={badgeClassTypeStructure(selected.typeStructure)}
+                    >
+                      {libelleTypeStructure(selected.typeStructure)}
+                    </Badge>
+                  ),
+                },
+                { label: 'Niveau hiérarchique', value: selected.niveauHierarchique },
+                {
+                  label: 'Pays',
+                  value: selected.codePays
+                    ? `${selected.codePays} — ${libellePays(selected.codePays)}`
+                    : null,
+                },
+                {
+                  label: 'Libellé court',
+                  value: selected.libelleCourt,
+                },
+                {
+                  label: 'Statut',
+                  value: selected.estActif ? (
+                    <Badge variant="success">Actif</Badge>
+                  ) : (
+                    <Badge variant="secondary">Inactif</Badge>
+                  ),
+                },
+                {
+                  label: 'Validité',
+                  value: `depuis ${formatDateFr(selected.dateDebutValidite)}${
+                    selected.dateFinValidite
+                      ? ` jusqu'au ${formatDateFr(selected.dateFinValidite)}`
+                      : ''
+                  }`,
+                },
+                {
+                  label: 'Version courante',
+                  value: selected.versionCourante ? 'Oui' : 'Non',
+                },
+                { label: 'Créée par', value: selected.utilisateurCreation },
+                {
+                  label: 'Dernière modification',
+                  value: selected.utilisateurModification,
+                },
+              ]
+            : []
+        }
+        footer={
+          selected && canGerer ? (
+            <div className="flex items-center gap-2">
+              {selected.estActif && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFormMode('edit');
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setConfirmDelete(selected)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Désactiver
+                  </Button>
+                </>
+              )}
+              {!selected.estActif && (
+                <span className="text-xs text-(--muted-foreground)">
+                  Structure inactive — pour la réactiver, utilisez Modifier
+                  puis cochez Actif.
+                </span>
+              )}
+            </div>
+          ) : null
+        }
+        loadHistory={
+          selected
+            ? () => getStructureHistorique(selected.codeStructure)
+            : undefined
+        }
+        renderHistoryRow={(row) => (
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="font-medium">
+                {row.libelle}
+                {row.libelleCourt && (
+                  <span className="text-(--muted-foreground) text-xs ml-2">
+                    ({row.libelleCourt})
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-(--muted-foreground)">
+                {libelleTypeStructure(row.typeStructure)} • niveau{' '}
+                {row.niveauHierarchique}
+                {row.codePays && ` • ${row.codePays}`}
+                {' • '}
+                du {formatDateFr(row.dateDebutValidite)}
+                {row.dateFinValidite
+                  ? ` au ${formatDateFr(row.dateFinValidite)}`
+                  : " à aujourd'hui"}
+              </div>
+            </div>
+            {row.versionCourante ? (
+              <Badge variant="success">Courante</Badge>
+            ) : (
+              <Badge variant="secondary">Historique</Badge>
+            )}
+          </div>
+        )}
+      />
+
+      <StructureFormDrawer
+        mode={formMode === 'edit' ? 'edit' : 'create'}
+        initial={formMode === 'edit' ? selected : null}
+        isOpen={formMode !== null}
+        onClose={() => setFormMode(null)}
+        onSuccess={(structure) => {
+          if (formMode === 'create') {
+            toast.success(`Structure ${structure.codeStructure} créée.`);
+          }
+          setFormMode(null);
+          setSelected(null);
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+
+      {confirmDelete && (
+        <ConfirmDialog
+          isOpen={confirmDelete !== null}
+          onClose={() => setConfirmDelete(null)}
+          onConfirm={handleDeleteConfirmed}
+          title={`Désactiver la structure ${confirmDelete.codeStructure} ?`}
+          description={
+            <>
+              <p>
+                <strong>
+                  {confirmDelete.codeStructure} — {confirmDelete.libelle}
+                </strong>
+              </p>
+              <p className="mt-2">
+                Cette structure ne pourra plus être utilisée pour de nouvelles
+                saisies budgétaires. Les saisies budget déjà effectuées
+                restent rattachées à cette structure dans l'historique.
+              </p>
+            </>
+          }
+          confirmText="Désactiver"
+          cancelText="Annuler"
+          destructive
+        />
+      )}
     </div>
   );
 }
