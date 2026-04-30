@@ -199,10 +199,14 @@ export function SaisieBudgetPage() {
     Promise.all([
       listStructures({ versionCouranteUniquement: true, limit: 200 }),
       listCrs({ versionCouranteUniquement: true, limit: 200 }),
+      // limit max=200 côté backend (cf. ListComptesQueryDto @Max(200)).
+      // Le filtre estCompteCollectif=false ne ramène que les comptes
+      // feuilles, ce qui tient largement dans 200 lignes pour un PCB
+      // UMOA standard.
       listComptes({
         versionCouranteUniquement: true,
         estCompteCollectif: false,
-        limit: 500,
+        limit: 200,
       }),
       listLignesMetier({ versionCouranteUniquement: true, limit: 200 }),
       listProduits({ versionCouranteUniquement: true, limit: 200 }),

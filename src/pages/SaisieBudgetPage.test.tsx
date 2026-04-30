@@ -461,4 +461,19 @@ describe('SaisieBudgetPage', () => {
       );
     });
   });
+
+  it('listComptes appelé avec limit=200 (borne backend @Max(200))', async () => {
+    setupReferentielMocks();
+    mockGetVersion.mockResolvedValue(VERSION_OUVERT);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        (
+          mockListCpt.mock.calls as Array<[{ limit?: number }]>
+        )[0]?.[0]?.limit,
+      ).toBe(200);
+    });
+  });
 });
