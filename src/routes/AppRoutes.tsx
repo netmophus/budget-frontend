@@ -31,6 +31,16 @@ const SegmentsPage = lazy(() =>
   import('@/pages/SegmentsPage').then((m) => ({ default: m.SegmentsPage })),
 );
 
+// Lazy-loaded — module Budget (3.5-mini).
+const VersionsPage = lazy(() =>
+  import('@/pages/VersionsPage').then((m) => ({ default: m.VersionsPage })),
+);
+const SaisieBudgetPage = lazy(() =>
+  import('@/pages/SaisieBudgetPage').then((m) => ({
+    default: m.SaisieBudgetPage,
+  })),
+);
+
 function PageFallback() {
   return (
     <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
@@ -141,6 +151,26 @@ export function AppRoutes() {
             <PermissionRoute permission="REFERENTIEL.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <SegmentsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/versions"
+          element={
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <VersionsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/versions/:codeVersion/saisie"
+          element={
+            <PermissionRoute permission="BUDGET.SAISIR">
+              <Suspense fallback={<PageFallback />}>
+                <SaisieBudgetPage />
               </Suspense>
             </PermissionRoute>
           }

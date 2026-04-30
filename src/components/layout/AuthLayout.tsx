@@ -4,6 +4,7 @@ import {
   Building2,
   Calculator,
   Calendar,
+  ClipboardList,
   Coins,
   LayoutDashboard,
   Library,
@@ -14,6 +15,7 @@ import {
   Target,
   User as UserIcon,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -93,6 +95,15 @@ const NAV_REFERENTIELS: NavItem[] = [
     label: 'Structures',
     icon: Building2,
     permission: 'REFERENTIEL.LIRE',
+  },
+];
+
+const NAV_BUDGET: NavItem[] = [
+  {
+    to: '/budget/versions',
+    label: 'Versions de budget',
+    icon: ClipboardList,
+    permission: 'BUDGET.LIRE',
   },
 ];
 
@@ -216,6 +227,18 @@ export function AuthLayout() {
               </div>
             )}
             {NAV_REFERENTIELS.map((item) => (
+              <NavLink key={item.to} item={item} collapsed={collapsed} />
+            ))}
+          </Can>
+
+          <Can permission="BUDGET.LIRE">
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
+                <Wallet className="h-3.5 w-3.5" />
+                Budget
+              </div>
+            )}
+            {NAV_BUDGET.map((item) => (
               <NavLink key={item.to} item={item} collapsed={collapsed} />
             ))}
           </Can>
