@@ -41,6 +41,13 @@ const SaisieBudgetPage = lazy(() =>
   })),
 );
 
+// Lazy-loaded — page Configuration (Lot 2.5-bis-C).
+const ConfigurationPage = lazy(() =>
+  import('@/pages/ConfigurationPage').then((m) => ({
+    default: m.ConfigurationPage,
+  })),
+);
+
 function PageFallback() {
   return (
     <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
@@ -171,6 +178,16 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.SAISIR">
               <Suspense fallback={<PageFallback />}>
                 <SaisieBudgetPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/configuration"
+          element={
+            <PermissionRoute permission="CONFIGURATION.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ConfigurationPage />
               </Suspense>
             </PermissionRoute>
           }

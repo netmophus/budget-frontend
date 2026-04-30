@@ -12,6 +12,8 @@ import {
   Menu,
   Package,
   ScrollText,
+  Settings,
+  Sliders,
   Target,
   User as UserIcon,
   Users,
@@ -104,6 +106,15 @@ const NAV_BUDGET: NavItem[] = [
     label: 'Versions de budget',
     icon: ClipboardList,
     permission: 'BUDGET.LIRE',
+  },
+];
+
+const NAV_CONFIGURATION: NavItem[] = [
+  {
+    to: '/configuration',
+    label: 'Configuration',
+    icon: Sliders,
+    permission: 'CONFIGURATION.LIRE',
   },
 ];
 
@@ -239,6 +250,18 @@ export function AuthLayout() {
               </div>
             )}
             {NAV_BUDGET.map((item) => (
+              <NavLink key={item.to} item={item} collapsed={collapsed} />
+            ))}
+          </Can>
+
+          <Can permission="CONFIGURATION.LIRE">
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
+                <Settings className="h-3.5 w-3.5" />
+                Configuration
+              </div>
+            )}
+            {NAV_CONFIGURATION.map((item) => (
               <NavLink key={item.to} item={item} collapsed={collapsed} />
             ))}
           </Can>
