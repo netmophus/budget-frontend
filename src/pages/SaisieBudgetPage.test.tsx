@@ -476,4 +476,30 @@ describe('SaisieBudgetPage', () => {
       ).toBe(200);
     });
   });
+
+  it('rerender loading → ouvert : pas de violation Rules of Hooks', async () => {
+    setupReferentielMocks();
+    // Le 1er render fait un early return (versionLoading=true).
+    // Le 2nd rend le JSX complet. Avec le hook canSupprimer remonté
+    // au top, les 2 renders appellent le même nb de hooks. Si on
+    // appelait encore useHasPermission dans le JSX (ancien wrapper
+    // useHasPermissionFlag), React lèverait un warning fatal au
+    // 2nd render. Ce test couvre exactement ce chemin.
+    mockGetVersion.mockResolvedValue(VERSION_OUVERT);
+
+    renderPage();
+
+    // Initialement : loading → 1er render avec early return
+    expect(screen.getByText(/Chargement de la version/i)).toBeInTheDocument();
+
+    // Promesse résolue → 2nd render avec JSX complet
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Saisie budget — Budget initial 2026/),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(/Chargement de la version/i),
+    ).not.toBeInTheDocument();
+  });
 });

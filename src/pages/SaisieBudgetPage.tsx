@@ -144,7 +144,11 @@ function buildMoisOptions(annee: number): MoisOption[] {
 export function SaisieBudgetPage() {
   const navigate = useNavigate();
   const { codeVersion = '' } = useParams<{ codeVersion: string }>();
+  // Hooks de permissions appelés au TOP du composant (Rules of Hooks :
+  // tous les hooks AVANT tout return early — sinon React détecte un
+  // nb de hooks différent entre 2 renders et lève un warning fatal).
   const canSaisir = useHasPermission('BUDGET.SAISIR');
+  const canSupprimer = useHasPermission('BUDGET.SUPPRIMER');
 
   const [version, setVersion] = useState<Version | null>(null);
   const [versionLoading, setVersionLoading] = useState(true);
@@ -857,7 +861,7 @@ export function SaisieBudgetPage() {
           toast.success('Mesures modifiées.');
           setRefreshKey((k) => k + 1);
         }}
-        canDelete={versionOuverte && useHasPermissionFlag('BUDGET.SUPPRIMER')}
+        canDelete={versionOuverte && canSupprimer}
         onDelete={async (id) => {
           await deleteFaitBudget(id);
           toast.success('Ligne supprimée.');
@@ -918,7 +922,3 @@ function FormSelect({
   );
 }
 
-/** Wrapper pour utilisation de useHasPermission dans le JSX inline (typage). */
-function useHasPermissionFlag(code: string): boolean {
-  return useHasPermission(code);
-}
