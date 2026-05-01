@@ -1,8 +1,19 @@
+/**
+ * Drawer de création / édition d'une structure (Lot 2.5A).
+ *
+ * Refactor 2.5C : consomme la factorisation
+ *  - <RefSecondaireSelect> pour les sélects type + pays
+ *  - useScd2EditDiff pour le diff + le bandeau SCD2
+ *
+ * Le sélect parent reste un Select natif (pas un référentiel
+ * secondaire — c'est une auto-référence sur dim_structure).
+ */
 import { AxiosError } from 'axios';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -32,6 +43,7 @@ import {
   updateStructure,
 } from '@/lib/api/referentiels';
 import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
+import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
 
 const NONE = '__none__';
 
@@ -47,16 +59,25 @@ const DEFAULT_NIVEAU_BY_TYPE: Record<TypeStructure, number> = {
   agence: 5,
 };
 
-interface FormState {
+interface FormState extends Record<string, unknown> {
   codeStructure: string;
   libelle: string;
   libelleCourt: string;
   typeStructure: TypeStructure | '';
   niveauHierarchique: number;
-  fkStructureParent: string; // surrogate id ; '' si racine
-  codePays: string; // '' si non défini
+  fkStructureParent: string;
+  codePays: string;
   estActif: boolean;
 }
+
+const SCD2_FIELDS = [
+  'libelle',
+  'libelleCourt',
+  'typeStructure',
+  'niveauHierarchique',
+  'fkStructureParent',
+  'codePays',
+] as const;
 
 function initialFormFromStructure(s: Structure | null): FormState {
   if (!s) {
@@ -98,18 +119,10 @@ function parseApiError(err: unknown): { status: number; message: string } {
 }
 
 interface StructureFormDrawerProps {
-  /** Mode : 'create' = nouvelle structure ; 'edit' = mise à jour. */
   mode: 'create' | 'edit';
-  /** Structure existante en mode 'edit'. Ignoré en 'create'. */
   initial?: Structure | null;
   isOpen: boolean;
   onClose: () => void;
-  /**
-   * Callback appelé après un succès (création ou modification).
-   * Reçoit la structure renvoyée par le backend + (en édition) le
-   * mode d'application SCD2 retenu (no_op / in_place_est_actif /
-   * ecrasement_intra_jour / nouvelle_version).
-   */
   onSuccess: (
     structure: Structure,
     modeMaj: StructureModeMaj | null,
@@ -138,21 +151,18 @@ export function StructureFormDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [parents, setParents] = useState<Structure[]>([]);
 
-  // Lot 2.5-bis-D : selects dynamiques alimentés par les ref_*. Le
-  // hook gère le cache 60s, le loading state et l'erreur API.
-  const {
-    options: typeStructureOptions,
-    loading: loadingTypes,
-    error: errorTypes,
-  } = useRefSecondaireOptions('type-structure');
-  const {
-    options: paysOptions,
-    loading: loadingPays,
-    error: errorPays,
-  } = useRefSecondaireOptions('pays');
+  // On garde une lecture parallèle des hooks au niveau parent
+  // UNIQUEMENT pour bloquer le submit si l'API référentiel est en
+  // erreur. Les sélects gèrent loading + warning désactivée en
+  // interne via <RefSecondaireSelect>.
+  const { options: typeOptions, error: errorTypes } = useRefSecondaireOptions(
+    'type-structure',
+  );
+  const { options: paysOptions, error: errorPays } = useRefSecondaireOptions(
+    'pays',
+  );
 
-  // Charger les parents potentiels (structures actives en version
-  // courante). Le filtrage sur niveauHierarchique se fait côté UI.
+  // Charger les parents potentiels (auto-référence dim_structure).
   useEffect(() => {
     if (!isOpen) return;
     listStructures({ versionCouranteUniquement: true, limit: 200 })
@@ -167,11 +177,7 @@ export function StructureFormDrawer({
     }
   }, [isOpen, initial]);
 
-  // Auto-suggestion du niveau hiérarchique selon le type (sans
-  // écraser une valeur manuellement saisie en édition).
-  // Lot 2.5-bis-D : `t` peut être une valeur custom hors de l'enum
-  // TypeStructure (ex. 'succursale' créée via /configuration). Dans
-  // ce cas, pas de niveau suggéré ; on garde celui du form.
+  // Auto-suggestion du niveau hiérarchique selon le type.
   function onTypeChange(t: string) {
     const niveauSuggere =
       DEFAULT_NIVEAU_BY_TYPE[t as TypeStructure] ?? null;
@@ -186,7 +192,6 @@ export function StructureFormDrawer({
   }
 
   // Parents éligibles : niveau strictement inférieur, courants, actifs.
-  // En édition, exclure aussi la structure elle-même (pas d'auto-parent).
   const parentsEligibles = useMemo(() => {
     return parents.filter((p) => {
       if (p.niveauHierarchique >= form.niveauHierarchique) return false;
@@ -197,62 +202,14 @@ export function StructureFormDrawer({
   }, [parents, form.niveauHierarchique, mode, initial]);
 
   const isEntiteJuridique = form.typeStructure === 'entite_juridique';
-
-  // Détecte une valeur courante (en édition) qui n'apparaît plus
-  // dans les options actives — typique si un admin a désactivé la
-  // valeur depuis /configuration. On la conserve sélectionnable mais
-  // on prévient l'utilisateur.
-  const typeStructureDesactivee =
-    mode === 'edit' &&
-    form.typeStructure !== '' &&
-    !loadingTypes &&
-    !typeStructureOptions.some((o) => o.value === form.typeStructure);
-  const paysDesactive =
-    mode === 'edit' &&
-    form.codePays !== '' &&
-    !loadingPays &&
-    !paysOptions.some((o) => o.value === form.codePays);
-
-  // Options finales injectées dans les selects : si une valeur
-  // désactivée est sélectionnée, on la prepend pour qu'elle reste
-  // visible.
-  const typesAffiches = useMemo(() => {
-    if (typeStructureDesactivee && form.typeStructure !== '') {
-      return [
-        {
-          value: form.typeStructure,
-          libelle: `${form.typeStructure} (désactivé)`,
-          estSysteme: false,
-        },
-        ...typeStructureOptions,
-      ];
-    }
-    return typeStructureOptions;
-  }, [typeStructureOptions, typeStructureDesactivee, form.typeStructure]);
-
-  const paysAffiches = useMemo(() => {
-    if (paysDesactive && form.codePays !== '') {
-      return [
-        {
-          value: form.codePays,
-          libelle: `${form.codePays} (désactivé)`,
-          estSysteme: false,
-        },
-        ...paysOptions,
-      ];
-    }
-    return paysOptions;
-  }, [paysOptions, paysDesactive, form.codePays]);
-
-  // Bloque le submit si les ref ne se chargent pas (la liste de
-  // valeurs valides n'est pas connue → on ne peut pas valider).
+  const codeValide =
+    mode === 'edit'
+      ? true
+      : /^[A-Z0-9_-]{2,50}$/.test(form.codeStructure);
   const optionsIndisponibles =
-    (errorTypes !== null && typeStructureOptions.length === 0) ||
+    (errorTypes !== null && typeOptions.length === 0) ||
     (errorPays !== null && paysOptions.length === 0);
-  // Validation côté UI — alignée sur le DTO backend.
-  const codeValide = mode === 'edit'
-    ? true
-    : /^[A-Z0-9_-]{2,50}$/.test(form.codeStructure);
+
   const canSubmit =
     !submitting &&
     !optionsIndisponibles &&
@@ -261,9 +218,17 @@ export function StructureFormDrawer({
     form.niveauHierarchique >= 1 &&
     form.niveauHierarchique <= 6 &&
     codeValide &&
-    // entité juridique : parent + pays optionnels ; sinon required
     (isEntiteJuridique ||
       (form.fkStructureParent !== '' && form.codePays !== ''));
+
+  // Bandeau SCD2 via le hook factorisé (Lot 2.5C).
+  const editDiff = useScd2EditDiff<FormState>({
+    initial: initialFormFromStructure(initial ?? null),
+    form,
+    scd2Fields: [...SCD2_FIELDS],
+    dateDebutValiditeInitiale: initial?.dateDebutValidite,
+  });
+  const bandeau = mode === 'edit' && initial ? editDiff.bandeau : null;
 
   async function onSubmit() {
     if (!canSubmit || form.typeStructure === '') return;
@@ -289,32 +254,24 @@ export function StructureFormDrawer({
       }
       // Mode 'edit' : envoyer uniquement les champs modifiés.
       if (!initial) return;
-      const dto: UpdateStructureDto = {};
-      if (form.libelle !== initial.libelle) dto.libelle = form.libelle;
-      if ((form.libelleCourt || null) !== (initial.libelleCourt ?? null)) {
-        dto.libelleCourt = form.libelleCourt || undefined;
-      }
-      if (form.typeStructure !== initial.typeStructure) {
-        dto.typeStructure = form.typeStructure;
-      }
-      if (form.niveauHierarchique !== initial.niveauHierarchique) {
-        dto.niveauHierarchique = form.niveauHierarchique;
+      // editDiff.diff couvre les SCD2_FIELDS + estActif. Pour les
+      // champs nullable (libelleCourt, fkStructureParent, codePays)
+      // on convertit '' → undefined pour respecter l'API DTO.
+      const dto: UpdateStructureDto = { ...(editDiff.diff as UpdateStructureDto) };
+      if ('libelleCourt' in dto && (dto.libelleCourt as string) === '') {
+        dto.libelleCourt = undefined;
       }
       if (
-        (form.fkStructureParent || null) !==
-        (initial.fkStructureParent ?? null)
+        'fkStructureParent' in dto &&
+        (dto.fkStructureParent as string) === ''
       ) {
-        dto.fkStructureParent = form.fkStructureParent || undefined;
+        dto.fkStructureParent = undefined;
       }
-      if ((form.codePays || null) !== (initial.codePays ?? null)) {
-        dto.codePays = form.codePays || undefined;
-      }
-      if (form.estActif !== initial.estActif) {
-        dto.estActif = form.estActif;
+      if ('codePays' in dto && (dto.codePays as string) === '') {
+        dto.codePays = undefined;
       }
       const updated = await updateStructure(initial.codeStructure, dto);
       onSuccess(updated, updated.modeMaj ?? null);
-      // Toast contextuel selon le mode d'application SCD2 retenu
       if (updated.modeMaj && updated.modeMaj !== 'no_op') {
         toast.success(MODE_MAJ_LIBELLES[updated.modeMaj]);
       } else if (updated.modeMaj === 'no_op') {
@@ -328,9 +285,7 @@ export function StructureFormDrawer({
         } else {
           toast.error(message);
         }
-      } else if (status === 422) {
-        toast.error(message);
-      } else if (status === 400) {
+      } else if (status === 422 || status === 400) {
         toast.error(message);
       } else {
         toast.error(message || "Échec de l'enregistrement.");
@@ -355,23 +310,23 @@ export function StructureFormDrawer({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {mode === 'edit' && (
-          <div className="rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1">
+        {bandeau && (
+          <div
+            className={
+              bandeau.type === 'jaune'
+                ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
+                : 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
+            }
+          >
             <div className="flex items-center gap-2 font-semibold">
-              <AlertTriangle className="h-4 w-4" />
-              Modification SCD2 — Lecture importante
+              {bandeau.type === 'jaune' ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <Info className="h-4 w-4" />
+              )}
+              {bandeau.titre}
             </div>
-            <p>
-              Si vous modifiez le libellé, le type, le niveau, le parent ou le
-              pays, cela créera une <strong>nouvelle version</strong> de cette
-              structure. L'ancienne version est conservée historiquement et
-              reste rattachée aux saisies budget déjà effectuées (comportement
-              standard d'un historique SCD type 2).
-            </p>
-            <p>
-              Si vous modifiez <strong>uniquement le statut Actif</strong> (et
-              rien d'autre), aucune nouvelle version n'est créée.
-            </p>
+            <p>{bandeau.message}</p>
           </div>
         )}
 
@@ -443,39 +398,14 @@ export function StructureFormDrawer({
               <Label htmlFor="typeStructure">
                 Type <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={form.typeStructure || undefined}
-                onValueChange={(v) => onTypeChange(v)}
-                disabled={submitting || loadingTypes}
-              >
-                <SelectTrigger id="typeStructure">
-                  <SelectValue
-                    placeholder={loadingTypes ? 'Chargement…' : '—'}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {typesAffiches.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.libelle}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errorTypes && typeStructureOptions.length === 0 && (
-                <p className="text-xs text-red-600">
-                  ⚠ Impossible de charger les types de structure. Vérifiez
-                  avec l'administrateur que le référentiel
-                  <code className="font-mono mx-1">type-structure</code>
-                  n'est pas vide.
-                </p>
-              )}
-              {typeStructureDesactivee && (
-                <p className="text-xs text-yellow-700">
-                  ⚠ La valeur actuelle '{form.typeStructure}' a été
-                  désactivée dans Configuration. Conservez-la ou choisissez
-                  une valeur active.
-                </p>
-              )}
+              <RefSecondaireSelect
+                id="typeStructure"
+                refKey="type-structure"
+                value={form.typeStructure}
+                onValueChange={onTypeChange}
+                disabled={submitting}
+                labelChamp="les types de structure"
+              />
             </div>
 
             <div className="space-y-1">
@@ -542,41 +472,14 @@ export function StructureFormDrawer({
               Pays UEMOA
               {!isEntiteJuridique && <span className="text-red-500"> *</span>}
             </Label>
-            <Select
-              value={form.codePays || NONE}
-              onValueChange={(v) =>
-                setForm({ ...form, codePays: v === NONE ? '' : v })
-              }
-              disabled={submitting || loadingPays}
-            >
-              <SelectTrigger id="codePays">
-                <SelectValue
-                  placeholder={loadingPays ? 'Chargement…' : '—'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Aucun</SelectItem>
-                {paysAffiches.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.value} — {p.libelle}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errorPays && paysOptions.length === 0 && (
-              <p className="text-xs text-red-600">
-                ⚠ Impossible de charger les pays. Vérifiez avec
-                l'administrateur que le référentiel
-                <code className="font-mono mx-1">pays</code>
-                n'est pas vide.
-              </p>
-            )}
-            {paysDesactive && (
-              <p className="text-xs text-yellow-700">
-                ⚠ Le pays '{form.codePays}' a été désactivé dans
-                Configuration. Conservez-le ou choisissez un pays actif.
-              </p>
-            )}
+            <RefSecondaireSelect
+              id="codePays"
+              refKey="pays"
+              value={form.codePays}
+              onValueChange={(v) => setForm({ ...form, codePays: v })}
+              disabled={submitting}
+              labelChamp="les pays"
+            />
           </div>
 
           {mode === 'edit' && (
@@ -595,10 +498,6 @@ export function StructureFormDrawer({
                 />
                 {form.estActif ? 'Actif' : 'Inactif'}
               </label>
-              <p className="text-xs text-(--muted-foreground)">
-                Si vous changez UNIQUEMENT ce champ, aucune nouvelle version
-                SCD2 n'est créée (mise à jour en place).
-              </p>
             </div>
           )}
         </div>

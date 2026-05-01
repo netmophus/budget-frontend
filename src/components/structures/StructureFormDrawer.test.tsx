@@ -199,7 +199,7 @@ describe('StructureFormDrawer', () => {
 
   // ─── Édition
 
-  it('mode edit : bandeau SCD2 visible + code en lecture seule', async () => {
+  it("mode edit : code en lecture seule + bandeau SCD2 contextuel après modification", async () => {
     mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 200 });
 
     render(
@@ -213,18 +213,23 @@ describe('StructureFormDrawer', () => {
     );
 
     expect(screen.getByText('Modifier la structure')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Modification SCD2 — Lecture importante/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/nouvelle version/i).length,
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/uniquement le statut Actif/i),
-    ).toBeInTheDocument();
     const codeInput = screen.getByLabelText(/Code structure/i) as HTMLInputElement;
     expect(codeInput.disabled).toBe(true);
     expect(codeInput.value).toBe('AG_ABJ_PLATEAU');
+    // Refactor 2.5C : le bandeau SCD2 est désormais piloté par
+    // useScd2EditDiff et n'apparaît PAS tant que rien n'est modifié.
+    expect(
+      screen.queryByText(/SCD2 — Modification d'attribut historisé/i),
+    ).not.toBeInTheDocument();
+
+    // Quand on modifie le libellé → bandeau jaune apparaît.
+    const libelleInput = screen.getByLabelText(/^Libellé\s*\*?$/i) as HTMLInputElement;
+    fireEvent.change(libelleInput, { target: { value: 'Agence rénovée' } });
+    await waitFor(() => {
+      expect(
+        screen.getByText(/SCD2 — Modification d'attribut historisé/i),
+      ).toBeInTheDocument();
+    });
   });
 
   it('mode edit : champs initial pré-remplis', async () => {
