@@ -1,11 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AxiosError, AxiosHeaders } from 'axios';
 
 vi.mock('@/lib/api/referentiels', () => ({
   listStructures: vi.fn(),
   createStructure: vi.fn(),
   updateStructure: vi.fn(),
+}));
+
+// Lot 2.5-bis-D : le drawer charge dynamiquement les options des
+// selects via useRefSecondaireOptions → on mocke /configuration pour
+// retourner les enum classiques (5 types + 9 pays).
+vi.mock('@/lib/api/configuration', () => ({
+  listRefSecondaires: vi.fn(),
 }));
 
 const toastError = vi.fn();
@@ -25,9 +32,38 @@ import {
   type Structure,
   updateStructure,
 } from '@/lib/api/referentiels';
+import { listRefSecondaires } from '@/lib/api/configuration';
+import { __resetRefSecondaireCache } from '@/lib/hooks/useRefSecondaireOptions';
 import { StructureFormDrawer } from './StructureFormDrawer';
 
 const mockList = listStructures as unknown as ReturnType<typeof vi.fn>;
+const mockListRef = listRefSecondaires as unknown as ReturnType<typeof vi.fn>;
+
+const REF_TYPE_STRUCTURE = [
+  { id: '1', code: 'entite_juridique', libelle: 'Entité juridique', description: null, ordre: 10, estActif: true, estSysteme: true, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '2', code: 'branche', libelle: 'Branche', description: null, ordre: 20, estActif: true, estSysteme: true, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '3', code: 'direction', libelle: 'Direction', description: null, ordre: 30, estActif: true, estSysteme: true, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '4', code: 'departement', libelle: 'Département', description: null, ordre: 40, estActif: true, estSysteme: true, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '5', code: 'agence', libelle: 'Agence', description: null, ordre: 50, estActif: true, estSysteme: false, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+];
+
+const REF_PAYS = [
+  { id: '1', code: 'BEN', libelle: 'Bénin', description: null, ordre: 10, estActif: true, estSysteme: false, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '3', code: 'CIV', libelle: "Côte d'Ivoire", description: null, ordre: 30, estActif: true, estSysteme: false, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+  { id: '7', code: 'SEN', libelle: 'Sénégal', description: null, ordre: 70, estActif: true, estSysteme: false, dateCreation: '2026-01-01T00:00:00Z', utilisateurCreation: 'system', dateModification: null, utilisateurModification: null },
+];
+
+function setupRefMocks(): void {
+  mockListRef.mockImplementation(async (refKey: string) => {
+    if (refKey === 'type-structure') {
+      return { items: REF_TYPE_STRUCTURE, total: 5, page: 1, limit: 200 };
+    }
+    if (refKey === 'pays') {
+      return { items: REF_PAYS, total: 3, page: 1, limit: 200 };
+    }
+    return { items: [], total: 0, page: 1, limit: 200 };
+  });
+}
 const mockCreate = createStructure as unknown as ReturnType<typeof vi.fn>;
 const mockUpdate = updateStructure as unknown as ReturnType<typeof vi.fn>;
 
@@ -67,6 +103,10 @@ function buildAxiosError(status: number, message: string): AxiosError {
 }
 
 describe('StructureFormDrawer', () => {
+  beforeEach(() => {
+    __resetRefSecondaireCache();
+    setupRefMocks();
+  });
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -373,5 +413,159 @@ describe('StructureFormDrawer', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Annuler/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // ─── Lot 2.5-bis-D : selects dynamiques
+
+  describe('selects dynamiques (Lot 2.5-bis-D)', () => {
+    it("appelle listRefSecondaires('type-structure') et 'pays' au mount", async () => {
+      mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 200 });
+
+      render(
+        <StructureFormDrawer
+          mode="create"
+          isOpen
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(mockListRef).toHaveBeenCalledWith('type-structure', {
+          estActif: true,
+          limit: 200,
+        });
+      });
+      await waitFor(() => {
+        expect(mockListRef).toHaveBeenCalledWith('pays', {
+          estActif: true,
+          limit: 200,
+        });
+      });
+    });
+
+    it("erreur API type-structure → message d'avertissement + bouton Créer désactivé", async () => {
+      mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 200 });
+      mockListRef.mockImplementation(async (refKey: string) => {
+        if (refKey === 'type-structure') {
+          throw new Error('boom');
+        }
+        return { items: REF_PAYS, total: 3, page: 1, limit: 200 };
+      });
+
+      render(
+        <StructureFormDrawer
+          mode="create"
+          isOpen
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Impossible de charger les types de structure/i),
+        ).toBeInTheDocument();
+      });
+      // Bouton Créer désactivé puisque les options sont indisponibles
+      const btn = screen.getByRole('button', { name: /Créer/i });
+      expect(btn).toBeDisabled();
+    });
+
+    it("mode édition : valeur désactivée affiche un avertissement et reste sélectionnée", async () => {
+      // Backend retourne 4 valeurs SANS 'agence' (désactivée)
+      mockListRef.mockImplementation(async (refKey: string) => {
+        if (refKey === 'type-structure') {
+          return {
+            items: REF_TYPE_STRUCTURE.filter((t) => t.code !== 'agence'),
+            total: 4,
+            page: 1,
+            limit: 200,
+          };
+        }
+        if (refKey === 'pays') {
+          return { items: REF_PAYS, total: 3, page: 1, limit: 200 };
+        }
+        return { items: [], total: 0, page: 1, limit: 200 };
+      });
+      mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 200 });
+
+      const STRUCTURE_AGENCE: Structure = {
+        id: '5',
+        codeStructure: 'AG_ABJ',
+        libelle: 'Agence Abidjan',
+        libelleCourt: null,
+        typeStructure: 'agence',
+        niveauHierarchique: 5,
+        fkStructureParent: null,
+        codePays: 'CIV',
+        versionCourante: true,
+        dateDebutValidite: '2026-01-01',
+        dateFinValidite: null,
+        estActif: true,
+        dateCreation: '2026-01-01T00:00:00Z',
+        utilisateurCreation: 'system',
+        dateModification: null,
+        utilisateurModification: null,
+      };
+
+      render(
+        <StructureFormDrawer
+          mode="edit"
+          initial={STRUCTURE_AGENCE}
+          isOpen
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/'agence' a été désactivée dans Configuration/i),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('mode édition : pays existant en base sans warning (cas nominal)', async () => {
+      mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 200 });
+
+      const STRUCTURE: Structure = {
+        id: '5',
+        codeStructure: 'AG_ABJ',
+        libelle: 'Agence Abidjan',
+        libelleCourt: null,
+        typeStructure: 'agence',
+        niveauHierarchique: 5,
+        fkStructureParent: null,
+        codePays: 'CIV',
+        versionCourante: true,
+        dateDebutValidite: '2026-01-01',
+        dateFinValidite: null,
+        estActif: true,
+        dateCreation: '2026-01-01T00:00:00Z',
+        utilisateurCreation: 'system',
+        dateModification: null,
+        utilisateurModification: null,
+      };
+
+      render(
+        <StructureFormDrawer
+          mode="edit"
+          initial={STRUCTURE}
+          isOpen
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+      );
+
+      // Attendre le chargement des options
+      await waitFor(() => {
+        expect(mockListRef).toHaveBeenCalledWith('pays', expect.any(Object));
+      });
+      // Pas d'avertissement de désactivation
+      expect(
+        screen.queryByText(/a été désactivé/i),
+      ).not.toBeInTheDocument();
+    });
   });
 });

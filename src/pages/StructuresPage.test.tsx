@@ -10,6 +10,18 @@ vi.mock('@/lib/api/referentiels', () => ({
   deleteStructure: vi.fn(),
 }));
 
+// Lot 2.5-bis-D : la page utilise useRefSecondaireOptions pour
+// alimenter les selects filtre Type et Pays. Mock listRefSecondaires
+// pour que le hook ne plante pas en jsdom.
+vi.mock('@/lib/api/configuration', () => ({
+  listRefSecondaires: vi.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    limit: 200,
+  }),
+}));
+
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
