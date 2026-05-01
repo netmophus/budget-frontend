@@ -483,6 +483,91 @@ export async function getProduitHistorique(
   return data;
 }
 
+export async function getProduitsRacines(): Promise<Produit[]> {
+  const { data } = await apiClient.get<Produit[]>(
+    '/referentiels/produits/racines',
+  );
+  return data;
+}
+
+export async function getProduitEnfants(id: string): Promise<Produit[]> {
+  const { data } = await apiClient.get<Produit[]>(
+    `/referentiels/produits/${id}/enfants`,
+  );
+  return data;
+}
+
+export async function getProduitDescendants(id: string): Promise<Produit[]> {
+  const { data } = await apiClient.get<Produit[]>(
+    `/referentiels/produits/${id}/descendants`,
+  );
+  return data;
+}
+
+export async function getProduitAncetres(id: string): Promise<Produit[]> {
+  const { data } = await apiClient.get<Produit[]>(
+    `/referentiels/produits/${id}/ancetres`,
+  );
+  return data;
+}
+
+/** Mode d'application d'un PATCH produit (cf. backend pattern 4-cas). */
+export type ProduitModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
+
+export interface CreateProduitDto {
+  codeProduit: string;
+  libelle: string;
+  typeProduit: string;
+  niveau: number;
+  fkProduitParent?: string;
+  codeProduitParent?: string;
+  estPorteurInterets?: boolean;
+}
+
+export interface UpdateProduitDto {
+  libelle?: string;
+  typeProduit?: string;
+  niveau?: number;
+  fkProduitParent?: string | null;
+  codeProduitParent?: string;
+  estPorteurInterets?: boolean;
+  estActif?: boolean;
+}
+
+export interface ProduitUpdateResponse extends Produit {
+  modeMaj?: ProduitModeMaj;
+  produitsEnfantsRelinked?: number;
+}
+
+export async function createProduit(
+  dto: CreateProduitDto,
+): Promise<Produit> {
+  const { data } = await apiClient.post<Produit>(
+    '/referentiels/produits',
+    dto,
+  );
+  return data;
+}
+
+export async function updateProduit(
+  codeProduit: string,
+  dto: UpdateProduitDto,
+): Promise<ProduitUpdateResponse> {
+  const { data } = await apiClient.patch<ProduitUpdateResponse>(
+    `/referentiels/produits/par-code/${codeProduit}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteProduit(codeProduit: string): Promise<void> {
+  await apiClient.delete(`/referentiels/produits/par-code/${codeProduit}`);
+}
+
 // ─── Segments (2.4B — plat) ───────────────────────────────────────
 
 export type CategorieSegment =
