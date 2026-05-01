@@ -1,12 +1,16 @@
 import { type ColumnDef } from '@tanstack/react-table';
-import { Check } from 'lucide-react';
+import { AxiosError } from 'axios';
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DataTable } from '@/components/common/DataTable';
 import { DetailDrawer } from '@/components/common/DetailDrawer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { ProduitFormDrawer } from '@/components/produits/ProduitFormDrawer';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,15 +21,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  type Produit,
-  type TypeProduit,
+  deleteProduit,
   getProduitHistorique,
   listProduits,
+  type Produit,
 } from '@/lib/api/referentiels';
+import { useHasPermission } from '@/lib/auth/permissions';
+import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
 import {
   badgeClassTypeProduit,
   libelleTypeProduit,
-  TYPES_PRODUIT,
 } from '@/lib/labels/referentiels';
 
 const ALL = '__all__';
@@ -46,6 +51,11 @@ function CheckOrDash({ value }: { value: boolean }) {
 }
 
 export function ProduitsPage() {
+  const canGerer = useHasPermission('REFERENTIEL.GERER');
+  // Lot 2.5C : filtre Type alimenté dynamiquement par ref_type_produit
+  // (cohérent avec StructuresPage / SegmentsPage).
+  const { options: typeOptions } = useRefSecondaireOptions('type-produit');
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>(ALL);
@@ -55,7 +65,11 @@ export function ProduitsPage() {
   const [data, setData] = useState<Produit[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [selected, setSelected] = useState<Produit | null>(null);
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Produit | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -72,7 +86,7 @@ export function ProduitsPage() {
       page,
       limit,
       typeProduit:
-        typeFilter === ALL ? undefined : (typeFilter as TypeProduit),
+        typeFilter === ALL ? undefined : (typeFilter as never),
       search: debouncedSearch || undefined,
       estPorteurInterets: porteursUniquement ? true : undefined,
     })
@@ -84,7 +98,44 @@ export function ProduitsPage() {
         toast.error('Impossible de charger les produits');
       })
       .finally(() => setLoading(false));
-  }, [page, limit, typeFilter, porteursUniquement, debouncedSearch]);
+  }, [page, limit, typeFilter, porteursUniquement, debouncedSearch, refreshKey]);
+
+  function parseApiError(err: unknown): { status: number; message: string } {
+    if (err instanceof AxiosError) {
+      const status = err.response?.status ?? 0;
+      const dataMsg =
+        (err.response?.data as { message?: string | string[] } | undefined)
+          ?.message;
+      const message = Array.isArray(dataMsg)
+        ? dataMsg.join(' ; ')
+        : (dataMsg ?? err.message);
+      return { status, message };
+    }
+    return { status: 0, message: err instanceof Error ? err.message : 'Erreur' };
+  }
+
+  async function handleDeleteConfirmed(): Promise<void> {
+    if (!confirmDelete) return;
+    try {
+      await deleteProduit(confirmDelete.codeProduit);
+      toast.success(
+        `Produit ${confirmDelete.codeProduit} désactivé.`,
+      );
+      setConfirmDelete(null);
+      setSelected(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      const { status, message } = parseApiError(err);
+      if (status === 409) {
+        toast.error(message);
+      } else if (status === 404) {
+        toast.error('Produit introuvable.');
+      } else {
+        toast.error(message || 'Désactivation refusée.');
+      }
+      throw err;
+    }
+  }
 
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {
@@ -157,7 +208,15 @@ export function ProduitsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Produits bancaires"
-        description="Catalogue des produits crédit / dépôt / service / marché. Hiérarchie 3 niveaux."
+        description="Catalogue des produits crédit / dépôt / service / marché. Hiérarchie 4 niveaux."
+        actions={
+          canGerer ? (
+            <Button onClick={() => setFormMode('create')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau produit
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="flex items-end gap-4 flex-wrap">
@@ -180,7 +239,7 @@ export function ProduitsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Tous</SelectItem>
-              {TYPES_PRODUIT.map((t) => (
+              {typeOptions.map((t) => (
                 <SelectItem key={t.value} value={t.value}>
                   {t.libelle}
                 </SelectItem>
@@ -277,33 +336,66 @@ export function ProduitsPage() {
             : []
         }
         footer={
-          selected?.parentCourant && (
-            <button
-              type="button"
-              className="text-sm text-(--primary) hover:underline"
-              onClick={() => {
-                if (!selected?.parentCourant) return;
-                listProduits({
-                  search: selected.parentCourant.codeProduit,
-                  page: 1,
-                  limit: 1,
-                })
-                  .then((res) => {
-                    const parent = res.items.find(
-                      (p) =>
-                        p.codeProduit === selected.parentCourant!.codeProduit,
-                    );
-                    if (parent) setSelected(parent);
-                  })
-                  .catch(() =>
-                    toast.error('Impossible de charger le produit parent'),
-                  );
-              }}
-            >
-              Voir le parent : {selected.parentCourant.codeProduit} —{' '}
-              {selected.parentCourant.libelle}
-            </button>
-          )
+          selected ? (
+            <div className="space-y-3">
+              {selected.parentCourant && (
+                <button
+                  type="button"
+                  className="text-sm text-(--primary) hover:underline"
+                  onClick={() => {
+                    if (!selected?.parentCourant) return;
+                    listProduits({
+                      search: selected.parentCourant.codeProduit,
+                      page: 1,
+                      limit: 1,
+                    })
+                      .then((res) => {
+                        const parent = res.items.find(
+                          (p) =>
+                            p.codeProduit ===
+                            selected.parentCourant!.codeProduit,
+                        );
+                        if (parent) setSelected(parent);
+                      })
+                      .catch(() =>
+                        toast.error('Impossible de charger le produit parent'),
+                      );
+                  }}
+                >
+                  Voir le parent : {selected.parentCourant.codeProduit} —{' '}
+                  {selected.parentCourant.libelle}
+                </button>
+              )}
+              {canGerer && (
+                <div className="flex items-center gap-2">
+                  {selected.estActif && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => setFormMode('edit')}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => setConfirmDelete(selected)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Désactiver
+                      </Button>
+                    </>
+                  )}
+                  {!selected.estActif && (
+                    <span className="text-xs text-(--muted-foreground)">
+                      Produit inactif — pour le réactiver, utilisez Modifier
+                      puis cochez Actif.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null
         }
         loadHistory={
           selected
@@ -329,6 +421,52 @@ export function ProduitsPage() {
           </div>
         )}
       />
+
+      <ProduitFormDrawer
+        mode={formMode === 'edit' ? 'edit' : 'create'}
+        initial={formMode === 'edit' ? selected : null}
+        isOpen={formMode !== null}
+        onClose={() => setFormMode(null)}
+        onSuccess={(produit) => {
+          if (formMode === 'create') {
+            toast.success(`Produit ${produit.codeProduit} créé.`);
+          }
+          setFormMode(null);
+          setSelected(null);
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+
+      {confirmDelete && (
+        <ConfirmDialog
+          isOpen={confirmDelete !== null}
+          onClose={() => setConfirmDelete(null)}
+          onConfirm={handleDeleteConfirmed}
+          title={`Désactiver le produit ${confirmDelete.codeProduit} ?`}
+          description={
+            <>
+              <p>
+                <strong>
+                  {confirmDelete.codeProduit} — {confirmDelete.libelle}
+                </strong>
+              </p>
+              <p className="mt-2">
+                Ce produit ne pourra plus être utilisé pour de nouvelles
+                saisies budgétaires. Les saisies budget déjà effectuées
+                restent rattachées à ce produit dans l'historique.
+              </p>
+              <p className="mt-2 text-xs text-(--muted-foreground)">
+                Si ce produit a des enfants courants, le backend
+                refusera la désactivation (409) — désactivez d'abord
+                les descendants.
+              </p>
+            </>
+          }
+          confirmText="Désactiver"
+          cancelText="Annuler"
+          destructive
+        />
+      )}
     </div>
   );
 }
