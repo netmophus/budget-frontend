@@ -1,21 +1,18 @@
 /**
- * Drawer de création / édition d'un segment (Lot 2.5B).
+ * Drawer de création / édition d'un segment (Lot 2.5B, refactor 2.5C).
  *
- * Pattern symétrique à StructureFormDrawer (Lot 2.5A) — bandeau SCD2
- * conditionnel selon les champs touchés, code immuable en édition,
- * select catégorie alimenté dynamiquement par le hook
- * useRefSecondaireOptions (Lot 2.5-bis-D).
+ * Consomme depuis le Lot 2.5C les composants factorisés :
+ *  - <RefSecondaireSelect> pour le sélect catégorie
+ *  - useScd2EditDiff pour le diff + le bandeau SCD2
  *
- * TODO Lot 2.5C/2.5D : extraire le pattern commun
- * (`<RefSecondaireSelect>`, mode toggle create/edit, bandeau SCD2)
- * dans un composant générique quand on aura 3 cas concrets
- * (Structure + Segment + Produit).
+ * Pattern miroir StructureFormDrawer (refactor symétrique).
  */
 import { AxiosError } from 'axios';
 import { AlertTriangle, Info, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,13 +25,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   type CreateSegmentDto,
   createSegment,
   type Segment,
@@ -43,13 +33,16 @@ import {
   updateSegment,
 } from '@/lib/api/referentiels';
 import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
+import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
 
-interface FormState {
+interface FormState extends Record<string, unknown> {
   codeSegment: string;
   libelle: string;
   categorie: string;
   estActif: boolean;
 }
+
+const SCD2_FIELDS = ['libelle', 'categorie'] as const;
 
 function initialFromSegment(s: Segment | null): FormState {
   if (!s) {
@@ -106,15 +99,18 @@ export function SegmentFormDrawer({
   onClose,
   onSuccess,
 }: SegmentFormDrawerProps) {
-  const [form, setForm] = useState<FormState>(initialFromSegment(initial ?? null));
+  const [form, setForm] = useState<FormState>(
+    initialFromSegment(initial ?? null),
+  );
   const [submitting, setSubmitting] = useState(false);
 
-  // Catégories chargées dynamiquement via le référentiel secondaire.
-  const {
-    options: categorieOptions,
-    loading: loadingCategories,
-    error: errorCategories,
-  } = useRefSecondaireOptions('categorie-segment');
+  // On garde une lecture du hook au niveau parent UNIQUEMENT pour
+  // bloquer le submit si l'API référentiel est en erreur (le sélect
+  // gère déjà loading + warning désactivée en interne).
+  const { options: categorieOptions, error: errorCategories } =
+    useRefSecondaireOptions('categorie-segment');
+  const optionsIndisponibles =
+    errorCategories !== null && categorieOptions.length === 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -122,35 +118,20 @@ export function SegmentFormDrawer({
     }
   }, [isOpen, initial]);
 
-  // Détecte une catégorie courante (édition) qui n'est plus active
-  // dans /configuration → conservée sélectionnable mais avertissement.
-  const categorieDesactivee =
-    mode === 'edit' &&
-    form.categorie !== '' &&
-    !loadingCategories &&
-    !categorieOptions.some((o) => o.value === form.categorie);
-
-  const categoriesAffichees = useMemo(() => {
-    if (categorieDesactivee && form.categorie !== '') {
-      return [
-        {
-          value: form.categorie,
-          libelle: `${form.categorie} (désactivé)`,
-          estSysteme: false,
-        },
-        ...categorieOptions,
-      ];
-    }
-    return categorieOptions;
-  }, [categorieOptions, categorieDesactivee, form.categorie]);
+  // Diff + modeMaj prédit + bandeau via le hook factorisé (Lot 2.5C).
+  const editDiff = useScd2EditDiff<FormState>({
+    initial: initialFromSegment(initial ?? null),
+    form,
+    scd2Fields: [...SCD2_FIELDS],
+    dateDebutValiditeInitiale: initial?.dateDebutValidite,
+  });
+  const bandeau = mode === 'edit' && initial ? editDiff.bandeau : null;
 
   // Validation côté UI alignée sur le DTO backend (regex / longueur).
   const codeValide =
     mode === 'edit'
       ? true
       : /^[A-Z0-9_-]{1,50}$/.test(form.codeSegment);
-  const optionsIndisponibles =
-    errorCategories !== null && categorieOptions.length === 0;
 
   const canSubmit =
     !submitting &&
@@ -158,47 +139,6 @@ export function SegmentFormDrawer({
     form.libelle.trim() !== '' &&
     form.categorie !== '' &&
     codeValide;
-
-  // ─── Bandeau SCD2 conditionnel (mode édition uniquement)
-
-  const bandeau = useMemo(() => {
-    if (mode !== 'edit' || !initial) return null;
-
-    const scd2Touched =
-      form.libelle !== initial.libelle ||
-      form.categorie !== initial.categorie;
-    const estActifTouched = form.estActif !== initial.estActif;
-
-    // Si seul est_actif est modifié → in-place (bandeau bleu)
-    if (estActifTouched && !scd2Touched) {
-      return {
-        kind: 'info' as const,
-        title: 'Mise à jour en place',
-        text: 'Modification orthogonale au SCD2 — aucune nouvelle version ne sera créée.',
-      };
-    }
-
-    if (scd2Touched) {
-      // Détecte le cas écrasement intra-jour : version courante créée
-      // aujourd'hui (date_debut_validite = today).
-      const today = new Date().toISOString().slice(0, 10);
-      const intraJour = initial.dateDebutValidite === today;
-      if (intraJour) {
-        return {
-          kind: 'info' as const,
-          title: 'Écrasement intra-jour',
-          text: "Modification du jour : la version courante sera écrasée sans créer de nouvelle ligne historique.",
-        };
-      }
-      return {
-        kind: 'warn' as const,
-        title: 'SCD2 — Modification d\'attribut historisé',
-        text:
-          "Une nouvelle version SCD2 sera créée. L'ancienne reste consultable dans l'historique et continue de référencer les saisies budgétaires antérieures.",
-      };
-    }
-    return null;
-  }, [mode, initial, form]);
 
   async function onSubmit() {
     if (!canSubmit) return;
@@ -215,13 +155,12 @@ export function SegmentFormDrawer({
         onSuccess(created, null);
         return;
       }
-      // Mode 'edit' : envoyer uniquement le diff
+      // Mode 'edit' : envoyer uniquement le diff (calculé par le hook).
       if (!initial) return;
-      const dto: UpdateSegmentDto = {};
-      if (form.libelle !== initial.libelle) dto.libelle = form.libelle;
-      if (form.categorie !== initial.categorie) dto.categorie = form.categorie;
-      if (form.estActif !== initial.estActif) dto.estActif = form.estActif;
-      const updated = await updateSegment(initial.codeSegment, dto);
+      const updated = await updateSegment(
+        initial.codeSegment,
+        editDiff.diff as UpdateSegmentDto,
+      );
       onSuccess(updated, updated.modeMaj ?? null);
       if (updated.modeMaj && updated.modeMaj !== 'no_op') {
         toast.success(MODE_MAJ_LIBELLES[updated.modeMaj]);
@@ -236,9 +175,7 @@ export function SegmentFormDrawer({
         } else {
           toast.error(message);
         }
-      } else if (status === 422) {
-        toast.error(message);
-      } else if (status === 400) {
+      } else if (status === 422 || status === 400) {
         toast.error(message);
       } else {
         toast.error(message || "Échec de l'enregistrement.");
@@ -266,20 +203,20 @@ export function SegmentFormDrawer({
         {bandeau && (
           <div
             className={
-              bandeau.kind === 'warn'
+              bandeau.type === 'jaune'
                 ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
                 : 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
             }
           >
             <div className="flex items-center gap-2 font-semibold">
-              {bandeau.kind === 'warn' ? (
+              {bandeau.type === 'jaune' ? (
                 <AlertTriangle className="h-4 w-4" />
               ) : (
                 <Info className="h-4 w-4" />
               )}
-              {bandeau.title}
+              {bandeau.titre}
             </div>
-            <p>{bandeau.text}</p>
+            <p>{bandeau.message}</p>
           </div>
         )}
 
@@ -333,39 +270,14 @@ export function SegmentFormDrawer({
             <Label htmlFor="categorie">
               Catégorie <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={form.categorie || undefined}
+            <RefSecondaireSelect
+              id="categorie"
+              refKey="categorie-segment"
+              value={form.categorie}
               onValueChange={(v) => setForm({ ...form, categorie: v })}
-              disabled={submitting || loadingCategories}
-            >
-              <SelectTrigger id="categorie">
-                <SelectValue
-                  placeholder={loadingCategories ? 'Chargement…' : '—'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {categoriesAffichees.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.libelle}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errorCategories && categorieOptions.length === 0 && (
-              <p className="text-xs text-red-600">
-                ⚠ Impossible de charger les catégories. Vérifiez avec
-                l'administrateur que le référentiel
-                <code className="font-mono mx-1">categorie-segment</code>
-                n'est pas vide.
-              </p>
-            )}
-            {categorieDesactivee && (
-              <p className="text-xs text-yellow-700">
-                ⚠ La valeur '{form.categorie}' a été désactivée dans
-                Configuration. Conservez-la ou choisissez une catégorie
-                active.
-              </p>
-            )}
+              disabled={submitting}
+              labelChamp="les catégories de segment"
+            />
           </div>
 
           {mode === 'edit' && (
