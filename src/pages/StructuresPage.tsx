@@ -26,12 +26,12 @@ import {
   type Structure,
 } from '@/lib/api/referentiels';
 import { useHasPermission } from '@/lib/auth/permissions';
+import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
 import {
   badgeClassTypeStructure,
   libelleTypeStructure,
-  TYPES_STRUCTURE,
 } from '@/lib/labels/referentiels';
-import { libellePays, UEMOA_COUNTRIES } from '@/lib/labels/uemoa';
+import { libellePays } from '@/lib/labels/uemoa';
 
 const ALL = '__all__';
 
@@ -125,6 +125,10 @@ const columns: ColumnDef<Structure, unknown>[] = [
 
 export function StructuresPage() {
   const canGerer = useHasPermission('REFERENTIEL.GERER');
+  // Lot 2.5-bis-D : selects de filtre alimentés dynamiquement par les
+  // référentiels secondaires (cache 60s).
+  const { options: typeOptions } = useRefSecondaireOptions('type-structure');
+  const { options: paysOptions } = useRefSecondaireOptions('pays');
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -243,8 +247,8 @@ export function StructuresPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Tous</SelectItem>
-              {UEMOA_COUNTRIES.map((p) => (
-                <SelectItem key={p.code} value={p.code}>
+              {paysOptions.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
                   {p.libelle}
                 </SelectItem>
               ))}
@@ -260,7 +264,7 @@ export function StructuresPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Tous</SelectItem>
-              {TYPES_STRUCTURE.map((t) => (
+              {typeOptions.map((t) => (
                 <SelectItem key={t.value} value={t.value}>
                   {t.libelle}
                 </SelectItem>

@@ -31,8 +31,7 @@ import {
   type UpdateStructureDto,
   updateStructure,
 } from '@/lib/api/referentiels';
-import { TYPES_STRUCTURE } from '@/lib/labels/referentiels';
-import { UEMOA_COUNTRIES } from '@/lib/labels/uemoa';
+import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
 
 const NONE = '__none__';
 
@@ -139,6 +138,19 @@ export function StructureFormDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [parents, setParents] = useState<Structure[]>([]);
 
+  // Lot 2.5-bis-D : selects dynamiques alimentés par les ref_*. Le
+  // hook gère le cache 60s, le loading state et l'erreur API.
+  const {
+    options: typeStructureOptions,
+    loading: loadingTypes,
+    error: errorTypes,
+  } = useRefSecondaireOptions('type-structure');
+  const {
+    options: paysOptions,
+    loading: loadingPays,
+    error: errorPays,
+  } = useRefSecondaireOptions('pays');
+
   // Charger les parents potentiels (structures actives en version
   // courante). Le filtrage sur niveauHierarchique se fait côté UI.
   useEffect(() => {
@@ -157,15 +169,19 @@ export function StructureFormDrawer({
 
   // Auto-suggestion du niveau hiérarchique selon le type (sans
   // écraser une valeur manuellement saisie en édition).
-  function onTypeChange(t: TypeStructure) {
-    const niveauSuggere = DEFAULT_NIVEAU_BY_TYPE[t];
+  // Lot 2.5-bis-D : `t` peut être une valeur custom hors de l'enum
+  // TypeStructure (ex. 'succursale' créée via /configuration). Dans
+  // ce cas, pas de niveau suggéré ; on garde celui du form.
+  function onTypeChange(t: string) {
+    const niveauSuggere =
+      DEFAULT_NIVEAU_BY_TYPE[t as TypeStructure] ?? null;
     setForm((f) => ({
       ...f,
-      typeStructure: t,
-      // En création seulement : on aligne le niveau. En édition, on
-      // laisse le niveau actuel pour ne pas surprendre l'utilisateur.
+      typeStructure: t as TypeStructure,
       niveauHierarchique:
-        mode === 'create' ? niveauSuggere : f.niveauHierarchique,
+        mode === 'create' && niveauSuggere !== null
+          ? niveauSuggere
+          : f.niveauHierarchique,
     }));
   }
 
@@ -181,12 +197,65 @@ export function StructureFormDrawer({
   }, [parents, form.niveauHierarchique, mode, initial]);
 
   const isEntiteJuridique = form.typeStructure === 'entite_juridique';
+
+  // Détecte une valeur courante (en édition) qui n'apparaît plus
+  // dans les options actives — typique si un admin a désactivé la
+  // valeur depuis /configuration. On la conserve sélectionnable mais
+  // on prévient l'utilisateur.
+  const typeStructureDesactivee =
+    mode === 'edit' &&
+    form.typeStructure !== '' &&
+    !loadingTypes &&
+    !typeStructureOptions.some((o) => o.value === form.typeStructure);
+  const paysDesactive =
+    mode === 'edit' &&
+    form.codePays !== '' &&
+    !loadingPays &&
+    !paysOptions.some((o) => o.value === form.codePays);
+
+  // Options finales injectées dans les selects : si une valeur
+  // désactivée est sélectionnée, on la prepend pour qu'elle reste
+  // visible.
+  const typesAffiches = useMemo(() => {
+    if (typeStructureDesactivee && form.typeStructure !== '') {
+      return [
+        {
+          value: form.typeStructure,
+          libelle: `${form.typeStructure} (désactivé)`,
+          estSysteme: false,
+        },
+        ...typeStructureOptions,
+      ];
+    }
+    return typeStructureOptions;
+  }, [typeStructureOptions, typeStructureDesactivee, form.typeStructure]);
+
+  const paysAffiches = useMemo(() => {
+    if (paysDesactive && form.codePays !== '') {
+      return [
+        {
+          value: form.codePays,
+          libelle: `${form.codePays} (désactivé)`,
+          estSysteme: false,
+        },
+        ...paysOptions,
+      ];
+    }
+    return paysOptions;
+  }, [paysOptions, paysDesactive, form.codePays]);
+
+  // Bloque le submit si les ref ne se chargent pas (la liste de
+  // valeurs valides n'est pas connue → on ne peut pas valider).
+  const optionsIndisponibles =
+    (errorTypes !== null && typeStructureOptions.length === 0) ||
+    (errorPays !== null && paysOptions.length === 0);
   // Validation côté UI — alignée sur le DTO backend.
   const codeValide = mode === 'edit'
     ? true
     : /^[A-Z0-9_-]{2,50}$/.test(form.codeStructure);
   const canSubmit =
     !submitting &&
+    !optionsIndisponibles &&
     form.libelle.trim() !== '' &&
     form.typeStructure !== '' &&
     form.niveauHierarchique >= 1 &&
@@ -376,20 +445,37 @@ export function StructureFormDrawer({
               </Label>
               <Select
                 value={form.typeStructure || undefined}
-                onValueChange={(v) => onTypeChange(v as TypeStructure)}
-                disabled={submitting}
+                onValueChange={(v) => onTypeChange(v)}
+                disabled={submitting || loadingTypes}
               >
                 <SelectTrigger id="typeStructure">
-                  <SelectValue placeholder="—" />
+                  <SelectValue
+                    placeholder={loadingTypes ? 'Chargement…' : '—'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {TYPES_STRUCTURE.map((t) => (
+                  {typesAffiches.map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.libelle}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {errorTypes && typeStructureOptions.length === 0 && (
+                <p className="text-xs text-red-600">
+                  ⚠ Impossible de charger les types de structure. Vérifiez
+                  avec l'administrateur que le référentiel
+                  <code className="font-mono mx-1">type-structure</code>
+                  n'est pas vide.
+                </p>
+              )}
+              {typeStructureDesactivee && (
+                <p className="text-xs text-yellow-700">
+                  ⚠ La valeur actuelle '{form.typeStructure}' a été
+                  désactivée dans Configuration. Conservez-la ou choisissez
+                  une valeur active.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -461,20 +547,36 @@ export function StructureFormDrawer({
               onValueChange={(v) =>
                 setForm({ ...form, codePays: v === NONE ? '' : v })
               }
-              disabled={submitting}
+              disabled={submitting || loadingPays}
             >
               <SelectTrigger id="codePays">
-                <SelectValue placeholder="—" />
+                <SelectValue
+                  placeholder={loadingPays ? 'Chargement…' : '—'}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Aucun</SelectItem>
-                {UEMOA_COUNTRIES.map((p) => (
-                  <SelectItem key={p.code} value={p.code}>
-                    {p.code} — {p.libelle}
+                {paysAffiches.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    {p.value} — {p.libelle}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {errorPays && paysOptions.length === 0 && (
+              <p className="text-xs text-red-600">
+                ⚠ Impossible de charger les pays. Vérifiez avec
+                l'administrateur que le référentiel
+                <code className="font-mono mx-1">pays</code>
+                n'est pas vide.
+              </p>
+            )}
+            {paysDesactive && (
+              <p className="text-xs text-yellow-700">
+                ⚠ Le pays '{form.codePays}' a été désactivé dans
+                Configuration. Conservez-le ou choisissez un pays actif.
+              </p>
+            )}
           </div>
 
           {mode === 'edit' && (
