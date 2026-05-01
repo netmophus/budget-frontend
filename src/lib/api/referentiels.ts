@@ -541,3 +541,53 @@ export async function getSegmentHistorique(
   );
   return data;
 }
+
+/** Mode d'application d'un PATCH segment (cf. backend pattern 4-cas). */
+export type SegmentModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
+
+export interface CreateSegmentDto {
+  codeSegment: string;
+  libelle: string;
+  /** Code business du référentiel ref_categorie_segment. */
+  categorie: string;
+}
+
+export interface UpdateSegmentDto {
+  libelle?: string;
+  categorie?: string;
+  estActif?: boolean;
+}
+
+/** Réponse étendue avec modeMaj côté PATCH (cf. SegmentService backend). */
+export interface SegmentUpdateResponse extends Segment {
+  modeMaj?: SegmentModeMaj;
+}
+
+export async function createSegment(
+  dto: CreateSegmentDto,
+): Promise<Segment> {
+  const { data } = await apiClient.post<Segment>(
+    '/referentiels/segments',
+    dto,
+  );
+  return data;
+}
+
+export async function updateSegment(
+  codeSegment: string,
+  dto: UpdateSegmentDto,
+): Promise<SegmentUpdateResponse> {
+  const { data } = await apiClient.patch<SegmentUpdateResponse>(
+    `/referentiels/segments/par-code/${codeSegment}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteSegment(codeSegment: string): Promise<void> {
+  await apiClient.delete(`/referentiels/segments/par-code/${codeSegment}`);
+}
