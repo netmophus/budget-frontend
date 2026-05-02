@@ -76,35 +76,40 @@ export function badgeClassTypeCr(value: string): string {
 
 // ─── Comptes (PCB UMOA Révisé) ────────────────────────────────────
 
+/**
+ * Fallback statique conservé pour compat tests / écrans hors-ligne ;
+ * la source de vérité runtime est `ref_classe_compte` exposé via
+ * `useRefSecondaireOptions('classe-compte')` (Lot 2.5-bis-A).
+ */
 export const CLASSES_COMPTE = [
-  { value: 1, libelle: 'Classe 1 — Trésorerie & interbancaire' },
-  { value: 2, libelle: 'Classe 2 — Clientèle' },
-  { value: 4, libelle: 'Classe 4 — Immobilisations' },
-  { value: 5, libelle: 'Classe 5 — Provisions / Fonds propres' },
-  { value: 6, libelle: 'Classe 6 — Charges' },
-  { value: 7, libelle: 'Classe 7 — Produits' },
+  { value: '1', libelle: 'Classe 1 — Trésorerie & interbancaire' },
+  { value: '2', libelle: 'Classe 2 — Clientèle' },
+  { value: '4', libelle: 'Classe 4 — Immobilisations' },
+  { value: '5', libelle: 'Classe 5 — Provisions / Fonds propres' },
+  { value: '6', libelle: 'Classe 6 — Charges' },
+  { value: '7', libelle: 'Classe 7 — Produits' },
 ] as const;
 
-export function libelleClasseCompte(value: number): string {
+export function libelleClasseCompte(value: string): string {
   return (
     CLASSES_COMPTE.find((c) => c.value === value)?.libelle ?? `Classe ${value}`
   );
 }
 
-/** Couleur Tailwind du badge selon la classe PCB. */
-export function badgeClassClasseCompte(value: number): string {
+/** Couleur Tailwind du badge selon la classe PCB (varchar). */
+export function badgeClassClasseCompte(value: string): string {
   switch (value) {
-    case 1:
+    case '1':
       return 'bg-blue-500 text-white border-transparent';
-    case 2:
+    case '2':
       return 'bg-violet-500 text-white border-transparent';
-    case 4:
+    case '4':
       return 'bg-green-500 text-white border-transparent';
-    case 5:
+    case '5':
       return 'bg-yellow-500 text-white border-transparent';
-    case 6:
+    case '6':
       return 'bg-orange-500 text-white border-transparent';
-    case 7:
+    case '7':
       return 'bg-cyan-500 text-white border-transparent';
     default:
       return 'bg-gray-300 text-gray-800 border-transparent';

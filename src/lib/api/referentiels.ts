@@ -293,6 +293,38 @@ export async function getCrsByStructure(
 
 export type SensCompte = 'D' | 'C' | 'M';
 
+export type CompteModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
+
+export type ImportMode = 'insert-only' | 'upsert';
+
+export type ImportErrorCode =
+  | 'PARENT_INCONNU'
+  | 'VALIDATION_ZOD'
+  | 'CYCLE_DETECTE'
+  | 'INCOHERENCE_NIVEAU'
+  | 'INCOHERENCE_CLASSE'
+  | 'AUTRE';
+
+export interface ImportError {
+  ligne: number;
+  codeCompte?: string;
+  message: string;
+  code: ImportErrorCode;
+}
+
+export interface ImportRapport {
+  totalLines: number;
+  imported: number;
+  updated: number;
+  skipped: number;
+  errors: ImportError[];
+  dureeMs: number;
+}
+
 export interface ParentCompte {
   id: string;
   codeCompte: string;
@@ -303,7 +335,7 @@ export interface Compte {
   id: string;
   codeCompte: string;
   libelle: string;
-  classe: number;
+  classe: string;
   sousClasse: string | null;
   fkCompteParent: string | null;
   parentCourant?: ParentCompte;
@@ -320,10 +352,12 @@ export interface Compte {
   utilisateurCreation: string;
   dateModification: string | null;
   utilisateurModification: string | null;
+  modeMaj?: CompteModeMaj;
+  comptesEnfantsRelinked?: number;
 }
 
 export interface ListComptesQuery {
-  classe?: number;
+  classe?: string;
   search?: string;
   codePosteBudgetaire?: string;
   estCompteCollectif?: boolean;
@@ -333,12 +367,53 @@ export interface ListComptesQuery {
   versionCouranteUniquement?: boolean;
 }
 
+export interface CreateCompteDto {
+  codeCompte: string;
+  libelle: string;
+  classe: string;
+  niveau: number;
+  sousClasse?: string;
+  fkCompteParent?: string;
+  codeCompteParent?: string;
+  sens?: SensCompte;
+  codePosteBudgetaire?: string;
+  estCompteCollectif?: boolean;
+  estPorteurInterets?: boolean;
+}
+
+export interface UpdateCompteDto {
+  libelle?: string;
+  sousClasse?: string;
+  fkCompteParent?: string | null;
+  codeCompteParent?: string;
+  niveau?: number;
+  sens?: SensCompte;
+  codePosteBudgetaire?: string;
+  estCompteCollectif?: boolean;
+  estPorteurInterets?: boolean;
+  estActif?: boolean;
+}
+
 export async function listComptes(
   query: ListComptesQuery = {},
 ): Promise<PaginatedResponse<Compte>> {
   const { data } = await apiClient.get<PaginatedResponse<Compte>>(
     '/referentiels/comptes',
     { params: query },
+  );
+  return data;
+}
+
+export async function listComptesRacines(): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    '/referentiels/comptes/racines',
+  );
+  return data;
+}
+
+export async function getCompteById(id: string): Promise<Compte> {
+  const { data } = await apiClient.get<Compte>(
+    `/referentiels/comptes/${id}`,
   );
   return data;
 }
@@ -355,6 +430,67 @@ export async function getCompteHistorique(
 ): Promise<Compte[]> {
   const { data } = await apiClient.get<Compte[]>(
     `/referentiels/comptes/par-code/${codeCompte}/historique`,
+  );
+  return data;
+}
+
+export async function getCompteEnfants(id: string): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    `/referentiels/comptes/${id}/enfants`,
+  );
+  return data;
+}
+
+export async function getCompteDescendants(id: string): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    `/referentiels/comptes/${id}/descendants`,
+  );
+  return data;
+}
+
+export async function getCompteAncetres(id: string): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    `/referentiels/comptes/${id}/ancetres`,
+  );
+  return data;
+}
+
+export async function createCompte(dto: CreateCompteDto): Promise<Compte> {
+  const { data } = await apiClient.post<Compte>(
+    '/referentiels/comptes',
+    dto,
+  );
+  return data;
+}
+
+export async function updateCompte(
+  codeCompte: string,
+  dto: UpdateCompteDto,
+): Promise<Compte> {
+  const { data } = await apiClient.patch<Compte>(
+    `/referentiels/comptes/par-code/${codeCompte}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteCompte(codeCompte: string): Promise<void> {
+  await apiClient.delete(`/referentiels/comptes/par-code/${codeCompte}`);
+}
+
+export async function importComptes(
+  file: File,
+  mode: ImportMode = 'insert-only',
+): Promise<ImportRapport> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await apiClient.post<ImportRapport>(
+    '/referentiels/comptes/import',
+    formData,
+    {
+      params: { mode },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    },
   );
   return data;
 }
