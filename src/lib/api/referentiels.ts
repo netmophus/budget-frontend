@@ -367,6 +367,12 @@ export interface ParentLigneMetier {
   libelle: string;
 }
 
+export type LigneMetierModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
+
 export interface LigneMetier {
   id: string;
   codeLigneMetier: string;
@@ -382,6 +388,8 @@ export interface LigneMetier {
   utilisateurCreation: string;
   dateModification: string | null;
   utilisateurModification: string | null;
+  modeMaj?: LigneMetierModeMaj;
+  lignesMetierEnfantsRelinked?: number;
 }
 
 export interface ListLignesMetierQuery {
@@ -391,12 +399,42 @@ export interface ListLignesMetierQuery {
   versionCouranteUniquement?: boolean;
 }
 
+export interface CreateLigneMetierDto {
+  codeLigneMetier: string;
+  libelle: string;
+  niveau: number;
+  fkLigneMetierParent?: string;
+  codeLigneMetierParent?: string;
+}
+
+export interface UpdateLigneMetierDto {
+  libelle?: string;
+  niveau?: number;
+  fkLigneMetierParent?: string | null;
+  codeLigneMetierParent?: string;
+  estActif?: boolean;
+}
+
 export async function listLignesMetier(
   query: ListLignesMetierQuery = {},
 ): Promise<PaginatedResponse<LigneMetier>> {
   const { data } = await apiClient.get<PaginatedResponse<LigneMetier>>(
     '/referentiels/lignes-metier',
     { params: query },
+  );
+  return data;
+}
+
+export async function listLignesMetierRacines(): Promise<LigneMetier[]> {
+  const { data } = await apiClient.get<LigneMetier[]>(
+    '/referentiels/lignes-metier/racines',
+  );
+  return data;
+}
+
+export async function getLigneMetierById(id: string): Promise<LigneMetier> {
+  const { data } = await apiClient.get<LigneMetier>(
+    `/referentiels/lignes-metier/${id}`,
   );
   return data;
 }
@@ -417,6 +455,62 @@ export async function getLigneMetierHistorique(
     `/referentiels/lignes-metier/par-code/${codeLigneMetier}/historique`,
   );
   return data;
+}
+
+export async function getLigneMetierEnfants(
+  id: string,
+): Promise<LigneMetier[]> {
+  const { data } = await apiClient.get<LigneMetier[]>(
+    `/referentiels/lignes-metier/${id}/enfants`,
+  );
+  return data;
+}
+
+export async function getLigneMetierDescendants(
+  id: string,
+): Promise<LigneMetier[]> {
+  const { data } = await apiClient.get<LigneMetier[]>(
+    `/referentiels/lignes-metier/${id}/descendants`,
+  );
+  return data;
+}
+
+export async function getLigneMetierAncetres(
+  id: string,
+): Promise<LigneMetier[]> {
+  const { data } = await apiClient.get<LigneMetier[]>(
+    `/referentiels/lignes-metier/${id}/ancetres`,
+  );
+  return data;
+}
+
+export async function createLigneMetier(
+  dto: CreateLigneMetierDto,
+): Promise<LigneMetier> {
+  const { data } = await apiClient.post<LigneMetier>(
+    '/referentiels/lignes-metier',
+    dto,
+  );
+  return data;
+}
+
+export async function updateLigneMetier(
+  codeLigneMetier: string,
+  dto: UpdateLigneMetierDto,
+): Promise<LigneMetier> {
+  const { data } = await apiClient.patch<LigneMetier>(
+    `/referentiels/lignes-metier/par-code/${codeLigneMetier}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteLigneMetier(
+  codeLigneMetier: string,
+): Promise<void> {
+  await apiClient.delete(
+    `/referentiels/lignes-metier/par-code/${codeLigneMetier}`,
+  );
 }
 
 // ─── Produits (2.4B) ──────────────────────────────────────────────
