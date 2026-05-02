@@ -225,9 +225,15 @@ export async function getStructureHistorique(
   return data;
 }
 
-// ─── Centres de responsabilité (2.3B) ─────────────────────────────
+// ─── Centres de responsabilité (2.3B + 2.5F CRUD) ─────────────────
 
 export type TypeCr = 'cdc' | 'cdp' | 'cdr' | 'autre';
+
+export type CrModeMaj =
+  | 'no_op'
+  | 'in_place_est_actif'
+  | 'ecrasement_intra_jour'
+  | 'nouvelle_version';
 
 export interface CentreResponsabilite {
   id: string;
@@ -244,6 +250,7 @@ export interface CentreResponsabilite {
   utilisateurCreation: string;
   dateModification: string | null;
   utilisateurModification: string | null;
+  modeMaj?: CrModeMaj;
   /** Populé par le backend pour faciliter l'affichage en table. */
   structureCourante?: {
     id: string;
@@ -261,12 +268,37 @@ export interface ListCrsQuery {
   versionCouranteUniquement?: boolean;
 }
 
+export interface CreateCrDto {
+  codeCr: string;
+  libelle: string;
+  typeCr: TypeCr;
+  libelleCourt?: string;
+  fkStructure?: string;
+  codeStructure?: string;
+}
+
+export interface UpdateCrDto {
+  libelle?: string;
+  libelleCourt?: string;
+  typeCr?: TypeCr;
+  fkStructure?: string;
+  codeStructure?: string;
+  estActif?: boolean;
+}
+
 export async function listCrs(
   query: ListCrsQuery = {},
 ): Promise<PaginatedResponse<CentreResponsabilite>> {
   const { data } = await apiClient.get<PaginatedResponse<CentreResponsabilite>>(
     '/referentiels/cr',
     { params: query },
+  );
+  return data;
+}
+
+export async function getCrById(id: string): Promise<CentreResponsabilite> {
+  const { data } = await apiClient.get<CentreResponsabilite>(
+    `/referentiels/cr/${id}`,
   );
   return data;
 }
@@ -280,6 +312,15 @@ export async function getCrByCode(
   return data;
 }
 
+export async function getCrHistorique(
+  codeCr: string,
+): Promise<CentreResponsabilite[]> {
+  const { data } = await apiClient.get<CentreResponsabilite[]>(
+    `/referentiels/cr/par-code/${codeCr}/historique`,
+  );
+  return data;
+}
+
 export async function getCrsByStructure(
   codeStructure: string,
 ): Promise<CentreResponsabilite[]> {
@@ -287,6 +328,31 @@ export async function getCrsByStructure(
     `/referentiels/cr/par-structure/${codeStructure}`,
   );
   return data;
+}
+
+export async function createCr(
+  dto: CreateCrDto,
+): Promise<CentreResponsabilite> {
+  const { data } = await apiClient.post<CentreResponsabilite>(
+    '/referentiels/cr',
+    dto,
+  );
+  return data;
+}
+
+export async function updateCr(
+  codeCr: string,
+  dto: UpdateCrDto,
+): Promise<CentreResponsabilite> {
+  const { data } = await apiClient.patch<CentreResponsabilite>(
+    `/referentiels/cr/par-code/${codeCr}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteCr(codeCr: string): Promise<void> {
+  await apiClient.delete(`/referentiels/cr/par-code/${codeCr}`);
 }
 
 // ─── Comptes (2.4A) ───────────────────────────────────────────────
