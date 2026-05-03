@@ -34,11 +34,19 @@ export function badgeClassTypeVersion(value: TypeVersion): string {
   }
 }
 
+/**
+ * Vocabulaire UI métier UEMOA (Lot 3.2). Mapping vers les valeurs DB
+ * documenté dans `docs/modele-donnees.md` §4.1.2 :
+ * - ouvert ↔ Brouillon
+ * - soumis ↔ Soumis
+ * - valide ↔ Validé
+ * - gele   ↔ Publié (gel irréversible BCEAO)
+ */
 export const STATUTS_VERSION = [
-  { value: 'ouvert', libelle: 'Ouvert' },
+  { value: 'ouvert', libelle: 'Brouillon' },
   { value: 'soumis', libelle: 'Soumis' },
   { value: 'valide', libelle: 'Validé' },
-  { value: 'gele', libelle: 'Gelé' },
+  { value: 'gele', libelle: 'Publié' },
 ] as const;
 
 export function libelleStatutVersion(value: StatutVersion): string {
@@ -48,13 +56,13 @@ export function libelleStatutVersion(value: StatutVersion): string {
 export function badgeClassStatutVersion(value: StatutVersion): string {
   switch (value) {
     case 'ouvert':
-      return 'bg-green-500 text-white border-transparent';
+      return 'bg-gray-200 text-gray-800 border-transparent';
     case 'soumis':
-      return 'bg-yellow-500 text-white border-transparent';
+      return 'bg-orange-500 text-white border-transparent';
     case 'valide':
       return 'bg-blue-500 text-white border-transparent';
     case 'gele':
-      return 'bg-gray-500 text-white border-transparent';
+      return 'bg-green-600 text-white border-transparent';
     default:
       return 'bg-gray-300 text-gray-800 border-transparent';
   }
@@ -62,8 +70,13 @@ export function badgeClassStatutVersion(value: StatutVersion): string {
 
 // ─── Scénarios ────────────────────────────────────────────────────
 
+/**
+ * Vocabulaire UI : 'central' (DB) s'affiche 'Médian' en interface
+ * pour s'aligner sur la terminologie métier UEMOA.
+ * Cf. `docs/modele-donnees.md` §4.1.2.
+ */
 export const TYPES_SCENARIO = [
-  { value: 'central', libelle: 'Central' },
+  { value: 'central', libelle: 'Médian' },
   { value: 'optimiste', libelle: 'Optimiste' },
   { value: 'pessimiste', libelle: 'Pessimiste' },
   { value: 'alternatif', libelle: 'Alternatif' },

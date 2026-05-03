@@ -27,17 +27,20 @@ describe('budget labels', () => {
     expect(badgeClassTypeVersion('reforecast_2')).toMatch(/violet-700/);
   });
 
-  it('libelleStatutVersion / badgeClassStatutVersion couvrent 4 statuts', () => {
-    expect(libelleStatutVersion('ouvert')).toBe('Ouvert');
+  it('libelleStatutVersion : vocabulaire UI métier (Brouillon/Soumis/Validé/Publié)', () => {
+    expect(libelleStatutVersion('ouvert')).toBe('Brouillon');
     expect(libelleStatutVersion('soumis')).toBe('Soumis');
     expect(libelleStatutVersion('valide')).toBe('Validé');
-    expect(libelleStatutVersion('gele')).toBe('Gelé');
-    expect(badgeClassStatutVersion('ouvert')).toMatch(/green/);
-    expect(badgeClassStatutVersion('gele')).toMatch(/gray/);
+    expect(libelleStatutVersion('gele')).toBe('Publié');
+    // Couleurs Lot 3.2 : gris/orange/bleu/vert
+    expect(badgeClassStatutVersion('ouvert')).toMatch(/gray/);
+    expect(badgeClassStatutVersion('soumis')).toMatch(/orange/);
+    expect(badgeClassStatutVersion('valide')).toMatch(/blue/);
+    expect(badgeClassStatutVersion('gele')).toMatch(/green/);
   });
 
-  it('libelleTypeScenario / badgeClassTypeScenario couvrent les 4 enums', () => {
-    expect(libelleTypeScenario('central')).toBe('Central');
+  it("libelleTypeScenario : 'central' → 'Médian' (vocabulaire UI UEMOA)", () => {
+    expect(libelleTypeScenario('central')).toBe('Médian');
     expect(libelleTypeScenario('optimiste')).toBe('Optimiste');
     expect(libelleTypeScenario('pessimiste')).toBe('Pessimiste');
     expect(libelleTypeScenario('alternatif')).toBe('Alternatif');
