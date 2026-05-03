@@ -1,12 +1,15 @@
 import { type ColumnDef } from '@tanstack/react-table';
-import { Pencil } from 'lucide-react';
+import { AxiosError } from 'axios';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { DataTable } from '@/components/common/DataTable';
 import { DetailDrawer } from '@/components/common/DetailDrawer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { VersionFormDrawer } from '@/components/budget/VersionFormDrawer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  type CreateVersionResponse,
+  deleteVersion,
   listVersions,
   type StatutVersion,
   type TypeVersion,
@@ -42,6 +47,7 @@ const EXERCICES = [2025, 2026, 2027, 2028];
 export function VersionsPage() {
   const navigate = useNavigate();
   const canSaisir = useHasPermission('BUDGET.SAISIR');
+  const canGerer = useHasPermission('REFERENTIEL.GERER');
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -52,7 +58,11 @@ export function VersionsPage() {
   const [data, setData] = useState<Version[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [selected, setSelected] = useState<Version | null>(null);
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Version | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -89,7 +99,62 @@ export function VersionsPage() {
       })
       .catch(() => toast.error('Impossible de charger les versions'))
       .finally(() => setLoading(false));
-  }, [page, exerciceFilter, statutFilter, typeFilter, debouncedSearch]);
+  }, [page, exerciceFilter, statutFilter, typeFilter, debouncedSearch, refreshKey]);
+
+  function parseApiError(err: unknown): { status: number; message: string } {
+    if (err instanceof AxiosError) {
+      const status = err.response?.status ?? 0;
+      const dataMsg =
+        (err.response?.data as { message?: string | string[] } | undefined)
+          ?.message;
+      const message = Array.isArray(dataMsg)
+        ? dataMsg.join(' ; ')
+        : (dataMsg ?? err.message);
+      return { status, message };
+    }
+    return { status: 0, message: err instanceof Error ? err.message : 'Erreur' };
+  }
+
+  async function handleDeleteConfirmed(): Promise<void> {
+    if (!confirmDelete) return;
+    try {
+      await deleteVersion(confirmDelete.id);
+      toast.success(`Version ${confirmDelete.codeVersion} supprimée.`);
+      setConfirmDelete(null);
+      setSelected(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      const { status, message } = parseApiError(err);
+      if (status === 409) {
+        toast.error(
+          message ||
+            "Version non supprimable : seul le statut Brouillon autorise la suppression.",
+        );
+      } else {
+        toast.error(message || 'Suppression refusée.');
+      }
+      throw err;
+    }
+  }
+
+  function handleVersionSuccess(
+    v: Version | CreateVersionResponse,
+  ): void {
+    if (formMode === 'create') {
+      const created = v as CreateVersionResponse;
+      toast.success(`Version ${created.codeVersion} créée.`);
+      if (created.scenarioAutoCreeCode) {
+        toast.info(
+          `Scénario ${created.scenarioAutoCreeCode} créé automatiquement (hook Q9).`,
+        );
+      }
+    } else {
+      toast.success(`Version ${v.codeVersion} modifiée.`);
+    }
+    setFormMode(null);
+    setSelected(null);
+    setRefreshKey((k) => k + 1);
+  }
 
   const columns: ColumnDef<Version, unknown>[] = [
     {
@@ -154,8 +219,16 @@ export function VersionsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Versions de budget"
-        description="Versions de budget par exercice fiscal. Cliquez sur Saisir pour ajouter des lignes à une version statut « ouvert »."
+        title="Versions budgétaires"
+        description="Cycles budgétaires avec workflow de validation (Brouillon → Soumis → Validé → Publié)."
+        actions={
+          canGerer ? (
+            <Button onClick={() => setFormMode('create')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle version
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="flex items-end gap-4 flex-wrap">
@@ -290,19 +363,84 @@ export function VersionsPage() {
             : []
         }
         footer={
-          selected && selected.statut === 'ouvert' && canSaisir ? (
-            <Button
-              onClick={() =>
-                navigate(`/budget/versions/${selected.codeVersion}/saisie`)
-              }
-              className="w-full"
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Saisir des lignes pour cette version
-            </Button>
+          selected ? (
+            <div className="space-y-3">
+              {selected.statut === 'ouvert' && canSaisir && (
+                <Button
+                  onClick={() =>
+                    navigate(`/budget/versions/${selected.codeVersion}/saisie`)
+                  }
+                  className="w-full"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Saisir des lignes pour cette version
+                </Button>
+              )}
+              {canGerer && selected.statut === 'ouvert' && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setFormMode('edit')}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setConfirmDelete(selected)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                </div>
+              )}
+              {canGerer && selected.statut !== 'ouvert' && (
+                <span className="text-xs text-(--muted-foreground) block">
+                  Statut « {selected.statut === 'soumis' ? 'Soumis' : selected.statut === 'valide' ? 'Validé' : 'Publié'} » — modification et suppression
+                  bloquées (workflow Lot 3.5).
+                </span>
+              )}
+            </div>
           ) : null
         }
       />
+
+      <VersionFormDrawer
+        mode={formMode === 'edit' ? 'edit' : 'create'}
+        initial={formMode === 'edit' ? selected : null}
+        isOpen={formMode !== null}
+        onClose={() => setFormMode(null)}
+        onSuccess={handleVersionSuccess}
+      />
+
+      {confirmDelete && (
+        <ConfirmDialog
+          isOpen={confirmDelete !== null}
+          onClose={() => setConfirmDelete(null)}
+          onConfirm={handleDeleteConfirmed}
+          title={`Supprimer la version ${confirmDelete.codeVersion} ?`}
+          description={
+            <>
+              <p>
+                <strong>
+                  {confirmDelete.codeVersion} — {confirmDelete.libelle}
+                </strong>
+              </p>
+              <p className="mt-2">
+                La version et ses éventuelles lignes budgétaires
+                seront supprimées définitivement.
+              </p>
+              <p className="mt-2 text-xs text-(--muted-foreground)">
+                Seuls les statuts « Brouillon » autorisent la
+                suppression. Le backend rejettera (409) sinon.
+              </p>
+            </>
+          }
+          confirmText="Supprimer"
+          cancelText="Annuler"
+          destructive
+        />
+      )}
     </div>
   );
 }

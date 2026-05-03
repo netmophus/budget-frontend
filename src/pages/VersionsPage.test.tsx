@@ -91,8 +91,9 @@ describe('VersionsPage', () => {
     });
     expect(screen.getByText('Budget initial')).toBeInTheDocument();
     expect(screen.getByText('Reforecast 1')).toBeInTheDocument();
-    expect(screen.getByText('Ouvert')).toBeInTheDocument();
-    expect(screen.getByText('Gelé')).toBeInTheDocument();
+    // Lot 3.2 : vocabulaire UI métier (Brouillon/Soumis/Validé/Publié)
+    expect(screen.getByText('Brouillon')).toBeInTheDocument();
+    expect(screen.getByText('Publié')).toBeInTheDocument();
   });
 
   it('affiche le bouton Saisir uniquement pour version ouvert + permission', async () => {
