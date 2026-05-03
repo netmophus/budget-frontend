@@ -11,6 +11,7 @@ export interface Scenario {
   typeScenario: TypeScenario;
   statut: StatutScenario;
   commentaire: string | null;
+  exerciceFiscal: number | null;
   dateCreation: string;
   utilisateurCreation: string;
   dateModification: string | null;
@@ -20,8 +21,24 @@ export interface Scenario {
 export interface ListScenariosQuery {
   statut?: StatutScenario;
   typeScenario?: TypeScenario;
+  exerciceFiscal?: number;
   page?: number;
   limit?: number;
+}
+
+export interface CreateScenarioDto {
+  codeScenario: string;
+  libelle: string;
+  typeScenario: TypeScenario;
+  commentaire?: string;
+  exerciceFiscal?: number;
+}
+
+export interface UpdateScenarioDto {
+  libelle?: string;
+  typeScenario?: TypeScenario;
+  commentaire?: string;
+  exerciceFiscal?: number;
 }
 
 export async function listScenarios(
@@ -34,11 +51,46 @@ export async function listScenarios(
   return data;
 }
 
+export async function getScenarioById(id: string): Promise<Scenario> {
+  const { data } = await apiClient.get<Scenario>(
+    `/referentiels/scenarios/${id}`,
+  );
+  return data;
+}
+
 export async function getScenarioByCode(
   codeScenario: string,
 ): Promise<Scenario> {
   const { data } = await apiClient.get<Scenario>(
     `/referentiels/scenarios/par-code/${codeScenario}`,
+  );
+  return data;
+}
+
+export async function createScenario(
+  dto: CreateScenarioDto,
+): Promise<Scenario> {
+  const { data } = await apiClient.post<Scenario>(
+    '/referentiels/scenarios',
+    dto,
+  );
+  return data;
+}
+
+export async function updateScenario(
+  id: string,
+  dto: UpdateScenarioDto,
+): Promise<Scenario> {
+  const { data } = await apiClient.patch<Scenario>(
+    `/referentiels/scenarios/${id}`,
+    dto,
+  );
+  return data;
+}
+
+export async function archiverScenario(id: string): Promise<Scenario> {
+  const { data } = await apiClient.post<Scenario>(
+    `/referentiels/scenarios/${id}/archiver`,
   );
   return data;
 }
