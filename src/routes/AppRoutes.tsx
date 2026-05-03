@@ -31,7 +31,10 @@ const SegmentsPage = lazy(() =>
   import('@/pages/SegmentsPage').then((m) => ({ default: m.SegmentsPage })),
 );
 
-// Lazy-loaded — module Budget (3.5-mini).
+// Lazy-loaded — module Budget (Lot 3.2 + 3.5-mini).
+const ScenariosPage = lazy(() =>
+  import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
+);
 const VersionsPage = lazy(() =>
   import('@/pages/VersionsPage').then((m) => ({ default: m.VersionsPage })),
 );
@@ -163,9 +166,19 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/budget/scenarios"
+          element={
+            <PermissionRoute permission="REFERENTIEL.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ScenariosPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
           path="/budget/versions"
           element={
-            <PermissionRoute permission="BUDGET.LIRE">
+            <PermissionRoute permission="REFERENTIEL.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <VersionsPage />
               </Suspense>

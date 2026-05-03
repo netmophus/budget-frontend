@@ -6,11 +6,13 @@ import {
   Calendar,
   ClipboardList,
   Coins,
+  Layers,
   LayoutDashboard,
   Library,
   LogOut,
   Menu,
   Package,
+  PieChart,
   ScrollText,
   Settings,
   Sliders,
@@ -102,10 +104,16 @@ const NAV_REFERENTIELS: NavItem[] = [
 
 const NAV_BUDGET: NavItem[] = [
   {
+    to: '/budget/scenarios',
+    label: 'Scénarios',
+    icon: PieChart,
+    permission: 'REFERENTIEL.LIRE',
+  },
+  {
     to: '/budget/versions',
-    label: 'Versions de budget',
-    icon: ClipboardList,
-    permission: 'BUDGET.LIRE',
+    label: 'Versions',
+    icon: Layers,
+    permission: 'REFERENTIEL.LIRE',
   },
 ];
 
