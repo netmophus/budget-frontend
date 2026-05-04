@@ -27,6 +27,8 @@ export interface UseGrilleSaisieParams {
   versionId: string | null;
   scenarioId: string | null;
   crId: string | null;
+  /** Lot 3.4-bis : ligne_metier requise (clé from-scratch). */
+  ligneMetierId: string | null;
   exerciceFiscal: number;
   codeClasse?: string;
 }
@@ -95,7 +97,12 @@ export function useGrilleSaisie(
   );
 
   const reload = useCallback(async (): Promise<void> => {
-    if (!params.versionId || !params.scenarioId || !params.crId) {
+    if (
+      !params.versionId ||
+      !params.scenarioId ||
+      !params.crId ||
+      !params.ligneMetierId
+    ) {
       setGrille(null);
       return;
     }
@@ -106,6 +113,7 @@ export function useGrilleSaisie(
         versionId: params.versionId,
         scenarioId: params.scenarioId,
         crId: params.crId,
+        ligneMetierId: params.ligneMetierId,
         exerciceFiscal: params.exerciceFiscal,
         ...(params.codeClasse ? { classeCompte: params.codeClasse } : {}),
       });
@@ -132,6 +140,7 @@ export function useGrilleSaisie(
     params.versionId,
     params.scenarioId,
     params.crId,
+    params.ligneMetierId,
     params.exerciceFiscal,
     params.codeClasse,
   ]);

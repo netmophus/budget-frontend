@@ -97,6 +97,12 @@ export interface GetGrilleSaisieQuery {
   scenarioId: string;
   crId: string;
   exerciceFiscal: number;
+  /**
+   * Lot 3.4-bis : ligne_metier sélectionnée (obligatoire). La grille
+   * est désormais construite from-scratch sur (CR × ligne_metier ×
+   * classe).
+   */
+  ligneMetierId: string;
   /** Filtre classe PCB (ex. '6' pour charges, '7' pour produits). */
   classeCompte?: string;
 }

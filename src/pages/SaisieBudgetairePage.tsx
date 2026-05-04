@@ -35,7 +35,8 @@ import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 
 export function SaisieBudgetairePage() {
   const canSaisir = useHasPermission('BUDGET.SAISIR');
-  const { versionId, scenarioId, crId, codeClasse } = useBudgetGrilleStore();
+  const { versionId, scenarioId, crId, ligneMetierId, codeClasse } =
+    useBudgetGrilleStore();
 
   const [confirmAnnuler, setConfirmAnnuler] = useState(false);
   const [indicateursOuvert, setIndicateursOuvert] = useState(false);
@@ -54,6 +55,7 @@ export function SaisieBudgetairePage() {
     versionId,
     scenarioId,
     crId,
+    ligneMetierId,
     exerciceFiscal,
     codeClasse,
   });
