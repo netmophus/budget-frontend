@@ -45,6 +45,17 @@ const VERSION_OUVERT: Version = {
   utilisateurCreation: 'system',
   dateModification: null,
   utilisateurModification: null,
+  // Workflow Lot 3.5
+  commentaireSoumission: null,
+  commentaireValidation: null,
+  commentaireRejet: null,
+  commentairePublication: null,
+  dateSoumission: null,
+  utilisateurSoumission: null,
+  dateValidation: null,
+  utilisateurValidation: null,
+  dateRejet: null,
+  utilisateurRejet: null,
 };
 
 function buildAxiosError(status: number, message: string): AxiosError {

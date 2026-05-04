@@ -11,6 +11,9 @@ vi.mock('@/lib/api/scenarios', () => ({
 }));
 vi.mock('@/lib/api/versions', () => ({
   listVersions: vi.fn(),
+  // Lot 3.5 — SaisieBudgetairePage charge la version complète pour
+  // afficher WorkflowActions. Le test n'a pas besoin du résultat.
+  getVersionById: vi.fn().mockRejectedValue(new Error('mock')),
 }));
 vi.mock('@/lib/api/referentiels', () => ({
   listCrs: vi.fn(),

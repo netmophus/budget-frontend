@@ -84,6 +84,17 @@ const VERSION_OUVERT: Version = {
   utilisateurCreation: 'system',
   dateModification: null,
   utilisateurModification: null,
+  // Workflow Lot 3.5
+  commentaireSoumission: null,
+  commentaireValidation: null,
+  commentaireRejet: null,
+  commentairePublication: null,
+  dateSoumission: null,
+  utilisateurSoumission: null,
+  dateValidation: null,
+  utilisateurValidation: null,
+  dateRejet: null,
+  utilisateurRejet: null,
 };
 
 const VERSION_SOUMIS: Version = {
