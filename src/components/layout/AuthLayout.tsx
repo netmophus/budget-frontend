@@ -6,6 +6,7 @@ import {
   Calendar,
   ClipboardList,
   Coins,
+  Grid2x2,
   Layers,
   LayoutDashboard,
   Library,
@@ -114,6 +115,12 @@ const NAV_BUDGET: NavItem[] = [
     label: 'Versions',
     icon: Layers,
     permission: 'REFERENTIEL.LIRE',
+  },
+  {
+    to: '/budget/saisie',
+    label: 'Saisie budgétaire',
+    icon: Grid2x2,
+    permission: 'BUDGET.LIRE',
   },
 ];
 
