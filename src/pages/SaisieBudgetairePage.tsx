@@ -15,13 +15,14 @@
  */
 import { AxiosError } from 'axios';
 import { ChartBar, Lock, RotateCcw, Save } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { GrilleSaisie } from '@/components/budget/grille/GrilleSaisie';
 import { IndicateursPanel } from '@/components/budget/grille/IndicateursPanel';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
+import { WorkflowActions } from '@/components/budget/WorkflowActions';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import {
   libelleStatutVersion,
 } from '@/lib/labels/budget';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
+import { getVersionById, type Version } from '@/lib/api/versions';
 
 export function SaisieBudgetairePage() {
   const canSaisir = useHasPermission('BUDGET.SAISIR');
@@ -81,6 +83,24 @@ export function SaisieBudgetairePage() {
   const versionVerrouillee =
     grille !== null && grille.version.statut !== 'ouvert';
   const readOnly = !canSaisir || versionVerrouillee;
+
+  // Lot 3.5 — version complète chargée pour exposer WorkflowActions
+  // (la GrilleVersionRef portée par la grille est volontairement
+  // limitée à id/code/libelle/statut).
+  const [versionComplete, setVersionComplete] = useState<Version | null>(null);
+  useEffect(() => {
+    if (!grille) {
+      setVersionComplete(null);
+      return;
+    }
+    void getVersionById(grille.version.id)
+      .then(setVersionComplete)
+      .catch(() => {
+        // Silence : non bloquant pour la saisie. On affiche juste pas
+        // les boutons workflow.
+        setVersionComplete(null);
+      });
+  }, [grille?.version.id, grille?.version.statut]);
 
   async function handleSauvegarder() {
     setEnCoursSauvegarde(true);
@@ -137,7 +157,7 @@ export function SaisieBudgetairePage() {
       />
 
       {grille && (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
           <Badge className={badgeClassStatutVersion(grille.version.statut as never)}>
             {libelleStatutVersion(grille.version.statut as never)}
           </Badge>
@@ -152,6 +172,15 @@ export function SaisieBudgetairePage() {
               ● {modifications.size} modification
               {modifications.size > 1 ? 's' : ''} en attente
             </span>
+          )}
+          {versionComplete && (
+            <WorkflowActions
+              version={versionComplete}
+              onTransitioned={(next) => {
+                setVersionComplete(next);
+                void reload();
+              }}
+            />
           )}
         </div>
       )}

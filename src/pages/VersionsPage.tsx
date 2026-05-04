@@ -10,6 +10,8 @@ import { DataTable } from '@/components/common/DataTable';
 import { DetailDrawer } from '@/components/common/DetailDrawer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { VersionFormDrawer } from '@/components/budget/VersionFormDrawer';
+import { WorkflowActions } from '@/components/budget/WorkflowActions';
+import { WorkflowTimeline } from '@/components/budget/WorkflowTimeline';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -364,7 +366,14 @@ export function VersionsPage() {
         }
         footer={
           selected ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <WorkflowActions
+                version={selected}
+                onTransitioned={(next) => {
+                  setSelected(next);
+                  setRefreshKey((k) => k + 1);
+                }}
+              />
               {selected.statut === 'ouvert' && canSaisir && (
                 <Button
                   onClick={() =>
@@ -396,10 +405,14 @@ export function VersionsPage() {
               )}
               {canGerer && selected.statut !== 'ouvert' && (
                 <span className="text-xs text-(--muted-foreground) block">
-                  Statut « {selected.statut === 'soumis' ? 'Soumis' : selected.statut === 'valide' ? 'Validé' : 'Publié'} » — modification et suppression
-                  bloquées (workflow Lot 3.5).
+                  Statut « {libelleStatutVersion(selected.statut)} » —
+                  modification et suppression bloquées (workflow Lot 3.5).
                 </span>
               )}
+              <div>
+                <h4 className="mb-2 text-sm font-semibold">Historique</h4>
+                <WorkflowTimeline version={selected} />
+              </div>
             </div>
           ) : null
         }

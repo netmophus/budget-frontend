@@ -38,6 +38,11 @@ const ScenariosPage = lazy(() =>
 const VersionsPage = lazy(() =>
   import('@/pages/VersionsPage').then((m) => ({ default: m.VersionsPage })),
 );
+const VersionsAValiderPage = lazy(() =>
+  import('@/pages/VersionsAValiderPage').then((m) => ({
+    default: m.VersionsAValiderPage,
+  })),
+);
 const SaisieBudgetairePage = lazy(() =>
   import('@/pages/SaisieBudgetairePage').then((m) => ({
     default: m.SaisieBudgetairePage,
@@ -206,6 +211,16 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <SaisieBudgetairePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/a-valider"
+          element={
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <VersionsAValiderPage />
               </Suspense>
             </PermissionRoute>
           }

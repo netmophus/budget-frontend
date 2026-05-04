@@ -4,6 +4,7 @@ import {
   Building2,
   Calculator,
   Calendar,
+  CheckSquare,
   ClipboardList,
   Coins,
   Grid2x2,
@@ -121,6 +122,13 @@ const NAV_BUDGET: NavItem[] = [
     label: 'Saisie budgétaire',
     icon: Grid2x2,
     permission: 'BUDGET.LIRE',
+  },
+  // Lot 3.5 — file de validation pour les contrôleurs.
+  {
+    to: '/budget/a-valider',
+    label: 'À valider',
+    icon: CheckSquare,
+    permission: 'BUDGET.VALIDER',
   },
 ];
 
