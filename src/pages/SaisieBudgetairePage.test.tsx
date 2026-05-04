@@ -14,6 +14,7 @@ vi.mock('@/lib/api/versions', () => ({
 }));
 vi.mock('@/lib/api/referentiels', () => ({
   listCrs: vi.fn(),
+  listLignesMetier: vi.fn(),
 }));
 
 const toastSuccess = vi.fn();
@@ -38,7 +39,7 @@ import {
 } from '@/lib/api/budget-grille';
 import { listScenarios } from '@/lib/api/scenarios';
 import { listVersions } from '@/lib/api/versions';
-import { listCrs } from '@/lib/api/referentiels';
+import { listCrs, listLignesMetier } from '@/lib/api/referentiels';
 import { useHasPermission } from '@/lib/auth/permissions';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { SaisieBudgetairePage } from './SaisieBudgetairePage';
@@ -48,6 +49,23 @@ const mockSaveGrille = saveGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
 const mockListVersions = listVersions as unknown as ReturnType<typeof vi.fn>;
 const mockListScenarios = listScenarios as unknown as ReturnType<typeof vi.fn>;
 const mockListCrs = listCrs as unknown as ReturnType<typeof vi.fn>;
+const mockListLignesMetier = listLignesMetier as unknown as ReturnType<typeof vi.fn>;
+
+const LIGNE_METIER_RETAIL = {
+  id: '20',
+  codeLigneMetier: 'RETAIL',
+  libelle: 'Banque de détail',
+  fkLigneMetierParent: null,
+  niveau: 1,
+  versionCourante: true,
+  dateDebutValidite: '2026-01-01',
+  dateFinValidite: null,
+  estActif: true,
+  dateCreation: '2026-01-01T00:00:00Z',
+  utilisateurCreation: 'system',
+  dateModification: null,
+  utilisateurModification: null,
+};
 const mockHasPermission = useHasPermission as unknown as ReturnType<typeof vi.fn>;
 
 const VERSION_OUVERT = {
@@ -158,6 +176,12 @@ function configureMocks(opts?: { versions?: typeof VERSION_OUVERT[]; grille?: Gr
     page: 1,
     limit: 200,
   });
+  mockListLignesMetier.mockResolvedValue({
+    items: [LIGNE_METIER_RETAIL],
+    total: 1,
+    page: 1,
+    limit: 200,
+  });
   mockGetGrille.mockResolvedValue(opts?.grille ?? GRILLE_OUVERT);
 }
 
@@ -211,6 +235,7 @@ describe('SaisieBudgetairePage', () => {
     useBudgetGrilleStore.getState().setVersionId('2');
     useBudgetGrilleStore.getState().setScenarioId('10');
     useBudgetGrilleStore.getState().setCrId('100');
+    useBudgetGrilleStore.getState().setLigneMetierId('20');
     configureMocks({
       versions: [VERSION_GELE],
       grille: {
@@ -256,6 +281,12 @@ describe('SaisieBudgetairePage', () => {
       page: 1,
       limit: 200,
     });
+    mockListLignesMetier.mockResolvedValue({
+      items: [LIGNE_METIER_RETAIL],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
     renderPage();
     await waitFor(() => {
       expect(
@@ -275,6 +306,50 @@ describe('SaisieBudgetairePage', () => {
     );
     await waitFor(() => {
       expect(screen.getByText('📊 Indicateurs avancés')).toBeInTheDocument();
+    });
+  });
+
+  // ─── Lot 3.4-bis : from-scratch
+
+  it('aucune ligne_metier active → message clair dans le sélecteur', async () => {
+    mockListVersions.mockResolvedValue({
+      items: [VERSION_OUVERT],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+    mockListScenarios.mockResolvedValue({
+      items: [SCENARIO_MEDIAN],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+    mockListCrs.mockResolvedValue({
+      items: [CR_AG],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+    mockListLignesMetier.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 200,
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Aucune ligne métier active/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("auto-sélection ligne_metier au mount (Lot 3.4-bis)", async () => {
+    configureMocks();
+    renderPage();
+    await waitFor(() => {
+      // Le store doit être hydraté avec la ligne_metier auto-sélectionnée
+      expect(useBudgetGrilleStore.getState().ligneMetierId).toBe('20');
     });
   });
 

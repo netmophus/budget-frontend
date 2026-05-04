@@ -87,6 +87,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -107,6 +108,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -130,6 +132,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -158,6 +161,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -200,6 +204,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -248,6 +253,7 @@ describe('useGrilleSaisie', () => {
         versionId: '1',
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
@@ -270,10 +276,122 @@ describe('useGrilleSaisie', () => {
         versionId: null,
         scenarioId: '10',
         crId: '100',
+        ligneMetierId: '20',
         exerciceFiscal: 2027,
       }),
     );
     expect(result.current.grille).toBeNull();
     expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  // ─── Lot 3.4-bis : from-scratch
+
+  it("grille null si ligneMetierId absent (Lot 3.4-bis : obligatoire)", () => {
+    const { result } = renderHook(() =>
+      useGrilleSaisie({
+        versionId: '1',
+        scenarioId: '10',
+        crId: '100',
+        ligneMetierId: null,
+        exerciceFiscal: 2027,
+      }),
+    );
+    expect(result.current.grille).toBeNull();
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it("getGrilleSaisie reçoit ligneMetierId du contexte (from-scratch)", async () => {
+    mockGet.mockResolvedValue(SAMPLE_GRILLE);
+    renderHook(() =>
+      useGrilleSaisie({
+        versionId: '1',
+        scenarioId: '10',
+        crId: '100',
+        ligneMetierId: '42',
+        exerciceFiscal: 2027,
+        codeClasse: '6',
+      }),
+    );
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ligneMetierId: '42',
+          classeCompte: '6',
+        }),
+      );
+    });
+  });
+
+  it("modifier une cellule vide (ligneId=null) → entrée dans modifications + payload save sans ligneId", async () => {
+    // Grille from-scratch avec une cellule vide (ligneId=null)
+    const grilleVide: GrilleSaisie = {
+      ...SAMPLE_GRILLE,
+      lignes: [
+        {
+          ...SAMPLE_GRILLE.lignes[0]!,
+          cellules: [
+            {
+              mois: '2027-01-01',
+              montant: 0,
+              modeSaisie: null,
+              encoursMoyen: null,
+              tie: null,
+              commentaire: null,
+              ligneId: null, // cellule vide from-scratch
+            },
+          ],
+        },
+      ],
+      totauxMensuels: [{ mois: '2027-01-01', total: 0 }],
+      totalAnneeCr: 0,
+    };
+    mockGet.mockResolvedValue(grilleVide);
+    mockSave.mockResolvedValue({
+      totalCellules: 1,
+      inserees: 1,
+      modifiees: 0,
+      supprimees: 0,
+      ignorees: 0,
+      erreurs: [],
+      dureeMs: 35,
+    });
+    const { result } = renderHook(() =>
+      useGrilleSaisie({
+        versionId: '1',
+        scenarioId: '10',
+        crId: '100',
+        ligneMetierId: '20',
+        exerciceFiscal: 2027,
+      }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.modifierCellule('500', '20', '2027-01-01', {
+        montant: 5_000_000,
+      });
+    });
+    expect(result.current.modifications.size).toBe(1);
+    await act(async () => {
+      const r = await result.current.sauvegarder();
+      expect(r.inserees).toBe(1);
+    });
+    // Le payload doit porter compteId + ligneMetierId du contexte
+    // mais pas de ligneId (cellule from-scratch).
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lignes: [
+          expect.objectContaining({
+            compteId: '500',
+            ligneMetierId: '20',
+            cellules: [
+              expect.objectContaining({
+                mois: '2027-01-01',
+                montant: 5_000_000,
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
   });
 });
