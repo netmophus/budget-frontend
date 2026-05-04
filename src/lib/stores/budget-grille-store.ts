@@ -1,0 +1,55 @@
+/**
+ * Store Zustand pour le contexte de saisie budgétaire (Lot 3.4).
+ *
+ * Persiste dans localStorage les choix de l'utilisateur (version /
+ * scénario / CR / classe) pour les retrouver au prochain login.
+ *
+ * NB : aucune donnée sensible — uniquement des IDs non-secrets.
+ */
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface BudgetGrillePersistedState {
+  versionId: string | null;
+  scenarioId: string | null;
+  crId: string | null;
+  /** '6' (charges) / '7' (produits) / 'TOUTES' / etc. */
+  codeClasse: string;
+}
+
+interface BudgetGrilleState extends BudgetGrillePersistedState {
+  setVersionId: (id: string | null) => void;
+  setScenarioId: (id: string | null) => void;
+  setCrId: (id: string | null) => void;
+  setCodeClasse: (code: string) => void;
+  reset: () => void;
+}
+
+const DEFAULT_STATE: BudgetGrillePersistedState = {
+  versionId: null,
+  scenarioId: null,
+  crId: null,
+  codeClasse: '6',
+};
+
+export const useBudgetGrilleStore = create<BudgetGrilleState>()(
+  persist(
+    (set) => ({
+      ...DEFAULT_STATE,
+      setVersionId: (id) => set({ versionId: id }),
+      setScenarioId: (id) => set({ scenarioId: id }),
+      setCrId: (id) => set({ crId: id }),
+      setCodeClasse: (code) => set({ codeClasse: code }),
+      reset: () => set(DEFAULT_STATE),
+    }),
+    {
+      name: 'miznas-budget-grille',
+      partialize: (state) => ({
+        versionId: state.versionId,
+        scenarioId: state.scenarioId,
+        crId: state.crId,
+        codeClasse: state.codeClasse,
+      }),
+    },
+  ),
+);
