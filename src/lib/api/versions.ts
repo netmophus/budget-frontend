@@ -23,7 +23,28 @@ export interface Version {
   utilisateurCreation: string;
   dateModification: string | null;
   utilisateurModification: string | null;
+  // Workflow Lot 3.5 — 4 commentaires + traces (date+user) par
+  // transition. dateGel/utilisateurGel ci-dessus jouent le rôle de
+  // date_publication/utilisateur_publication.
+  commentaireSoumission: string | null;
+  commentaireValidation: string | null;
+  commentaireRejet: string | null;
+  commentairePublication: string | null;
+  dateSoumission: string | null;
+  utilisateurSoumission: string | null;
+  dateValidation: string | null;
+  utilisateurValidation: string | null;
+  dateRejet: string | null;
+  utilisateurRejet: string | null;
 }
+
+/** Vocabulaire UI : libellé d'affichage par statut DB. */
+export const STATUT_VERSION_LABEL: Record<StatutVersion, string> = {
+  ouvert: 'Brouillon',
+  soumis: 'Soumis',
+  valide: 'Validé',
+  gele: 'Publié',
+};
 
 /**
  * Réponse étendue de POST /referentiels/versions (Lot 3.2) — porte le
@@ -104,4 +125,68 @@ export async function updateVersion(
 
 export async function deleteVersion(id: string): Promise<void> {
   await apiClient.delete(`/referentiels/versions/${id}`);
+}
+
+// ─── Workflow de validation budgétaire (Lot 3.5) ────────────────────
+
+export interface SoumettreVersionDto {
+  /** Optionnel — note pour le contrôleur. */
+  commentaire?: string;
+}
+
+export interface ValiderVersionDto {
+  commentaire?: string;
+}
+
+/** Le commentaire de rejet est OBLIGATOIRE côté API (BadRequest sinon). */
+export interface RejeterVersionDto {
+  commentaire: string;
+}
+
+export interface PublierVersionDto {
+  commentaire?: string;
+}
+
+export async function soumettreVersion(
+  id: string,
+  dto: SoumettreVersionDto = {},
+): Promise<Version> {
+  const { data } = await apiClient.post<Version>(
+    `/referentiels/versions/${id}/soumettre`,
+    dto,
+  );
+  return data;
+}
+
+export async function validerVersion(
+  id: string,
+  dto: ValiderVersionDto = {},
+): Promise<Version> {
+  const { data } = await apiClient.post<Version>(
+    `/referentiels/versions/${id}/valider`,
+    dto,
+  );
+  return data;
+}
+
+export async function rejeterVersion(
+  id: string,
+  dto: RejeterVersionDto,
+): Promise<Version> {
+  const { data } = await apiClient.post<Version>(
+    `/referentiels/versions/${id}/rejeter`,
+    dto,
+  );
+  return data;
+}
+
+export async function publierVersion(
+  id: string,
+  dto: PublierVersionDto = {},
+): Promise<Version> {
+  const { data } = await apiClient.post<Version>(
+    `/referentiels/versions/${id}/publier`,
+    dto,
+  );
+  return data;
 }
