@@ -22,7 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listCrs, type CentreResponsabilite } from '@/lib/api/referentiels';
+import {
+  listCrs,
+  listLignesMetier,
+  type CentreResponsabilite,
+  type LigneMetier,
+} from '@/lib/api/referentiels';
 import { listScenarios, type Scenario } from '@/lib/api/scenarios';
 import { listVersions, type Version } from '@/lib/api/versions';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
@@ -46,27 +51,31 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
     versionId,
     scenarioId,
     crId,
+    ligneMetierId,
     codeClasse,
     setVersionId,
     setScenarioId,
     setCrId,
+    setLigneMetierId,
     setCodeClasse,
   } = useBudgetGrilleStore();
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [crs, setCrs] = useState<CentreResponsabilite[]>([]);
+  const [lignesMetier, setLignesMetier] = useState<LigneMetier[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Chargement parallèle des 3 référentiels
+  // Chargement parallèle des 4 référentiels (Lot 3.4-bis : +ligne_metier)
   useEffect(() => {
     setLoading(true);
     Promise.all([
       listVersions({ limit: 200 }),
       listScenarios({ limit: 200, statut: 'actif' }),
       listCrs({ limit: 200 }),
+      listLignesMetier({ limit: 200, versionCouranteUniquement: true }),
     ])
-      .then(([resVers, resScen, resCr]) => {
+      .then(([resVers, resScen, resCr, resLm]) => {
         // Tri versions : par exercice DESC, puis libellé
         const versionsTries = [...resVers.items].sort((a, b) => {
           if (a.exerciceFiscal !== b.exerciceFiscal) {
@@ -77,6 +86,13 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
         setVersions(versionsTries);
         setScenarios(resScen.items);
         setCrs(resCr.items);
+        // Tri lignes_metier par code (les feuilles MVP sont mélangées
+        // avec les agrégats — on prend tout pour le contexte de saisie,
+        // les axes intermédiaires peuvent porter du budget).
+        const lignesTriees = [...resLm.items]
+          .filter((l) => l.estActif)
+          .sort((a, b) => a.codeLigneMetier.localeCompare(b.codeLigneMetier));
+        setLignesMetier(lignesTriees);
 
         // Auto-sélection si store vide
         if (!versionId) {
@@ -90,11 +106,14 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
         if (!crId && resCr.items.length > 0) {
           setCrId(resCr.items[0]!.id);
         }
+        if (!ligneMetierId && lignesTriees.length > 0) {
+          setLigneMetierId(lignesTriees[0]!.id);
+        }
       })
       .catch(() => toast.error('Impossible de charger le contexte de saisie'))
       .finally(() => setLoading(false));
-    // versionId/scenarioId/crId sont volontairement hors dépendance — on
-    // ne veut hydrater qu'au mount initial. Eslint disable.
+    // versionId/scenarioId/crId/ligneMetierId volontairement hors
+    // dépendance — hydratation initiale uniquement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -113,6 +132,10 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
   }
   function handleCrChange(id: string) {
     setCrId(id);
+    onChange?.();
+  }
+  function handleLigneMetierChange(id: string) {
+    setLigneMetierId(id);
     onChange?.();
   }
   function handleClasseChange(code: string) {
@@ -151,7 +174,7 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
 
   return (
     <div className="sticky top-0 z-10 bg-(--background) border-b border-(--border) py-3">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div className="space-y-1">
           <Label htmlFor="version-select">Version</Label>
           <Select
@@ -209,6 +232,37 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="ligne-metier-select">Ligne métier</Label>
+          <Select
+            value={ligneMetierId ?? undefined}
+            onValueChange={handleLigneMetierChange}
+          >
+            <SelectTrigger id="ligne-metier-select">
+              <SelectValue placeholder="Choisir…" />
+            </SelectTrigger>
+            <SelectContent>
+              {lignesMetier.map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.codeLigneMetier} — {l.libelle}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {lignesMetier.length === 0 && (
+            <p className="text-xs text-orange-600">
+              ⚠ Aucune ligne métier active. L'admin doit en créer via{' '}
+              <a
+                href="/referentiels/lignes-metier"
+                className="underline text-(--primary)"
+              >
+                Référentiels → Lignes métier
+              </a>
+              .
+            </p>
+          )}
         </div>
 
         <div className="space-y-1">
