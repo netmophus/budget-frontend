@@ -273,12 +273,13 @@ export function SaisieBudgetairePage() {
         />
       )}
 
-      {/* Panneau indicateurs */}
+      {/* Panneau indicateurs (Lot 3.6 — calcul backend consolidé) */}
       <IndicateursPanel
         isOpen={indicateursOuvert}
         onClose={() => setIndicateursOuvert(false)}
-        grille={grille}
-        getCelluleEffective={getCelluleEffective}
+        versionId={grille?.version.id ?? null}
+        scenarioId={grille?.scenario.id ?? null}
+        exerciceFiscal={grille?.exerciceFiscal ?? null}
       />
     </div>
   );

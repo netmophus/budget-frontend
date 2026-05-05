@@ -43,6 +43,11 @@ const VersionsAValiderPage = lazy(() =>
     default: m.VersionsAValiderPage,
   })),
 );
+const TableauDeBordPage = lazy(() =>
+  import('@/pages/TableauDeBordPage').then((m) => ({
+    default: m.TableauDeBordPage,
+  })),
+);
 const SaisieBudgetairePage = lazy(() =>
   import('@/pages/SaisieBudgetairePage').then((m) => ({
     default: m.SaisieBudgetairePage,
@@ -221,6 +226,16 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.VALIDER">
               <Suspense fallback={<PageFallback />}>
                 <VersionsAValiderPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/tableau-de-bord"
+          element={
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <TableauDeBordPage />
               </Suspense>
             </PermissionRoute>
           }

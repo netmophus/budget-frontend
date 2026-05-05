@@ -3,6 +3,7 @@ import {
   Briefcase,
   Building2,
   Calculator,
+  BarChart3,
   Calendar,
   CheckSquare,
   ClipboardList,
@@ -129,6 +130,13 @@ const NAV_BUDGET: NavItem[] = [
     label: 'À valider',
     icon: CheckSquare,
     permission: 'BUDGET.VALIDER',
+  },
+  // Lot 3.6 — tableau de bord indicateurs consolidés.
+  {
+    to: '/budget/tableau-de-bord',
+    label: 'Tableau de bord',
+    icon: BarChart3,
+    permission: 'BUDGET.LIRE',
   },
 ];
 
