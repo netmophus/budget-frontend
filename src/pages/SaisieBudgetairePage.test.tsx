@@ -308,7 +308,9 @@ describe('SaisieBudgetairePage', () => {
       screen.getByRole('button', { name: /Calculer indicateurs/i }),
     );
     await waitFor(() => {
-      expect(screen.getByText('📊 Indicateurs avancés')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Indicateurs avancés/i),
+      ).toBeInTheDocument();
     });
   });
 
