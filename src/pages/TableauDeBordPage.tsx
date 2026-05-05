@@ -93,7 +93,7 @@ export function TableauDeBordPage(): JSX.Element {
             <SelectContent>
               {versions.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.codeVersion} — {v.libelle} ({v.exerciceFiscal})
+                  {v.libelle} ({v.exerciceFiscal})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -113,7 +113,7 @@ export function TableauDeBordPage(): JSX.Element {
             <SelectContent>
               {scenariosCompatibles.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.codeScenario} — {s.libelle}
+                  {s.libelle}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -32,11 +32,10 @@ import { listScenarios, type Scenario } from '@/lib/api/scenarios';
 import { listVersions, type Version } from '@/lib/api/versions';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 
+// UX A.3 — saisie budgétaire : seules les classes 6 (charges) et 7
+// (produits) sont saisissables. Les classes 1-5 sont des comptes
+// patrimoniaux (bilan), non concernés par le budget.
 const CLASSES_OPTIONS: Array<{ value: string; libelle: string }> = [
-  { value: '1', libelle: 'Classe 1 — Trésorerie & interbancaire' },
-  { value: '2', libelle: 'Classe 2 — Clientèle' },
-  { value: '4', libelle: 'Classe 4 — Immobilisations' },
-  { value: '5', libelle: 'Classe 5 — Fonds propres' },
   { value: '6', libelle: 'Classe 6 — Charges' },
   { value: '7', libelle: 'Classe 7 — Produits' },
 ];
@@ -187,7 +186,7 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             <SelectContent>
               {versions.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.codeVersion} — {v.libelle} ({v.exerciceFiscal})
+                  {v.libelle} ({v.exerciceFiscal})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -211,7 +210,7 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             <SelectContent>
               {scenarios.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.codeScenario} — {s.libelle}
+                  {s.libelle}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -227,7 +226,7 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             <SelectContent>
               {crs.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.codeCr} — {c.libelle}
+                  {c.libelle}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -246,7 +245,7 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             <SelectContent>
               {lignesMetier.map((l) => (
                 <SelectItem key={l.id} value={l.id}>
-                  {l.codeLigneMetier} — {l.libelle}
+                  {l.libelle}
                 </SelectItem>
               ))}
             </SelectContent>
