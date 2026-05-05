@@ -14,13 +14,14 @@
  *  - permission BUDGET.SAISIR absente.
  */
 import { AxiosError } from 'axios';
-import { ChartBar, Lock, RotateCcw, Save } from 'lucide-react';
+import { ChartBar, FileUp, Lock, RotateCcw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { GrilleSaisie } from '@/components/budget/grille/GrilleSaisie';
 import { IndicateursPanel } from '@/components/budget/grille/IndicateursPanel';
+import { ImportBudgetDialog } from '@/components/budget/ImportBudgetDialog';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
 import { WorkflowActions } from '@/components/budget/WorkflowActions';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -42,6 +43,7 @@ export function SaisieBudgetairePage() {
 
   const [confirmAnnuler, setConfirmAnnuler] = useState(false);
   const [indicateursOuvert, setIndicateursOuvert] = useState(false);
+  const [importOuvert, setImportOuvert] = useState(false);
   const [enCoursSauvegarde, setEnCoursSauvegarde] = useState(false);
 
   // Hook chargement grille — exerciceFiscal dérivé de la version
@@ -231,6 +233,25 @@ export function SaisieBudgetairePage() {
               <ChartBar className="h-4 w-4 mr-2" />
               Calculer indicateurs
             </Button>
+            {/* Lot 3.7 — Import en masse. Désactivé si saisie KO,
+                version verrouillée, ou modifs non sauvegardées
+                (pour éviter de perdre des modifs locales). */}
+            <Button
+              variant="outline"
+              onClick={() => setImportOuvert(true)}
+              disabled={readOnly || hasModifications}
+              title={
+                hasModifications
+                  ? 'Enregistrez ou annulez vos modifications avant d\'importer'
+                  : readOnly
+                    ? 'Version verrouillée — import impossible'
+                    : 'Importer un fichier CSV ou XLSX'
+              }
+              data-testid="btn-import"
+            >
+              <FileUp className="h-4 w-4 mr-2" />
+              Import
+            </Button>
             <Button
               variant="outline"
               onClick={() => setConfirmAnnuler(true)}
@@ -280,6 +301,19 @@ export function SaisieBudgetairePage() {
         versionId={grille?.version.id ?? null}
         scenarioId={grille?.scenario.id ?? null}
         exerciceFiscal={grille?.exerciceFiscal ?? null}
+      />
+
+      {/* Dialog import en masse (Lot 3.7) */}
+      <ImportBudgetDialog
+        isOpen={importOuvert}
+        onClose={() => setImportOuvert(false)}
+        versionId={grille?.version.id ?? null}
+        versionCode={grille?.version.codeVersion}
+        scenarioId={grille?.scenario.id ?? null}
+        scenarioCode={grille?.scenario.codeScenario}
+        onSucces={() => {
+          void reload();
+        }}
       />
     </div>
   );
