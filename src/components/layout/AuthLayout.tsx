@@ -6,6 +6,8 @@ import {
   BarChart3,
   Calendar,
   CheckSquare,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   Coins,
   Grid2x2,
@@ -18,13 +20,14 @@ import {
   PieChart,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sliders,
   Target,
   User as UserIcon,
   Users,
   Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Toaster } from '@/components/ui/sonner';
-import { Can } from '@/components/common/Can';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { useHasPermission } from '@/lib/auth/permissions';
@@ -180,10 +182,99 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   );
 }
 
+// UX A.4 — clé localStorage : map { groupKey → bool ouvert }.
+const SIDEBAR_STATE_KEY = 'sidebar-group-states-v1';
+
+function loadSidebarState(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_STATE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    return parsed as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+function saveSidebarState(state: Record<string, boolean>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(state));
+  } catch {
+    /* localStorage indisponible (mode privé) — comportement gracieux */
+  }
+}
+
+interface NavGroupProps {
+  groupKey: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  permission?: string;
+  items: NavItem[];
+  collapsed: boolean;
+  state: Record<string, boolean>;
+  onToggle: (key: string) => void;
+}
+
+function NavGroup({
+  groupKey,
+  label,
+  icon: Icon,
+  permission,
+  items,
+  collapsed,
+  state,
+  onToggle,
+}: NavGroupProps): JSX.Element | null {
+  const visible = useHasPermission(permission ? [permission] : []);
+  if (!visible) return null;
+
+  // Par défaut tout déployé. localStorage peut explicitement fermer.
+  const ouvert = state[groupKey] !== false;
+
+  return (
+    <div data-testid={`nav-group-${groupKey}`}>
+      {!collapsed && (
+        <button
+          type="button"
+          onClick={() => onToggle(groupKey)}
+          className="flex w-full items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground) hover:text-(--foreground) transition-colors"
+          aria-expanded={ouvert}
+          data-testid={`nav-group-toggle-${groupKey}`}
+        >
+          {ouvert ? (
+            <ChevronDown className="h-3 w-3 shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 shrink-0" />
+          )}
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 text-left">{label}</span>
+        </button>
+      )}
+      {(collapsed || ouvert) &&
+        items.map((item) => (
+          <NavLink key={item.to} item={item} collapsed={collapsed} />
+        ))}
+    </div>
+  );
+}
+
 export function AuthLayout() {
   const navigate = useNavigate();
   const { user, roles, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
+  // UX A.4 — état des groupes (ouvert/fermé) persisté en localStorage.
+  const [groupStates, setGroupStates] = useState<Record<string, boolean>>(
+    () => loadSidebarState(),
+  );
+  useEffect(() => {
+    saveSidebarState(groupStates);
+  }, [groupStates]);
+  function toggleGroup(key: string): void {
+    setGroupStates((s) => ({ ...s, [key]: s[key] === false ? true : false }));
+  }
 
   const initials = user
     ? `${user.prenom[0] ?? ''}${user.nom[0] ?? ''}`.toUpperCase()
@@ -250,10 +341,10 @@ export function AuthLayout() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar — UX A.4 : overflow-y-auto + sections collapsibles */}
         <aside
           className={cn(
-            'border-r border-(--border) bg-(--background) p-3 space-y-1 transition-all',
+            'border-r border-(--border) bg-(--background) p-3 space-y-1 transition-all overflow-y-auto',
             collapsed ? 'w-16' : 'w-60',
           )}
         >
@@ -261,45 +352,48 @@ export function AuthLayout() {
             <NavLink key={item.to} item={item} collapsed={collapsed} />
           ))}
 
-          <Can permission="REFERENTIEL.LIRE">
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
-                <Library className="h-3.5 w-3.5" />
-                Référentiels
-              </div>
-            )}
-            {NAV_REFERENTIELS.map((item) => (
-              <NavLink key={item.to} item={item} collapsed={collapsed} />
-            ))}
-          </Can>
+          <NavGroup
+            groupKey="referentiels"
+            label="Référentiels"
+            icon={Library}
+            permission="REFERENTIEL.LIRE"
+            items={NAV_REFERENTIELS}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
 
-          <Can permission="BUDGET.LIRE">
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
-                <Wallet className="h-3.5 w-3.5" />
-                Budget
-              </div>
-            )}
-            {NAV_BUDGET.map((item) => (
-              <NavLink key={item.to} item={item} collapsed={collapsed} />
-            ))}
-          </Can>
+          <NavGroup
+            groupKey="budget"
+            label="Budget"
+            icon={Wallet}
+            permission="BUDGET.LIRE"
+            items={NAV_BUDGET}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
 
-          <Can permission="CONFIGURATION.LIRE">
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground)">
-                <Settings className="h-3.5 w-3.5" />
-                Configuration
-              </div>
-            )}
-            {NAV_CONFIGURATION.map((item) => (
-              <NavLink key={item.to} item={item} collapsed={collapsed} />
-            ))}
-          </Can>
+          <NavGroup
+            groupKey="configuration"
+            label="Configuration"
+            icon={Settings}
+            permission="CONFIGURATION.LIRE"
+            items={NAV_CONFIGURATION}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
 
-          {NAV_ADMIN.map((item) => (
-            <NavLink key={item.to} item={item} collapsed={collapsed} />
-          ))}
+          <NavGroup
+            groupKey="administration"
+            label="Administration"
+            icon={ShieldCheck}
+            items={NAV_ADMIN}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
         </aside>
 
         {/* Content */}
