@@ -424,6 +424,11 @@ export interface Compte {
 
 export interface ListComptesQuery {
   classe?: string;
+  /**
+   * Liste de classes (ex. `['6','7']`) — alternative à `classe`
+   * pour filtrer plusieurs classes (UX A.1, Lot 3).
+   */
+  classes?: string[];
   search?: string;
   codePosteBudgetaire?: string;
   estCompteCollectif?: boolean;

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { CompteCombobox } from '@/components/budget/CompteCombobox';
 import { FaitBudgetDetailDrawer } from '@/components/common/FaitBudgetDetailDrawer';
 import { DataTable } from '@/components/common/DataTable';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -578,22 +579,24 @@ export function SaisieBudgetPage() {
               disabled={!versionOuverte}
               options={centres.map((c) => ({
                 value: c.codeCr,
-                libelle: `${c.codeCr} — ${c.libelle}`,
+                libelle: c.libelle,
               }))}
             />
 
-            <FormSelect
-              id="codeCompte"
-              label="Compte (PCB)"
-              value={form.codeCompte}
-              onChange={(v) => setForm({ ...form, codeCompte: v })}
-              disabled={!versionOuverte}
-              options={comptes.map((c) => ({
-                value: c.codeCompte,
-                libelle: `${c.codeCompte} — ${c.libelle}`,
-                niveau: c.niveau,
-              }))}
-            />
+            <div className="space-y-1">
+              <label
+                htmlFor="codeCompte"
+                className="text-sm font-medium leading-none"
+              >
+                Compte (PCB)
+              </label>
+              <CompteCombobox
+                id="codeCompte"
+                value={form.codeCompte}
+                onChange={(v) => setForm({ ...form, codeCompte: v })}
+                disabled={!versionOuverte}
+              />
+            </div>
 
             <FormSelect
               id="codeLigneMetier"
@@ -603,7 +606,7 @@ export function SaisieBudgetPage() {
               disabled={!versionOuverte}
               options={lignesMetier.map((l) => ({
                 value: l.codeLigneMetier,
-                libelle: `${l.codeLigneMetier} — ${l.libelle}`,
+                libelle: l.libelle,
                 niveau: l.niveau,
               }))}
             />
@@ -662,7 +665,7 @@ export function SaisieBudgetPage() {
                 disabled={!versionOuverte}
                 options={scenarios.map((s) => ({
                   value: s.codeScenario,
-                  libelle: `${s.codeScenario} — ${s.libelle}`,
+                  libelle: s.libelle,
                 }))}
               />
             </div>
