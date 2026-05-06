@@ -122,7 +122,7 @@ describe('ImportBudgetDialog', () => {
     expect(screen.getByTestId('btn-importer')).toBeDisabled();
   });
 
-  it('Sélection d\'un .csv via input → bouton Importer actif', () => {
+  it("Sélection d'un .csv + cochage confirmation → bouton Importer actif", () => {
     render(
       <ImportBudgetDialog
         isOpen
@@ -134,7 +134,56 @@ describe('ImportBudgetDialog', () => {
     const input = screen.getByTestId('input-file') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeFile('budget.csv')] } });
     expect(screen.getByTestId('file-selected')).toBeInTheDocument();
+    // UX C.1 — bouton encore désactivé sans confirmation explicite.
+    expect(screen.getByTestId('btn-importer')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
     expect(screen.getByTestId('btn-importer')).not.toBeDisabled();
+  });
+
+  // ─── UX C.1 — bandeau contexte + checkbox de confirmation ─────────
+
+  it("C.1 — bandeau de contexte affiche libellés Version + Scénario", () => {
+    render(
+      <ImportBudgetDialog
+        isOpen
+        onClose={vi.fn()}
+        versionId="10"
+        versionCode="BI_2027"
+        versionLibelle="Budget initial 2027"
+        scenarioId="100"
+        scenarioCode="MEDIAN_2027"
+        scenarioLibelle="Scénario médian 2027"
+      />,
+    );
+    expect(screen.getByTestId('bandeau-contexte')).toBeInTheDocument();
+    expect(screen.getByTestId('contexte-version-libelle').textContent).toBe(
+      'Budget initial 2027',
+    );
+    expect(screen.getByTestId('contexte-scenario-libelle').textContent).toBe(
+      'Scénario médian 2027',
+    );
+  });
+
+  it("C.1 — bouton Importer reste désactivé sans cochage, même fichier sélectionné", () => {
+    render(
+      <ImportBudgetDialog
+        isOpen
+        onClose={vi.fn()}
+        versionId="10"
+        scenarioId="100"
+        scenarioLibelle="Scénario médian 2027"
+      />,
+    );
+    fireEvent.change(screen.getByTestId('input-file'), {
+      target: { files: [makeFile('budget.csv')] },
+    });
+    expect(screen.getByTestId('btn-importer')).toBeDisabled();
+    // s'active au cochage
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
+    expect(screen.getByTestId('btn-importer')).not.toBeDisabled();
+    // se désactive si on décoche
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
+    expect(screen.getByTestId('btn-importer')).toBeDisabled();
   });
 
   it('Bouton « Télécharger le template » crée un blob CSV (lien <a>)', () => {
@@ -172,6 +221,7 @@ describe('ImportBudgetDialog', () => {
     );
     const input = screen.getByTestId('input-file') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeFile('budget.csv')] } });
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
     fireEvent.click(screen.getByTestId('btn-importer'));
     await waitFor(() =>
       expect(screen.getByTestId('etape-rapport')).toBeInTheDocument(),
@@ -193,6 +243,7 @@ describe('ImportBudgetDialog', () => {
     fireEvent.change(screen.getByTestId('input-file'), {
       target: { files: [makeFile('budget.csv')] },
     });
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
     fireEvent.click(screen.getByTestId('btn-importer'));
     await waitFor(() =>
       expect(screen.getByTestId('erreurs-table')).toBeInTheDocument(),
@@ -215,6 +266,7 @@ describe('ImportBudgetDialog', () => {
     fireEvent.change(screen.getByTestId('input-file'), {
       target: { files: [makeFile('budget.csv')] },
     });
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
     fireEvent.click(screen.getByTestId('btn-importer'));
     await waitFor(() =>
       expect(screen.getByTestId('rollback-alert')).toBeInTheDocument(),
@@ -235,6 +287,7 @@ describe('ImportBudgetDialog', () => {
     fireEvent.change(screen.getByTestId('input-file'), {
       target: { files: [makeFile('budget.csv')] },
     });
+    fireEvent.click(screen.getByTestId('checkbox-confirmation'));
     fireEvent.click(screen.getByTestId('btn-importer'));
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toMatch(/Internal/),

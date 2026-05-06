@@ -328,8 +328,10 @@ export function SaisieBudgetairePage() {
         onClose={() => setImportOuvert(false)}
         versionId={grille?.version.id ?? null}
         versionCode={grille?.version.codeVersion}
+        versionLibelle={grille?.version.libelle}
         scenarioId={grille?.scenario.id ?? null}
         scenarioCode={grille?.scenario.codeScenario}
+        scenarioLibelle={grille?.scenario.libelle}
         onSucces={() => {
           void reload();
         }}

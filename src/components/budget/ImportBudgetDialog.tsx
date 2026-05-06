@@ -43,8 +43,12 @@ interface ImportBudgetDialogProps {
   onClose: () => void;
   versionId: string | null;
   versionCode?: string;
+  /** Libellé de la version cible — affiché en grand pour confirmation (UX C.1). */
+  versionLibelle?: string;
   scenarioId: string | null;
   scenarioCode?: string;
+  /** Libellé du scénario cible — affiché en grand pour confirmation (UX C.1). */
+  scenarioLibelle?: string;
   /** Appelé après un import accepté (lignesInserees+modifiees > 0). */
   onSucces?: () => void;
 }
@@ -71,8 +75,10 @@ export function ImportBudgetDialog({
   onClose,
   versionId,
   versionCode,
+  versionLibelle,
   scenarioId,
   scenarioCode,
+  scenarioLibelle,
   onSucces,
 }: ImportBudgetDialogProps): JSX.Element {
   const [etape, setEtape] = useState<Etape>('selection');
@@ -80,6 +86,9 @@ export function ImportBudgetDialog({
   const [dragOver, setDragOver] = useState(false);
   const [rapport, setRapport] = useState<ImportBudgetRapport | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  // UX C.1 — checkbox de confirmation explicite : protège contre les
+  // imports « par accident » sur le mauvais scénario (cas vécu BSIC).
+  const [confirmed, setConfirmed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
@@ -88,6 +97,7 @@ export function ImportBudgetDialog({
     setRapport(null);
     setErreur(null);
     setDragOver(false);
+    setConfirmed(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -172,23 +182,51 @@ export function ImportBudgetDialog({
         {/* ÉTAPE 1 : Sélection */}
         {etape === 'selection' && (
           <div className="space-y-4" data-testid="etape-selection">
-            <div className="rounded-md border border-(--border) bg-(--muted)/30 p-3 text-sm">
-              <p className="font-semibold mb-1">Contexte d'import</p>
-              <ul className="text-xs space-y-0.5">
-                <li>
-                  Version :{' '}
-                  <span className="font-mono">{versionCode ?? '—'}</span>
-                </li>
-                <li>
-                  Scénario :{' '}
-                  <span className="font-mono">{scenarioCode ?? '—'}</span>
-                </li>
-              </ul>
-              <p className="mt-2 text-[11px] text-(--muted-foreground)">
-                L'import va créer ou modifier des lignes pour cette version
-                uniquement. Les lignes existantes au même grain (CR×compte×
-                mois×ligne métier) seront mises à jour.
+            {/* UX C.1 — bandeau contexte mis en évidence : la cible
+                de l'import doit être impossible à manquer pour éviter
+                les écrasements accidentels (cas vécu BSIC Niger). */}
+            <div
+              className="rounded-md border-2 border-(--primary)/40 bg-(--primary)/5 p-4"
+              data-testid="bandeau-contexte"
+            >
+              <p className="text-xs uppercase tracking-wide font-semibold text-(--muted-foreground) mb-2">
+                Cible de l'import
               </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] uppercase text-(--muted-foreground)">
+                    Version
+                  </p>
+                  <p
+                    className="text-base font-bold text-(--foreground)"
+                    data-testid="contexte-version-libelle"
+                  >
+                    {versionLibelle ?? versionCode ?? '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-(--muted-foreground)">
+                    Scénario
+                  </p>
+                  <p
+                    className="text-base font-bold text-orange-600 dark:text-orange-400"
+                    data-testid="contexte-scenario-libelle"
+                  >
+                    {scenarioLibelle ?? scenarioCode ?? '—'}
+                  </p>
+                </div>
+              </div>
+              <div
+                className="mt-3 flex items-start gap-2 rounded border border-orange-300 bg-orange-50 dark:bg-orange-950/30 p-2 text-xs"
+                role="note"
+              >
+                <span aria-hidden>⚠️</span>
+                <span>
+                  Les données existantes pour ce scénario seront{' '}
+                  <strong>mises à jour ou créées</strong> selon les lignes
+                  du fichier. Les autres scénarios ne sont pas touchés.
+                </span>
+              </div>
             </div>
 
             <div
@@ -265,6 +303,24 @@ export function ImportBudgetDialog({
               />
             </div>
 
+            {/* UX C.1 — checkbox de confirmation explicite. */}
+            <label className="flex items-start gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 cursor-pointer accent-(--primary)"
+                data-testid="checkbox-confirmation"
+              />
+              <span>
+                Je confirme importer dans le scénario{' '}
+                <strong className="text-orange-600 dark:text-orange-400">
+                  {scenarioLibelle ?? scenarioCode ?? '—'}
+                </strong>
+                .
+              </span>
+            </label>
+
             <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
@@ -311,7 +367,12 @@ export function ImportBudgetDialog({
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={!file || !versionId || !scenarioId}
+                disabled={!file || !versionId || !scenarioId || !confirmed}
+                title={
+                  !confirmed
+                    ? 'Cochez la confirmation du scénario cible avant d\'importer'
+                    : undefined
+                }
                 data-testid="btn-importer"
               >
                 <Upload className="h-4 w-4 mr-2" />
