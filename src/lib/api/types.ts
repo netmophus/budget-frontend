@@ -49,6 +49,12 @@ export interface UserResponse {
   estActif: boolean;
   dateDerniereConnexion: string | null;
   dateCreation: string;
+  /**
+   * Lot 4.1-fix.A — rempli uniquement si listUsers est appelé avec
+   * `{ withPerimetresCount: true }`. Compte les lignes
+   * user_perimetres actives couvrant aujourd'hui.
+   */
+  nombrePerimetresActifs?: number;
 }
 
 export interface UserDetailResponse extends UserResponse {

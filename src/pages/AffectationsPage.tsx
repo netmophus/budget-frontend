@@ -1,12 +1,17 @@
 /**
- * AffectationsPage (Lot 4.1.C) — page admin pour gérer les
- * affectations multi-périmètres des utilisateurs.
+ * AffectationsPage (Lot 4.1.C + Lot 4.1-fix.A) — page admin pour
+ * gérer les affectations multi-périmètres.
  *
- * Liste des users avec compteur d'affectations actives, bouton
- * « Gérer » qui ouvre AffectationsDialog.
+ * Lot 4.1-fix.A : la page liste désormais TOUS les utilisateurs
+ * actifs (même ceux à 0 périmètre — on doit pouvoir leur en créer).
+ * Pour les users à 0 → badge gris « 0 périmètre » + bouton dédié
+ * « Ajouter une affectation ». Pour les users avec ≥ 1 → badge
+ * coloré + bouton « Gérer ». 1 seul fetch grâce au flag
+ * `withPerimetresCount=true` exposé par l'endpoint /users (évite le
+ * N+1 du Lot 4.1).
  */
 import { type ColumnDef } from '@tanstack/react-table';
-import { Briefcase, Grid3x3, Settings, Target } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,62 +19,46 @@ import { AffectationsDialog } from '@/components/admin/AffectationsDialog';
 import { DataTable } from '@/components/common/DataTable';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
-import {
-  type AffectationPerimetre,
-  CIBLE_TYPE_LABEL,
-  type CiblePerimetreType,
-  listerPerimetresUser,
-} from '@/lib/api/perimetres';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { listUsers } from '@/lib/api/users';
 import type { UserResponse } from '@/lib/api/types';
 
 type UserListItem = UserResponse;
 
-interface UserAvecAffectations {
-  user: UserListItem;
-  affectations: AffectationPerimetre[];
-}
-
-function iconeCible(t: CiblePerimetreType): JSX.Element {
-  if (t === 'STRUCTURE') return <Briefcase className="h-3 w-3" />;
-  if (t === 'CR') return <Target className="h-3 w-3" />;
-  return <Grid3x3 className="h-3 w-3" />;
-}
-
 export function AffectationsPage(): JSX.Element {
-  const [rows, setRows] = useState<UserAvecAffectations[]>([]);
+  const [rows, setRows] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [emailFilter, setEmailFilter] = useState('');
+  const [debouncedEmail, setDebouncedEmail] = useState('');
   const [dialogTarget, setDialogTarget] = useState<UserListItem | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedEmail(emailFilter), 300);
+    return () => clearTimeout(t);
+  }, [emailFilter]);
+
+  useEffect(() => {
     setLoading(true);
-    listUsers({ limit: 200, page: 1 })
-      .then(async (res) => {
-        const enriched = await Promise.all(
-          res.items.map(async (user) => {
-            try {
-              const affectations = await listerPerimetresUser(user.id, {
-                actif: true,
-              });
-              return { user, affectations };
-            } catch {
-              return { user, affectations: [] };
-            }
-          }),
-        );
-        setRows(enriched);
-      })
+    listUsers({
+      limit: 100,
+      page: 1,
+      estActif: true,
+      withPerimetresCount: true,
+      ...(debouncedEmail ? { email: debouncedEmail } : {}),
+    })
+      .then((res) => setRows(res.items))
       .catch(() => toast.error('Impossible de charger les utilisateurs'))
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, debouncedEmail]);
 
-  const columns: ColumnDef<UserAvecAffectations, unknown>[] = [
+  const columns: ColumnDef<UserListItem, unknown>[] = [
     {
       id: 'nom',
       header: 'Utilisateur',
       cell: ({ row }) => {
-        const u = row.original.user;
+        const u = row.original;
         return (
           <div>
             <p className="font-medium">
@@ -84,54 +73,56 @@ export function AffectationsPage(): JSX.Element {
       id: 'perimetres',
       header: 'Périmètres actifs',
       cell: ({ row }) => {
-        const aff = row.original.affectations;
-        if (aff.length === 0) {
+        const n = row.original.nombrePerimetresActifs ?? 0;
+        if (n === 0) {
           return (
-            <span className="text-xs text-(--muted-foreground)" data-testid="badge-vide">
-              Aucun
+            <span
+              className="inline-flex items-center rounded-full bg-(--muted) text-(--muted-foreground) px-2 py-0.5 text-xs"
+              data-testid={`badge-zero-${row.original.id}`}
+            >
+              0 périmètre
             </span>
           );
         }
-        const tooltip = aff
-          .map((a) => `${a.cibleType} — ${a.cibleId ?? `${a.cibleCrIds?.length ?? 0} CR`}`)
-          .join('\n');
         return (
-          <div
-            className="flex flex-wrap items-center gap-1"
-            title={tooltip}
-            data-testid={`badge-user-${row.original.user.id}`}
+          <span
+            className="inline-flex items-center rounded-full bg-(--primary)/10 text-(--primary) px-2 py-0.5 text-xs font-semibold"
+            data-testid={`badge-count-${row.original.id}`}
           >
-            <span className="rounded-full bg-(--primary)/10 text-(--primary) px-2 py-0.5 text-xs font-semibold">
-              {aff.length} périmètre{aff.length > 1 ? 's' : ''}
-            </span>
-            {aff.map((a) => (
-              <span
-                key={a.id}
-                className="inline-flex items-center gap-0.5 rounded bg-(--muted) px-1.5 py-0.5 text-[10px]"
-                title={CIBLE_TYPE_LABEL[a.cibleType]}
-              >
-                {iconeCible(a.cibleType)}
-                {a.cibleType}
-              </span>
-            ))}
-          </div>
+            {n} périmètre{n > 1 ? 's' : ''}
+          </span>
         );
       },
     },
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setDialogTarget(row.original.user)}
-          data-testid={`btn-gerer-${row.original.user.id}`}
-        >
-          <Settings className="h-3.5 w-3.5 mr-1" />
-          Gérer
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const n = row.original.nombrePerimetresActifs ?? 0;
+        if (n === 0) {
+          return (
+            <Button
+              size="sm"
+              onClick={() => setDialogTarget(row.original)}
+              data-testid={`btn-ajouter-${row.original.id}`}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Ajouter une affectation
+            </Button>
+          );
+        }
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDialogTarget(row.original)}
+            data-testid={`btn-gerer-${row.original.id}`}
+          >
+            <Settings className="h-3.5 w-3.5 mr-1" />
+            Gérer
+          </Button>
+        );
+      },
     },
   ];
 
@@ -139,15 +130,29 @@ export function AffectationsPage(): JSX.Element {
     <div className="space-y-4">
       <PageHeader
         title="Affectations multi-périmètres"
-        description="Gérez les périmètres budgétaires (Structure, CR, ensemble de CR) attribués à chaque utilisateur."
+        description="Gérez les périmètres budgétaires (Structure, CR, ensemble de CR) attribués à chaque utilisateur. Les utilisateurs à 0 périmètre sont listés pour permettre une première affectation."
       />
+
+      <div className="flex items-end gap-3 flex-wrap">
+        <div className="space-y-1">
+          <Label htmlFor="email-filter">Recherche email</Label>
+          <Input
+            id="email-filter"
+            placeholder="ex. dir.retail"
+            value={emailFilter}
+            onChange={(e) => setEmailFilter(e.target.value)}
+            className="w-64"
+            data-testid="input-email-filter"
+          />
+        </div>
+      </div>
 
       <DataTable
         columns={columns}
         data={rows}
         total={rows.length}
         page={1}
-        limit={200}
+        limit={100}
         isLoading={loading}
         onPageChange={() => {}}
       />
