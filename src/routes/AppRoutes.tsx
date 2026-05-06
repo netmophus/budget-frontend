@@ -66,6 +66,12 @@ const ConfigurationPage = lazy(() =>
   })),
 );
 
+const AffectationsPage = lazy(() =>
+  import('@/pages/AffectationsPage').then((m) => ({
+    default: m.AffectationsPage,
+  })),
+);
+
 function PageFallback() {
   return (
     <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
@@ -97,6 +103,16 @@ export function AppRoutes() {
           element={
             <PermissionRoute permission="USER.LIRE">
               <UsersPage />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/affectations"
+          element={
+            <PermissionRoute permission="USER.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <AffectationsPage />
+              </Suspense>
             </PermissionRoute>
           }
         />

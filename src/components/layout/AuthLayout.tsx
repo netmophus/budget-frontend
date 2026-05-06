@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Toaster } from '@/components/ui/sonner';
+import { BadgePerimetresHeader } from './BadgePerimetresHeader';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { useHasPermission } from '@/lib/auth/permissions';
@@ -153,6 +154,13 @@ const NAV_CONFIGURATION: NavItem[] = [
 
 const NAV_ADMIN: NavItem[] = [
   { to: '/users', label: 'Utilisateurs', icon: Users, permission: 'USER.LIRE' },
+  // Lot 4.1 — gestion des affectations multi-périmètres
+  {
+    to: '/admin/affectations',
+    label: 'Affectations',
+    icon: Layers,
+    permission: 'USER.GERER',
+  },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];
 
@@ -304,6 +312,10 @@ export function AuthLayout() {
           </span>
         </div>
 
+        {/* Lot 4.1 — badge périmètres pour le user connecté */}
+        <div className="flex items-center gap-3">
+          <BadgePerimetresHeader />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 px-2 gap-2">
@@ -338,6 +350,7 @@ export function AuthLayout() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
