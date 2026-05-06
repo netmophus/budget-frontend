@@ -188,6 +188,64 @@ describe('useGrilleSaisie', () => {
     expect(cell?.montant).toBe(10_000_000);
   });
 
+  // Mini-fix B.4 — sauvegarder doit lire la valeur LA PLUS RÉCENTE
+  // de modifications, même si elle vient d'être posée dans le même
+  // tick (cas du blur déclenché par le clic sur Enregistrer).
+  // Avant le fix, sauvegarder était un useCallback avec
+  // `modifications` en dep, donc sa closure capturait l'ancienne
+  // valeur et ne voyait pas la modif tout juste commitée.
+  it('B.4 — sauvegarder voit une modif posée juste avant l\'appel (ref synchrone)', async () => {
+    mockGet.mockResolvedValue(SAMPLE_GRILLE);
+    mockSave.mockResolvedValue({
+      totalCellules: 1,
+      inserees: 0,
+      modifiees: 1,
+      supprimees: 0,
+      ignorees: 0,
+      erreurs: [],
+      dureeMs: 1,
+    });
+    const { result } = renderHook(() =>
+      useGrilleSaisie({
+        versionId: '1',
+        scenarioId: '10',
+        crId: '100',
+        ligneMetierId: '20',
+        exerciceFiscal: 2027,
+      }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Capture la fonction sauvegarder AVANT la modif (closure du
+    // render initial — c'est le scénario du bug).
+    const sauvegarderInitiale = result.current.sauvegarder;
+
+    // Pose la modif (simule le blur d'une cellule au moment du clic).
+    act(() => {
+      result.current.modifierCellule('500', '20', '2027-01-01', {
+        montant: 99_000_000,
+      });
+    });
+
+    // Appelle l'ancienne fonction (capturée AVANT la modif). Sans le
+    // fix, elle n'aurait pas vu la modif et envoyé un payload vide.
+    await act(async () => {
+      const r = await sauvegarderInitiale();
+      expect(r.modifiees).toBe(1);
+    });
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lignes: expect.arrayContaining([
+          expect.objectContaining({
+            cellules: expect.arrayContaining([
+              expect.objectContaining({ montant: 99_000_000 }),
+            ]),
+          }),
+        ]),
+      }),
+    );
+  });
+
   it('sauvegarder construit le payload + appelle saveGrilleSaisie', async () => {
     mockGet.mockResolvedValue(SAMPLE_GRILLE);
     mockSave.mockResolvedValue({

@@ -11,7 +11,7 @@
  *    Q6 « totaux à la volée ».
  *  - L'action de sauvegarde groupée (POST /budget/grille).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   getGrilleSaisie,
@@ -92,6 +92,16 @@ export function useGrilleSaisie(
   const [modifications, setModifications] = useState<
     Map<CelluleKey, GrilleCellule>
   >(new Map());
+  // Mini-fix B.4 — ref synchronisée avec `modifications` pour que la
+  // fonction `sauvegarder` lise TOUJOURS la valeur la plus récente,
+  // même si le bouton « Enregistrer » est cliqué dans le même tick
+  // que le blur d'une cellule (qui déclenche setModifications).
+  // Sans cette ref, la closure de sauvegarder voyait l'ancienne
+  // version de modifications et l'utilisateur devait cliquer 2 fois.
+  const modificationsRef = useRef(modifications);
+  useEffect(() => {
+    modificationsRef.current = modifications;
+  }, [modifications]);
   const [modeParLigne, setModeParLigne] = useState<Map<string, ModeSaisie>>(
     new Map(),
   );
@@ -318,7 +328,12 @@ export function useGrilleSaisie(
   // ─── Save ───────────────────────────────────────────────────────
 
   const sauvegarder = useCallback(async (): Promise<GrilleSaveResponse> => {
-    if (!grille || modifications.size === 0) {
+    // Lecture via ref (mini-fix B.4) : si l'utilisateur clique
+    // « Enregistrer » dans le même tick qu'un blur de cellule, le
+    // setModifications déclenché par le blur n'est pas encore
+    // visible dans la closure mais est dans modificationsRef.current.
+    const currentModifs = modificationsRef.current;
+    if (!grille || currentModifs.size === 0) {
       return {
         totalCellules: 0,
         inserees: 0,
@@ -338,7 +353,7 @@ export function useGrilleSaisie(
         cellules: GrilleCellule[];
       }
     >();
-    for (const [k, cell] of modifications.entries()) {
+    for (const [k, cell] of currentModifs.entries()) {
       const [compteId, ligneMetierId] = k.split('|');
       if (!compteId || !ligneMetierId) continue;
       const lk = `${compteId}|${ligneMetierId}`;
@@ -373,7 +388,9 @@ export function useGrilleSaisie(
       await reload();
     }
     return response;
-  }, [grille, modifications, reload]);
+    // `modifications` retiré des deps : on lit via la ref pour avoir
+    // la valeur la plus récente même dans la même frame que le blur.
+  }, [grille, reload]);
 
   return {
     grille,

@@ -105,6 +105,25 @@ export function SaisieBudgetairePage() {
   }, [grille?.version.id, grille?.version.statut]);
 
   async function handleSauvegarder() {
+    // Mini-fix B.4 — Sauvegarder en 1 clic : forcer le blur de la
+    // cellule en cours d'édition pour que son `onCommit` (déclenché
+    // par handleBlur de GrilleCelluleEditor) propage la valeur à
+    // `modifications` avant l'envoi du batch. Sans ce blur, la
+    // dernière valeur tapée n'était commise qu'au tick suivant — le
+    // 1er clic ne la voyait pas, l'utilisateur devait cliquer 2 fois.
+    if (
+      typeof document !== 'undefined' &&
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement !== document.body
+    ) {
+      document.activeElement.blur();
+    }
+    // Cèder un tick pour laisser React appliquer le setState du blur
+    // (la ref `modificationsRef` du hook lira la nouvelle valeur).
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
     setEnCoursSauvegarde(true);
     try {
       const r = await sauvegarder();
