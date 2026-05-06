@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { listComptes, type Compte } from '@/lib/api/referentiels';
 
-const CLASSES_SAISISSABLES = ['6', '7'];
+const CLASSES_SAISISSABLES_DEFAULT = ['6', '7'];
 
 export interface CompteCombobxProps {
   id?: string;
@@ -30,6 +30,13 @@ export interface CompteCombobxProps {
   onChange: (codeCompte: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  /**
+   * Classes PCB à charger (defaut `['6', '7']` — charges + produits
+   * saisissables). Quand cette prop change, la liste est re-fetchée
+   * et la sélection courante est réinitialisée si elle n'appartient
+   * plus à la nouvelle liste.
+   */
+  classes?: string[];
 }
 
 export function CompteCombobox({
@@ -38,6 +45,7 @@ export function CompteCombobox({
   onChange,
   disabled = false,
   placeholder = 'Tapez un code (ex. 611) ou un libellé…',
+  classes = CLASSES_SAISISSABLES_DEFAULT,
 }: CompteCombobxProps): JSX.Element {
   const [comptes, setComptes] = useState<Compte[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,12 +54,17 @@ export function CompteCombobox({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Chargement des comptes saisissables (classes 6,7 + feuilles).
+  // Sérialisation stable des classes pour la dépendance d'effet
+  // (évite un re-fetch infini sur une nouvelle ref d'array identique).
+  const classesKey = classes.slice().sort().join(',');
+
+  // Chargement des comptes saisissables — refetch quand `classes`
+  // change (mini-fix B.1 Lot 3).
   useEffect(() => {
     setLoading(true);
     setErreur(null);
     listComptes({
-      classes: CLASSES_SAISISSABLES,
+      classes,
       estCompteCollectif: false,
       versionCouranteUniquement: true,
       limit: 200,
@@ -63,12 +76,21 @@ export function CompteCombobox({
           a.codeCompte.localeCompare(b.codeCompte, undefined, { numeric: true }),
         );
         setComptes(tries);
+        // Mini-fix B.1 — reset de la sélection si le compte courant
+        // n'appartient plus à la nouvelle liste filtrée.
+        if (value && !tries.some((c) => c.codeCompte === value)) {
+          onChange('');
+        }
       })
       .catch((err) => {
         setErreur(err instanceof Error ? err.message : 'Erreur réseau');
       })
       .finally(() => setLoading(false));
-  }, []);
+    // `classes` exclu volontairement : on utilise `classesKey` pour
+    // une dépendance stable. `value` et `onChange` exclus pour ne pas
+    // re-fetcher à chaque saisie.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classesKey]);
 
   // Compte actuellement affiché en valeur "résolue" (pour l'input).
   const compteSelectionne = useMemo(

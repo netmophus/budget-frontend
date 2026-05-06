@@ -153,6 +153,84 @@ describe('CompteCombobox', () => {
     });
   });
 
+  it("B.1 — changement de la prop classes → re-fetch + reset sélection si obsolète", async () => {
+    // 1er fetch : classes=['6','7'] → 3 comptes
+    mockList.mockResolvedValueOnce({
+      items: COMPTES,
+      total: 3,
+      page: 1,
+      limit: 200,
+    });
+    const handleChange = vi.fn();
+    const { rerender } = render(
+      <CompteCombobox
+        value="611100"
+        onChange={handleChange}
+        classes={['6', '7']}
+      />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+
+    // 2e fetch : classes=['7'] → seul 701100, plus de 611100
+    mockList.mockResolvedValueOnce({
+      items: [COMPTES[2]!], // 701100 uniquement
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+    rerender(
+      <CompteCombobox
+        value="611100"
+        onChange={handleChange}
+        classes={['7']}
+      />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+    // Le 2e appel doit avoir filtré classes=['7'] uniquement.
+    expect(mockList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ classes: ['7'] }),
+    );
+    // Le compte précédemment sélectionné (611100) n'est plus dans la
+    // liste → reset via onChange('')
+    await waitFor(() => expect(handleChange).toHaveBeenCalledWith(''));
+  });
+
+  it("B.1 — re-fetch n'invalide pas la sélection si compte toujours présent", async () => {
+    mockList.mockResolvedValueOnce({
+      items: COMPTES,
+      total: 3,
+      page: 1,
+      limit: 200,
+    });
+    const handleChange = vi.fn();
+    const { rerender } = render(
+      <CompteCombobox
+        value="701100"
+        onChange={handleChange}
+        classes={['6', '7']}
+      />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+
+    // Re-fetch avec classes=['7'] → 701100 toujours présent
+    mockList.mockResolvedValueOnce({
+      items: [COMPTES[2]!],
+      total: 1,
+      page: 1,
+      limit: 200,
+    });
+    rerender(
+      <CompteCombobox
+        value="701100"
+        onChange={handleChange}
+        classes={['7']}
+      />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+    // Pas de reset car 701100 toujours dans la liste.
+    expect(handleChange).not.toHaveBeenCalled();
+  });
+
   it('disabled=true → input désactivé', async () => {
     mockList.mockResolvedValue({ items: COMPTES, total: 3, page: 1, limit: 200 });
     render(<CompteCombobox value="" onChange={vi.fn()} disabled />);
