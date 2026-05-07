@@ -18,6 +18,7 @@ import {
   Menu,
   Package,
   PieChart,
+  Mail,
   ScrollText,
   Send,
   Settings,
@@ -170,6 +171,13 @@ const NAV_ADMIN: NavItem[] = [
     label: 'Délégations',
     icon: Send,
     permission: 'DELEGATION.GERER',
+  },
+  // Lot 4.3 — journal des notifications email
+  {
+    to: '/admin/email-log',
+    label: 'Journal des emails',
+    icon: Mail,
+    permission: 'USER.GERER',
   },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];
@@ -354,6 +362,10 @@ export function AuthLayout() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/profile')}>
               <UserIcon className="h-4 w-4" /> Mon profil
+            </DropdownMenuItem>
+            {/* Lot 4.3 — préférences notifications */}
+            <DropdownMenuItem onClick={() => navigate('/me/preferences')}>
+              <Mail className="h-4 w-4" /> Mes préférences
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onLogout}>
               <LogOut className="h-4 w-4" /> Déconnexion

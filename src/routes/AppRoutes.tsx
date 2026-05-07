@@ -84,6 +84,18 @@ const AdminDelegationsPage = lazy(() =>
   })),
 );
 
+// Lazy-loaded — Lot 4.3 : notifications email.
+const AdminEmailLogPage = lazy(() =>
+  import('@/pages/AdminEmailLogPage').then((m) => ({
+    default: m.AdminEmailLogPage,
+  })),
+);
+const PreferencesNotificationsPage = lazy(() =>
+  import('@/pages/PreferencesNotificationsPage').then((m) => ({
+    default: m.PreferencesNotificationsPage,
+  })),
+);
+
 function PageFallback() {
   return (
     <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
@@ -295,6 +307,25 @@ export function AppRoutes() {
                 <AdminDelegationsPage />
               </Suspense>
             </PermissionRoute>
+          }
+        />
+        {/* Lot 4.3 — notifications email */}
+        <Route
+          path="/admin/email-log"
+          element={
+            <PermissionRoute permission="USER.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <AdminEmailLogPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/me/preferences"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <PreferencesNotificationsPage />
+            </Suspense>
           }
         />
       </Route>
