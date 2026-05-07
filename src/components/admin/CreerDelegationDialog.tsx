@@ -30,13 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { UserAutocomplete } from '@/components/common/UserAutocomplete';
 import {
   creerDelegation,
   PERMISSION_DELEGABLE_LABELS,
@@ -46,8 +40,6 @@ import {
   type AffectationPerimetre,
   listerMesPerimetres,
 } from '@/lib/api/perimetres';
-import { listUsers } from '@/lib/api/users';
-import type { UserResponse } from '@/lib/api/types';
 
 interface CreerDelegationDialogProps {
   isOpen: boolean;
@@ -80,7 +72,6 @@ export function CreerDelegationDialog({
   currentUserId,
   onCreated,
 }: CreerDelegationDialogProps): JSX.Element {
-  const [users, setUsers] = useState<UserResponse[]>([]);
   const [perimetres, setPerimetres] = useState<AffectationPerimetre[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -96,17 +87,11 @@ export function CreerDelegationDialog({
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    Promise.all([
-      // limit: 100 = borne max validée par le backend
-      // (list-users-query.dto.ts @Max(100)). Suffisant pour l'usage
-      // pilote ; à remplacer par un autocomplete avec recherche
-      // serveur quand on dépassera 100 users actifs (cf. dette
-      // tracée Lot 4.2-fix3).
-      listUsers({ limit: 100, page: 1, estActif: true }),
-      listerMesPerimetres(),
-    ])
-      .then(([u, p]) => {
-        setUsers(u.items.filter((x) => x.id !== currentUserId));
+    // Lot Administration ADMIN.C — la liste des délégataires possibles
+    // est désormais gérée par <UserAutocomplete /> avec recherche
+    // serveur. On ne charge plus que les périmètres natifs ici.
+    listerMesPerimetres()
+      .then((p) => {
         // Anti-chaînage côté UI : on n'expose que les périmètres natifs.
         setPerimetres(
           p.filter(
@@ -201,26 +186,19 @@ export function CreerDelegationDialog({
           <p className="text-sm text-(--muted-foreground)">Chargement…</p>
         ) : (
           <div className="space-y-4">
-            {/* Délégataire */}
+            {/* Délégataire — Lot Administration ADMIN.C : autocomplete
+                avec recherche serveur (remplace la liste fixe) */}
             <div className="space-y-1">
               <Label htmlFor="delegataire">
                 Délégataire <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={fkDelegataire || undefined}
-                onValueChange={setFkDelegataire}
-              >
-                <SelectTrigger id="delegataire" data-testid="select-delegataire">
-                  <SelectValue placeholder="Sélectionner un utilisateur…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.prenom} {u.nom} — {u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <UserAutocomplete
+                testId="select-delegataire"
+                value={fkDelegataire || null}
+                onChange={(id) => setFkDelegataire(id ?? '')}
+                excludeUserIds={[currentUserId]}
+                placeholder="Rechercher un utilisateur (email, nom, prénom)…"
+              />
             </div>
 
             {/* Périmètres délégables */}

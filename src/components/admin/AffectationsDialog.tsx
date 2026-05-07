@@ -140,6 +140,8 @@ export function AffectationsDialog({
 
   async function handleAjouter(): Promise<void> {
     if (!userId || !cibleType) return;
+    // Lot Administration ADMIN.D dette 3 : bouton désactivé pendant l'appel
+    // API via le state `submitting` (cf. disabled du bouton btn-ajouter).
     setSubmitting(true);
     try {
       const dto = {
@@ -152,6 +154,8 @@ export function AffectationsDialog({
       };
       await creerAffectationPerimetre(userId, dto);
       toast.success('Affectation créée.');
+      // Lot Administration ADMIN.D dette 2 : rafraîchissement explicite de
+      // la zone "Affectations actuelles" après création réussie.
       const a = await listerPerimetresUser(userId);
       setAffectations(a);
       resetForm();

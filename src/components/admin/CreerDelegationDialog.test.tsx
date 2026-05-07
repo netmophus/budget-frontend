@@ -206,11 +206,11 @@ describe('CreerDelegationDialog', () => {
     expect(mockPerimetres).not.toHaveBeenCalled();
   });
 
-  // Lot 4.2-fix3 — non-régression : limit doit être ≤ 100 (borne
-  // backend list-users-query.dto.ts @Max(100)). Avant le fix, le
-  // dialogue appelait limit=200 → 400 BadRequest et la liste des
-  // délégataires ne se chargeait jamais.
-  it('appelle listUsers avec limit ≤ 100 (borne backend @Max(100))', async () => {
+  // Lot Administration ADMIN.C : la liste fixe `listUsers` a été
+  // remplacée par <UserAutocomplete /> (recherche serveur). On vérifie
+  // ici que le composant n'appelle PLUS listUsers — la sélection
+  // délégataire passe désormais par l'autocomplete.
+  it('Lot Admin : ne charge plus la liste fixe listUsers (autocomplete remplace)', async () => {
     render(
       <CreerDelegationDialog
         isOpen={true}
@@ -219,14 +219,10 @@ describe('CreerDelegationDialog', () => {
         onCreated={() => {}}
       />,
     );
-    await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
-    const callArgs = mockListUsers.mock.calls[0]![0] as {
-      limit: number;
-      page: number;
-      estActif: boolean;
-    };
-    expect(callArgs.limit).toBeLessThanOrEqual(100);
-    expect(callArgs.estActif).toBe(true);
-    expect(callArgs.page).toBe(1);
+    // Petit délai pour que l'effet d'ouverture s'exécute.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mockListUsers).not.toHaveBeenCalled();
+    // Mais les périmètres natifs sont toujours chargés.
+    expect(mockPerimetres).toHaveBeenCalled();
   });
 });
