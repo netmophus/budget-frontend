@@ -66,7 +66,7 @@ describe('CreerDelegationDialog', () => {
       ],
       total: 2,
       page: 1,
-      limit: 200,
+      limit: 100,
     });
     mockPerimetres.mockResolvedValue([
       {
@@ -204,5 +204,29 @@ describe('CreerDelegationDialog', () => {
     );
     expect(mockListUsers).not.toHaveBeenCalled();
     expect(mockPerimetres).not.toHaveBeenCalled();
+  });
+
+  // Lot 4.2-fix3 — non-régression : limit doit être ≤ 100 (borne
+  // backend list-users-query.dto.ts @Max(100)). Avant le fix, le
+  // dialogue appelait limit=200 → 400 BadRequest et la liste des
+  // délégataires ne se chargeait jamais.
+  it('appelle listUsers avec limit ≤ 100 (borne backend @Max(100))', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    await waitFor(() => expect(mockListUsers).toHaveBeenCalled());
+    const callArgs = mockListUsers.mock.calls[0]![0] as {
+      limit: number;
+      page: number;
+      estActif: boolean;
+    };
+    expect(callArgs.limit).toBeLessThanOrEqual(100);
+    expect(callArgs.estActif).toBe(true);
+    expect(callArgs.page).toBe(1);
   });
 });

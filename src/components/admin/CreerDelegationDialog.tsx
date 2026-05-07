@@ -97,7 +97,12 @@ export function CreerDelegationDialog({
     if (!isOpen) return;
     setLoading(true);
     Promise.all([
-      listUsers({ limit: 200, page: 1, estActif: true }),
+      // limit: 100 = borne max validée par le backend
+      // (list-users-query.dto.ts @Max(100)). Suffisant pour l'usage
+      // pilote ; à remplacer par un autocomplete avec recherche
+      // serveur quand on dépassera 100 users actifs (cf. dette
+      // tracée Lot 4.2-fix3).
+      listUsers({ limit: 100, page: 1, estActif: true }),
       listerMesPerimetres(),
     ])
       .then(([u, p]) => {
