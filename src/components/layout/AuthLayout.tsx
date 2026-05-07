@@ -19,6 +19,7 @@ import {
   Package,
   PieChart,
   ScrollText,
+  Send,
   Settings,
   ShieldCheck,
   Sliders,
@@ -54,6 +55,8 @@ interface NavItem {
 
 const NAV_TOP: NavItem[] = [
   { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+  // Lot 4.2 — accessible à tout user authentifié
+  { to: '/mes-delegations', label: 'Mes délégations', icon: Send },
 ];
 
 // Tri alphabétique (cohérence Lot 2.4C).
@@ -160,6 +163,13 @@ const NAV_ADMIN: NavItem[] = [
     label: 'Affectations',
     icon: Layers,
     permission: 'USER.GERER',
+  },
+  // Lot 4.2 — supervision globale des délégations
+  {
+    to: '/admin/delegations',
+    label: 'Délégations',
+    icon: Send,
+    permission: 'DELEGATION.GERER',
   },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];

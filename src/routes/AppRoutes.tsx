@@ -72,6 +72,18 @@ const AffectationsPage = lazy(() =>
   })),
 );
 
+// Lazy-loaded — Lot 4.2 : pages délégations.
+const MesDelegationsPage = lazy(() =>
+  import('@/pages/MesDelegationsPage').then((m) => ({
+    default: m.MesDelegationsPage,
+  })),
+);
+const AdminDelegationsPage = lazy(() =>
+  import('@/pages/AdminDelegationsPage').then((m) => ({
+    default: m.AdminDelegationsPage,
+  })),
+);
+
 function PageFallback() {
   return (
     <div className="text-sm text-(--muted-foreground) p-4">Chargement…</div>
@@ -262,6 +274,25 @@ export function AppRoutes() {
             <PermissionRoute permission="CONFIGURATION.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <ConfigurationPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 4.2 — délégations temporaires */}
+        <Route
+          path="/mes-delegations"
+          element={
+            <Suspense fallback={<PageFallback />}>
+              <MesDelegationsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/delegations"
+          element={
+            <PermissionRoute permission="DELEGATION.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <AdminDelegationsPage />
               </Suspense>
             </PermissionRoute>
           }
