@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
+import { resolveFkTemps as resolveFkTempsUtil } from '@/lib/realise/resolve-fk-temps';
 import {
   type FaitRealise,
   MODE_LABEL,
@@ -182,15 +183,31 @@ export function RealiseSaisiePage(): JSX.Element {
         .catch(() => {});
     }
     if (tempsIds.some((id) => !temps[id])) {
+      // L'API GET /referentiels/temps n'accepte pas `jour` en query
+      // (DTO whitelist). On cible donc la plage `dateDebut`/`dateFin`
+      // de la grille et on filtre côté client `jour === 1`.
       apiClient
         .get<{
-          items: Array<{ id: string; date: string; libelleMois: string; annee: number }>;
+          items: Array<{
+            id: string;
+            date: string;
+            libelleMois: string;
+            annee: number;
+            jour: number;
+          }>;
         }>('/referentiels/temps', {
-          params: { limit: 200, jour: 1 },
+          params: {
+            limit: 366,
+            dateDebut: `${moisDebut}-01`,
+            dateFin: `${moisFin}-01`,
+          },
         })
         .then(({ data }) => {
           const c: TempsCache = {};
           for (const it of data.items) {
+            // Ne garder que les 1ers du mois — la grille réalisé est
+            // mensuelle ; les autres jours du mois sont écartés.
+            if (it.jour !== 1) continue;
             const mois = it.date.slice(0, 7);
             c[it.id] = {
               mois,
@@ -204,22 +221,8 @@ export function RealiseSaisiePage(): JSX.Element {
   }, [lignes]);
 
   async function resolveFkTemps(mois: string): Promise<string | null> {
-    // Recherche dans le cache d'abord
-    for (const [id, t] of Object.entries(temps)) {
-      if (t.mois === mois) return id;
-    }
-    // Sinon appel API
-    try {
-      const { data } = await apiClient.get<{
-        items: Array<{ id: string; date: string }>;
-      }>('/referentiels/temps', {
-        params: { date: `${mois}-01`, jour: 1, limit: 1 },
-      });
-      if (data.items.length > 0) return data.items[0]!.id;
-    } catch {
-      /* ignore */
-    }
-    return null;
+    // Délégué à l'utility partagée (cf. lib/realise/resolve-fk-temps.ts).
+    return resolveFkTempsUtil(mois, temps);
   }
 
   async function handleSupprimer(l: FaitRealise): Promise<void> {
