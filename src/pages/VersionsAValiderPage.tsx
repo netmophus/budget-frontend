@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 import { WorkflowActions } from '@/components/budget/WorkflowActions';
 import { WorkflowTimeline } from '@/components/budget/WorkflowTimeline';
+import { BandeauDelegations } from '@/components/budget/BandeauDelegations';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { listVersions, type Version } from '@/lib/api/versions';
@@ -41,6 +42,7 @@ export function VersionsAValiderPage() {
         title="Versions à valider"
         description="File d'attente des versions soumises par les préparateurs. Validez ou rejetez avec commentaire."
       />
+      <BandeauDelegations />
 
       {loading && (
         <div className="rounded-md border border-(--border) p-8 text-center text-sm text-(--muted-foreground)">

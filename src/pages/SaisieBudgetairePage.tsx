@@ -24,6 +24,7 @@ import { IndicateursPanel } from '@/components/budget/grille/IndicateursPanel';
 import { ImportBudgetDialog } from '@/components/budget/ImportBudgetDialog';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
 import { WorkflowActions } from '@/components/budget/WorkflowActions';
+import { BandeauDelegations } from '@/components/budget/BandeauDelegations';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -176,6 +177,7 @@ export function SaisieBudgetairePage() {
             : 'Sélectionnez un contexte pour commencer.'
         }
       />
+      <BandeauDelegations />
 
       {grille && (
         <div className="mb-3 flex flex-wrap items-center gap-3">
