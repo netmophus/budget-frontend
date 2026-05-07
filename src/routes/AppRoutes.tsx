@@ -84,6 +84,13 @@ const AdminDelegationsPage = lazy(() =>
   })),
 );
 
+// Lazy-loaded — Lot 5.1 : module Réalisé.
+const RealiseSaisiePage = lazy(() =>
+  import('@/pages/RealiseSaisiePage').then((m) => ({
+    default: m.RealiseSaisiePage,
+  })),
+);
+
 // Lazy-loaded — Lot 4.3 : notifications email.
 const AdminEmailLogPage = lazy(() =>
   import('@/pages/AdminEmailLogPage').then((m) => ({
@@ -305,6 +312,17 @@ export function AppRoutes() {
             <PermissionRoute permission="DELEGATION.GERER">
               <Suspense fallback={<PageFallback />}>
                 <AdminDelegationsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 5.1 — module réalisé */}
+        <Route
+          path="/realise/saisie"
+          element={
+            <PermissionRoute permission="REALISE.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <RealiseSaisiePage />
               </Suspense>
             </PermissionRoute>
           }

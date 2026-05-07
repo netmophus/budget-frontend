@@ -18,6 +18,7 @@ import {
   Menu,
   Package,
   PieChart,
+  ClipboardCheck,
   Mail,
   ScrollText,
   Send,
@@ -144,6 +145,16 @@ const NAV_BUDGET: NavItem[] = [
     label: 'Tableau de bord',
     icon: BarChart3,
     permission: 'BUDGET.LIRE',
+  },
+];
+
+// Lot 5.1 — module Réalisé (saisie + import)
+const NAV_EXECUTION: NavItem[] = [
+  {
+    to: '/realise/saisie',
+    label: 'Saisie réalisé',
+    icon: ClipboardCheck,
+    permission: 'REALISE.LIRE',
   },
 ];
 
@@ -404,6 +415,18 @@ export function AuthLayout() {
             icon={Wallet}
             permission="BUDGET.LIRE"
             items={NAV_BUDGET}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
+
+          {/* Lot 5.1 — Exécution (réalisé) */}
+          <NavGroup
+            groupKey="execution"
+            label="Exécution"
+            icon={ClipboardCheck}
+            permission="REALISE.LIRE"
+            items={NAV_EXECUTION}
             collapsed={collapsed}
             state={groupStates}
             onToggle={toggleGroup}
