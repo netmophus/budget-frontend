@@ -117,58 +117,70 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
 
       {ecarts && !loading && (
         <>
-          <KpiCardsRow kpi={ecarts.kpi} />
+          <KpiCardsRow kpi={ecarts.kpi} erreur={!!error} />
 
-          {/* Filtres rapides + recherche */}
-          <div className="flex flex-wrap items-end gap-3 mb-3">
-            <div>
-              <Label htmlFor="tb-filtre-rapide">Afficher</Label>
-              <Select
-                value={filtreRapide}
-                onValueChange={(v) => setFiltreRapide(v as never)}
-              >
-                <SelectTrigger
-                  id="tb-filtre-rapide"
-                  data-testid="filtre-rapide"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TOUS">Toutes les lignes</SelectItem>
-                  <SelectItem value="CRITIQUE">
-                    Critiques uniquement
-                  </SelectItem>
-                  <SelectItem value="ATTENTION">
-                    Attention uniquement
-                  </SelectItem>
-                  <SelectItem value="MANQUANT">
-                    Manquants uniquement
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="tb-recherche">Recherche (CR / compte)</Label>
-              <Input
-                id="tb-recherche"
-                data-testid="recherche-texte"
-                value={rechercheTexte}
-                onChange={(e) => setRechercheTexte(e.target.value)}
-                placeholder="ex. 611 ou BANDABARI"
-              />
-            </div>
-            <div className="ml-auto text-xs text-(--muted-foreground)">
-              <span data-testid="compteur-affichees">
-                {lignesFiltrees.length}
-              </span>{' '}
-              ligne(s) affichée(s) sur{' '}
-              <span data-testid="compteur-total">
-                {ecarts.lignes.length}
-              </span>
-            </div>
-          </div>
+          {error ? (
+            <p
+              className="text-sm text-(--muted-foreground)"
+              data-testid="table-fallback-erreur"
+            >
+              Données indisponibles — relancez l'analyse une fois l'erreur
+              résolue.
+            </p>
+          ) : (
+            <>
+              {/* Filtres rapides + recherche */}
+              <div className="flex flex-wrap items-end gap-3 mb-3">
+                <div>
+                  <Label htmlFor="tb-filtre-rapide">Afficher</Label>
+                  <Select
+                    value={filtreRapide}
+                    onValueChange={(v) => setFiltreRapide(v as never)}
+                  >
+                    <SelectTrigger
+                      id="tb-filtre-rapide"
+                      data-testid="filtre-rapide"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TOUS">Toutes les lignes</SelectItem>
+                      <SelectItem value="CRITIQUE">
+                        Critiques uniquement
+                      </SelectItem>
+                      <SelectItem value="ATTENTION">
+                        Attention uniquement
+                      </SelectItem>
+                      <SelectItem value="MANQUANT">
+                        Manquants uniquement
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="tb-recherche">Recherche (CR / compte)</Label>
+                  <Input
+                    id="tb-recherche"
+                    data-testid="recherche-texte"
+                    value={rechercheTexte}
+                    onChange={(e) => setRechercheTexte(e.target.value)}
+                    placeholder="ex. 611 ou BANDABARI"
+                  />
+                </div>
+                <div className="ml-auto text-xs text-(--muted-foreground)">
+                  <span data-testid="compteur-affichees">
+                    {lignesFiltrees.length}
+                  </span>{' '}
+                  ligne(s) affichée(s) sur{' '}
+                  <span data-testid="compteur-total">
+                    {ecarts.lignes.length}
+                  </span>
+                </div>
+              </div>
 
-          <EcartsTable lignes={lignesFiltrees} />
+              <EcartsTable lignes={lignesFiltrees} />
+            </>
+          )}
         </>
       )}
     </div>
