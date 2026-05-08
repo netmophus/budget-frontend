@@ -1,0 +1,106 @@
+# CI Frontend MIZNAS — Lot 6.1
+#
+# Bloque les PR sur main si :
+#   - les tests Vitest échouent
+#   - le build Vite échoue
+#   - tsc -b strict remonte des erreurs
+#   - ESLint remonte des erreurs
+#
+# NB : le job `typecheck` échouera tant que la dette héritée
+# (~67 erreurs réparties sur ~49 fichiers, principalement
+# `Cannot find namespace 'JSX'` en post-React-19 et 2 mocks de
+# tests obsolètes pour la nouvelle structure du type Version) n'est
+# pas nettoyée — c'est l'objectif du Lot 6.1 (révélation de la
+# dette pour la traiter au Lot 6.6).
+#
+# Tous les jobs réutilisent le `node_modules` mis en cache par
+# `setup`. Build / lint / test / typecheck tournent en parallèle.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Install + cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+  lint:
+    name: ESLint
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    name: tsc -b strict (--noEmit)
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Volontairement sans `continue-on-error` : on veut que le job
+    # bloque les PR jusqu'à apurement de la dette JSX namespace.
+    # Cf. docs/ci-cd.md §Dette typecheck.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b --noEmit
+
+  build:
+    name: vite build
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # `npm run build` du package.json contient déjà `tsc -b && vite
+      # build` — donc ce job duplique en partie typecheck. On garde
+      # les 2 pour avoir un signal séparé : "le code compile en strict"
+      # vs "le bundle est produit". Si vite-build seul est voulu :
+      # `npx vite build`.
+      - run: npx vite build
+
+  test:
+    name: Vitest
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
