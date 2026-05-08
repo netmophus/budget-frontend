@@ -67,12 +67,23 @@ export const NATURE_LABEL: Record<NatureCompte, string> = {
   BILAN: 'Bilan',
 };
 
+/**
+ * Sérialiseur axios « repeat » : un array `crIds: [14, 15]` devient
+ * `crIds=14&crIds=15` au lieu du format par défaut `crIds[]=14&crIds[]=15`.
+ *
+ * Why : le DTO backend `FiltresEcartsDto` attend `crIds` (sans crochets).
+ * Avec `whitelist + forbidNonWhitelisted` dans le ValidationPipe,
+ * `crIds[]` est rejeté comme propriété inconnue → 400. Bug détecté au
+ * smoke test Lot 5.2 (Aïcha VALIDATEUR).
+ */
+const PARAMS_SERIALIZER = { indexes: null } as const;
+
 export async function analyserEcarts(
   filtres: FiltresEcarts,
 ): Promise<EcartsResponse> {
   const { data } = await apiClient.get<EcartsResponse>(
     '/tableau-de-bord/budget-vs-realise',
-    { params: filtres },
+    { params: filtres, paramsSerializer: PARAMS_SERIALIZER },
   );
   return data;
 }
@@ -85,6 +96,7 @@ export async function exporterEcartsExcel(
     '/tableau-de-bord/budget-vs-realise/export',
     {
       params: filtres,
+      paramsSerializer: PARAMS_SERIALIZER,
       responseType: 'blob',
     },
   );
