@@ -14,6 +14,7 @@ import {
   type NiveauAlerte,
   NIVEAU_LABEL,
 } from '@/lib/api/tableau-bord';
+import { formaterMois } from '@/lib/format/mois';
 
 interface Props {
   lignes: LigneEcart[];
@@ -182,7 +183,7 @@ export function EcartsTable({ lignes }: Props): JSX.Element {
               </span>
             </td>
             <td className="p-2">{l.codeLigneMetier}</td>
-            <td className="p-2 whitespace-nowrap">{l.libelleMois}</td>
+            <td className="p-2 whitespace-nowrap">{formaterMois(l.mois)}</td>
             <td className="p-2 text-right tabular-nums">
               {formatMontant(l.montantBudget)}
             </td>

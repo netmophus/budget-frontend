@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api/client';
+import { formaterMois } from '@/lib/format/mois';
 import { resolveFkTemps as resolveFkTempsUtil } from '@/lib/realise/resolve-fk-temps';
 import {
   type FaitRealise,
@@ -211,7 +212,7 @@ export function RealiseSaisiePage(): JSX.Element {
             const mois = it.date.slice(0, 7);
             c[it.id] = {
               mois,
-              libelleAffiche: `${it.libelleMois} ${it.annee}`,
+              libelleAffiche: formaterMois(mois),
             };
           }
           setTemps(c);
@@ -578,6 +579,7 @@ export function RealiseSaisiePage(): JSX.Element {
           clearSelection();
         }}
         lignesSelectionnees={lignesSelectionnees}
+        comptes={comptes}
       />
       {historiqueId && (
         <HistoriqueLigneRealiseDialog
