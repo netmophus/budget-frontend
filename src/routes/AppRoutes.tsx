@@ -90,6 +90,12 @@ const RealiseSaisiePage = lazy(() =>
     default: m.RealiseSaisiePage,
   })),
 );
+// Lazy-loaded — Lot 5.2 : tableau de bord budget vs réalisé.
+const TableauBordBudgetVsRealisePage = lazy(() =>
+  import('@/pages/TableauBordBudgetVsRealisePage').then((m) => ({
+    default: m.TableauBordBudgetVsRealisePage,
+  })),
+);
 
 // Lazy-loaded — Lot 4.3 : notifications email.
 const AdminEmailLogPage = lazy(() =>
@@ -323,6 +329,17 @@ export function AppRoutes() {
             <PermissionRoute permission="REALISE.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <RealiseSaisiePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 5.2 — tableau de bord budget vs réalisé */}
+        <Route
+          path="/tableau-de-bord/budget-vs-realise"
+          element={
+            <PermissionRoute permission="REALISE.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <TableauBordBudgetVsRealisePage />
               </Suspense>
             </PermissionRoute>
           }

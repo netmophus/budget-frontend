@@ -149,11 +149,18 @@ const NAV_BUDGET: NavItem[] = [
 ];
 
 // Lot 5.1 — module Réalisé (saisie + import)
+// Lot 5.2 — tableau de bord budget vs réalisé
 const NAV_EXECUTION: NavItem[] = [
   {
     to: '/realise/saisie',
     label: 'Saisie réalisé',
     icon: ClipboardCheck,
+    permission: 'REALISE.LIRE',
+  },
+  {
+    to: '/tableau-de-bord/budget-vs-realise',
+    label: 'Tableau de bord',
+    icon: BarChart3,
     permission: 'REALISE.LIRE',
   },
 ];
