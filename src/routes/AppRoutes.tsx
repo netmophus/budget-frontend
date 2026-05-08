@@ -96,6 +96,17 @@ const TableauBordBudgetVsRealisePage = lazy(() =>
     default: m.TableauBordBudgetVsRealisePage,
   })),
 );
+// Lazy-loaded — Lot 5.3 : reforecast trimestriel.
+const ReforecastListePage = lazy(() =>
+  import('@/pages/ReforecastListePage').then((m) => ({
+    default: m.ReforecastListePage,
+  })),
+);
+const ReforecastDetailPage = lazy(() =>
+  import('@/pages/ReforecastDetailPage').then((m) => ({
+    default: m.ReforecastDetailPage,
+  })),
+);
 
 // Lazy-loaded — Lot 4.3 : notifications email.
 const AdminEmailLogPage = lazy(() =>
@@ -340,6 +351,27 @@ export function AppRoutes() {
             <PermissionRoute permission="REALISE.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <TableauBordBudgetVsRealisePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 5.3 — reforecast trimestriel */}
+        <Route
+          path="/reforecast"
+          element={
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ReforecastListePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/reforecast/:id"
+          element={
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ReforecastDetailPage />
               </Suspense>
             </PermissionRoute>
           }

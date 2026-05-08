@@ -20,6 +20,7 @@ import {
   PieChart,
   ClipboardCheck,
   Mail,
+  RefreshCcw,
   ScrollText,
   Send,
   Settings,
@@ -162,6 +163,13 @@ const NAV_EXECUTION: NavItem[] = [
     label: 'Tableau de bord',
     icon: BarChart3,
     permission: 'REALISE.LIRE',
+  },
+  // Lot 5.3 — reforecast trimestriel
+  {
+    to: '/reforecast',
+    label: 'Reforecasts',
+    icon: RefreshCcw,
+    permission: 'BUDGET.LIRE',
   },
 ];
 
