@@ -4,6 +4,76 @@ Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Lot 6.4 — Sécurisation des mots de passe (mai 2026)
+
+#### Ajouté
+
+- Page `/change-mdp` (route `ForceChangePasswordPage`, hors
+  `AuthLayout` — plein écran bloquant) : formulaire 3 champs
+  (ancien/nouveau/confirmation) avec validation zod policy-conforme
+  (≥ 12 + 1 maj + 1 min + 1 chiffre + 1 spécial + ancien ≠ nouveau
+  + confirmation match). Raison contextuelle ("temporaire" si
+  doitChangerMdp ou "expiré" si mdpExpire).
+- `ProtectedRoute` étendu : redirige vers `/change-mdp` si
+  `doitChangerMdp || mdpExpire` ET pathname ≠ `/change-mdp`.
+- `auth-store.ts` (Zustand persist) : flags `mdpExpire` +
+  `doitChangerMdp` hydratés depuis le login (partialize), méthode
+  `changerMdp(ancien, nouveau)` qui appelle `PATCH /me/password` et
+  remplace les tokens sans flags. `useDoitChangerMdp()` hook.
+- `src/lib/api/auth.ts` : `changerMdp()` ajouté.
+- `src/lib/api/types.ts` : `LoginResponse` étendu avec `mdpExpire`
+  + `doitChangerMdp`. `ChangerMdpResponse` + `ResetPasswordAdminResponse`.
+- Smoke Playwright `06-force-change-password.spec.ts` (SMOKE.6) :
+  admin force le flag via `POST /admin/users/:id/forcer-changement-mdp`
+  → user redirigé `/change-mdp` au login → submit form → `/dashboard`,
+  cleanup `PATCH /me/password` en `afterAll` pour restaurer le mdp
+  original d'`auditeur`.
+- Test Vitest régression `redirect-pattern.test.tsx` : rend
+  `LoginPage` et `ForceChangePasswordPage` dans un `MemoryRouter`
+  RÉEL (sans mock react-router-dom) + spy `console.error` →
+  assert qu'aucun warning React `Cannot update a component while
+  rendering` n'est émis. Empêche tout futur palier de réintroduire
+  `navigate()` dans le render.
+
+#### Modifié
+
+- `ResetPasswordDialog` (Lot Administration) : suppression de
+  l'affichage du mdp en clair + bouton « Copier ». Remplacés par
+  un toast + Card de confirmation « Email envoyé à `<email>` »
+  (cohérent breaking change DTO backend `ResetPasswordResponseDto =
+  { success, message }`).
+- `LoginPage` : pattern `<Navigate to=... replace />` déclaratif
+  au lieu de `navigate()` impératif dans le render. Fix d'une dette
+  latente préexistante (warning React `setState during render`)
+  rendue critique par la double-redirection
+  `/login → /dashboard → /change-mdp` du palier C.2.
+- `ForceChangePasswordPage` : pattern `<Navigate />` déclaratif
+  pour la garde anti-arrivée intempestive (idem fix).
+
+#### Tests Vitest
+
+- `ForceChangePasswordPage.test.tsx` : 10 tests (rendu, motifs
+  contextuels mdpExpire vs doitChangerMdp, validation policy
+  ≥ 12 / complexité / confirmation / ancien ≠ nouveau, succès,
+  erreur API, garde anti-arrivée intempestive avec assertion
+  déclarative sur le DOM).
+- `ResetPasswordDialog.test.tsx` adapté : 3 tests (rendu sans mdp
+  visible, succès avec toast Email envoyé, erreur API).
+
+#### Décisions
+
+- **Pattern `<Navigate />` plutôt que `useEffect + navigate()`** :
+  navigate impératif dans le render produit le warning React
+  `Cannot update a component while rendering` qui peut interrompre
+  le mount du composant cible en concurrent rendering. `useEffect`
+  masque le warning mais reste post-render et peut lui aussi être
+  reverted. `<Navigate />` est déclaratif, géré par BrowserRouter
+  dans la commit phase — pattern canonique React Router v7.
+- **`BandeauMdpExpire` reporté Lot 6.7** (UX résiduel) — alerte UI
+  proactive quand le mdp expire dans X jours, non critique pour MVP.
+
+---
+
 ### Lot 6.2.B — Smoke tests Playwright (mai 2026)
 
 #### Ajouté
