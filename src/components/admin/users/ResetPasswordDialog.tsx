@@ -1,9 +1,15 @@
 /**
- * ResetPasswordDialog (Lot Administration ADMIN.A) — confirmation +
- * affichage UNIQUE du mot de passe temporaire généré côté serveur.
+ * ResetPasswordDialog (Lot Administration ADMIN.A) — confirmation
+ * du reset password admin.
+ *
+ * Lot 6.4.C — refactor : la réponse API ne retourne PLUS le mdp en
+ * clair (le mdp est envoyé par email à l'utilisateur via la queue
+ * BullMQ Lot 6.3 + reset-password-admin.hbs). Le dialog affiche
+ * désormais juste un toast + message de confirmation, et se ferme
+ * après le reset.
  */
 import { AxiosError } from 'axios';
-import { Copy } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -39,17 +45,17 @@ export function ResetPasswordDialog({
   isOpen,
   onClose,
   user,
-}: ResetPasswordDialogProps): JSX.Element {
-  const [mdpGenere, setMdpGenere] = useState<string | null>(null);
+}: ResetPasswordDialogProps) {
+  const [emailEnvoye, setEmailEnvoye] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleConfirmer(): Promise<void> {
     if (!user) return;
     setSubmitting(true);
     try {
-      const r = await resetPasswordUser(user.id);
-      setMdpGenere(r.motDePasseTemporaire);
-      toast.success('Mot de passe temporaire généré.');
+      await resetPasswordUser(user.id);
+      setEmailEnvoye(user.email);
+      toast.success(`Email de réinitialisation envoyé à ${user.email}.`);
     } catch (err) {
       toast.error(`Refusé : ${parseError(err)}`);
     } finally {
@@ -57,18 +63,8 @@ export function ResetPasswordDialog({
     }
   }
 
-  async function handleCopier(): Promise<void> {
-    if (!mdpGenere) return;
-    try {
-      await navigator.clipboard.writeText(mdpGenere);
-      toast.success('Mot de passe copié.');
-    } catch {
-      toast.error('Copie impossible (autorisations navigateur).');
-    }
-  }
-
   function handleClose(): void {
-    setMdpGenere(null);
+    setEmailEnvoye(null);
     onClose();
   }
 
@@ -80,18 +76,24 @@ export function ResetPasswordDialog({
           <DialogDescription>
             {user && (
               <>
-                Cible : <strong>{user.email}</strong>. Le user devra utiliser
-                ce nouveau mot de passe à sa prochaine connexion.
+                Cible : <strong>{user.email}</strong>. Un mot de passe
+                temporaire sera envoyé par email à l'utilisateur — il devra
+                le changer à sa prochaine connexion.
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {!mdpGenere ? (
+        {!emailEnvoye ? (
           <div className="space-y-3">
             <p className="text-sm">
               Cette action est irréversible et invalide le mot de passe
               actuel. L'ancien mot de passe ne sera plus utilisable.
+            </p>
+            <p className="text-xs text-(--muted-foreground)">
+              Lot 6.4.C — le mot de passe en clair n'est plus affiché à
+              l'admin : il est envoyé directement par email au destinataire
+              et expire dans 7 jours.
             </p>
             <DialogFooter>
               <Button variant="outline" onClick={handleClose} disabled={submitting}>
@@ -102,31 +104,25 @@ export function ResetPasswordDialog({
                 disabled={submitting}
                 data-testid="btn-confirmer-reset"
               >
-                {submitting ? 'Génération…' : 'Réinitialiser'}
+                {submitting ? 'Envoi…' : 'Réinitialiser et envoyer'}
               </Button>
             </DialogFooter>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm bg-amber-50 border-l-3 border-amber-300 p-3">
-              Communiquez ce mot de passe à l'utilisateur de manière
-              sécurisée. <strong>Il ne sera plus affiché.</strong>
-            </p>
-            <div
-              className="rounded-md border border-(--border) bg-(--muted)/50 px-3 py-2 font-mono text-base text-center break-all"
-              data-testid="mdp-genere"
-            >
-              {mdpGenere}
+          <div className="space-y-3" data-testid="reset-confirmation">
+            <div className="flex items-start gap-3 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm">
+              <Mail className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-emerald-900">
+                  Email envoyé à <strong>{emailEnvoye}</strong>
+                </p>
+                <p className="text-xs text-emerald-700 mt-1">
+                  L'utilisateur recevra un mot de passe temporaire et devra
+                  le remplacer dès sa prochaine connexion. Validité : 7 jours.
+                </p>
+              </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleCopier}
-                data-testid="btn-copier-mdp"
-              >
-                <Copy className="h-4 w-4" />
-                Copier
-              </Button>
               <Button onClick={handleClose}>Fermer</Button>
             </DialogFooter>
           </div>
