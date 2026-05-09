@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  ChangerMdpResponse,
   CurrentUserView,
   EffectivePermission,
   LoginResponse,
@@ -10,6 +11,22 @@ export async function login(email: string, motDePasse: string): Promise<LoginRes
   const { data } = await apiClient.post<LoginResponse>('/auth/login', {
     email,
     motDePasse,
+  });
+  return data;
+}
+
+/**
+ * Lot 6.4.C — change le mdp de l'utilisateur courant.
+ * Renvoie un nouveau couple access/refresh sans flags d'expiration —
+ * le frontend doit remplacer ses tokens et débloquer la navigation.
+ */
+export async function changerMdp(
+  ancienMdp: string,
+  nouveauMdp: string,
+): Promise<ChangerMdpResponse> {
+  const { data } = await apiClient.patch<ChangerMdpResponse>('/me/password', {
+    ancienMdp,
+    nouveauMdp,
   });
   return data;
 }
