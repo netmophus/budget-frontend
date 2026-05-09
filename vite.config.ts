@@ -24,5 +24,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Vitest ne doit pas charger les specs Playwright (Lot 6.2.B) :
+    // `test.describe` de @playwright/test entre en conflit avec
+    // l'API Vitest. Les Playwright tests sont lancés via leur propre
+    // runner (`npm run test:e2e:playwright`).
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/playwright/**'],
   },
 });
