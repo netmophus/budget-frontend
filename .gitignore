@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Playwright (Lot 6.2.B)
+/playwright-report/
+/test-results/
+/playwright/.cache/
+
 # dotenv environment variable files
 .env
 .env.development
