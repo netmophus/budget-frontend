@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -46,14 +46,23 @@ export function LoginPage() {
     defaultValues: { email: '', motDePasse: '' },
   });
 
+  // Lot 6.4.C.2 — pattern <Navigate /> déclaratif (vs `navigate()`
+  // impératif dans le render). Évite le warning React "Cannot
+  // update a component while rendering" qui peut interrompre la
+  // double redirection /login → /dashboard → /change-mdp en
+  // concurrent rendering pour un user avec `doitChangerMdp=true`.
   if (isAuth) {
-    const from = (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
-    navigate(from, { replace: true });
+    const from =
+      (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
+    return <Navigate to={from} replace />;
   }
 
   async function onSubmit(values: LoginFormValues) {
     try {
       await login(values.email, values.motDePasse);
+      // Lot 6.4.C.2 — si le user a doitChangerMdp ou mdpExpire,
+      // ProtectedRoute le redirigera vers /change-mdp dès qu'on
+      // navigue vers /dashboard. On laisse la logique au guard.
       const from = (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (e) {

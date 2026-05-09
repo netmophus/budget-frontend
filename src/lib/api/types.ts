@@ -10,12 +10,32 @@ export interface LoginResponse {
   refreshToken: string;
   expiresIn: number;
   user: AuthUser;
+  // Lot 6.4.A — flags d'état mot de passe. Si l'un des 2 est vrai,
+  // le frontend doit rediriger vers /change-mdp avant tout accès.
+  mdpExpire: boolean;
+  doitChangerMdp: boolean;
 }
 
 export interface RefreshResponse {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+}
+
+/** Lot 6.4.C — réponse PATCH /me/password : nouveaux tokens sans flags. */
+export interface ChangerMdpResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: AuthUser;
+  mdpExpire: false;
+  doitChangerMdp: false;
+}
+
+/** Lot 6.4.C — réponse refactorée POST /admin/users/:id/reset-password. */
+export interface ResetPasswordAdminResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface UserRoleSummary {

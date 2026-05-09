@@ -6,6 +6,7 @@ import { CalendrierPage } from '@/pages/CalendrierPage';
 import { CentresResponsabilitePage } from '@/pages/CentresResponsabilitePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DevisesPage } from '@/pages/DevisesPage';
+import { ForceChangePasswordPage } from '@/pages/ForceChangePasswordPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProfilePage } from '@/pages/ProfilePage';
@@ -136,6 +137,20 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Lot 6.4.C.2 — page bloquante de changement obligatoire de
+          mdp. Hors du AuthLayout (pas de sidebar, plein écran) car
+          l'utilisateur ne doit accéder à AUCUNE autre route tant que
+          son mdp est expiré ou temporaire. ProtectedRoute fait la
+          redirection vers /change-mdp depuis toute autre route. */}
+      <Route
+        path="/change-mdp"
+        element={
+          <ProtectedRoute>
+            <ForceChangePasswordPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         element={

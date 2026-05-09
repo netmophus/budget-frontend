@@ -16,6 +16,11 @@ interface AuthPersistedState {
   accessToken: string | null;
   refreshToken: string | null;
   user: AuthUser | null;
+  // Lot 6.4 — flags d'état mot de passe persistés pour que le guard
+  // React Router puisse rediriger vers /change-mdp même après un
+  // refresh complet de la page (sinon on perdrait l'info au reload).
+  mdpExpire: boolean;
+  doitChangerMdp: boolean;
 }
 
 interface AuthState extends AuthPersistedState {
@@ -23,6 +28,7 @@ interface AuthState extends AuthPersistedState {
   roles: string[];
   isLoading: boolean;
   login: (email: string, motDePasse: string) => Promise<void>;
+  changerMdp: (ancienMdp: string, nouveauMdp: string) => Promise<void>;
   logout: () => Promise<void>;
   loadCurrentUser: () => Promise<void>;
   setTokens: (access: string, refresh: string) => void;
@@ -35,6 +41,8 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       user: null,
+      mdpExpire: false,
+      doitChangerMdp: false,
       permissions: [],
       roles: [],
       isLoading: false,
@@ -47,6 +55,8 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           refreshToken: null,
           user: null,
+          mdpExpire: false,
+          doitChangerMdp: false,
           permissions: [],
           roles: [],
         }),
@@ -54,15 +64,48 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, motDePasse) => {
         set({ isLoading: true });
         try {
-          const { accessToken, refreshToken, user } = await authApi.login(
-            email,
-            motDePasse,
-          );
-          set({ accessToken, refreshToken, user });
-          await get().loadCurrentUser();
+          const {
+            accessToken,
+            refreshToken,
+            user,
+            mdpExpire,
+            doitChangerMdp,
+          } = await authApi.login(email, motDePasse);
+          set({
+            accessToken,
+            refreshToken,
+            user,
+            mdpExpire,
+            doitChangerMdp,
+          });
+          // Si le user doit changer son mdp, on ne charge PAS les
+          // permissions (le backend va répondre 403 sur
+          // /users/me/permissions tant que mdp expiré ou temporaire).
+          if (!mdpExpire && !doitChangerMdp) {
+            await get().loadCurrentUser();
+          }
         } finally {
           set({ isLoading: false });
         }
+      },
+
+      /**
+       * Lot 6.4.C — PATCH /me/password : reçoit de nouveaux tokens
+       * SANS flags, remplace ceux du store et débloque la navigation.
+       */
+      changerMdp: async (ancienMdp, nouveauMdp) => {
+        const { accessToken, refreshToken, user } = await authApi.changerMdp(
+          ancienMdp,
+          nouveauMdp,
+        );
+        set({
+          accessToken,
+          refreshToken,
+          user,
+          mdpExpire: false,
+          doitChangerMdp: false,
+        });
+        await get().loadCurrentUser();
       },
 
       logout: async () => {
@@ -92,6 +135,8 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
+        mdpExpire: state.mdpExpire,
+        doitChangerMdp: state.doitChangerMdp,
       }),
     },
   ),
@@ -106,4 +151,13 @@ bindAuthClient({
 
 export function useIsAuthenticated(): boolean {
   return useAuthStore((s) => Boolean(s.accessToken && s.user));
+}
+
+/**
+ * Lot 6.4 — vrai si le user doit changer son mdp avant tout autre
+ * accès (mdp expiré OU reset admin forcé). Utilisé par le guard
+ * React Router pour forcer la redirection vers /change-mdp.
+ */
+export function useDoitChangerMdp(): boolean {
+  return useAuthStore((s) => s.mdpExpire || s.doitChangerMdp);
 }

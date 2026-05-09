@@ -70,8 +70,14 @@ export interface UserRoleResume {
   dateCreation: string;
 }
 
+/**
+ * Lot 6.4.C — breaking change : `motDePasseTemporaire` n'est plus
+ * retourné par l'API. Le mdp temporaire est généré côté backend,
+ * envoyé par email à l'utilisateur (queue BullMQ Lot 6.3) et
+ * jamais exposé en clair côté frontend.
+ */
 export interface ResetPasswordResponse {
-  motDePasseTemporaire: string;
+  success: boolean;
   message: string;
 }
 
