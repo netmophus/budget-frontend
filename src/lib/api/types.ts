@@ -38,6 +38,25 @@ export interface ResetPasswordAdminResponse {
   message: string;
 }
 
+/**
+ * Lot 6.5.A — réponse uniforme POST /auth/forgot-password.
+ * Identique pour email connu/inconnu (anti-énumération).
+ */
+export interface ForgotPasswordResponse {
+  success: true;
+  message: string;
+}
+
+/**
+ * Lot 6.5.A — réponse POST /auth/reset-password.
+ * Le user devra se reconnecter normalement après (pas de tokens
+ * JWT auto-émis).
+ */
+export interface ResetPasswordResponse {
+  success: true;
+  message: string;
+}
+
 export interface UserRoleSummary {
   code: string;
   libelle: string;
