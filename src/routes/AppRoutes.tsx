@@ -7,9 +7,11 @@ import { CentresResponsabilitePage } from '@/pages/CentresResponsabilitePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DevisesPage } from '@/pages/DevisesPage';
 import { ForceChangePasswordPage } from '@/pages/ForceChangePasswordPage';
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { StructuresPage } from '@/pages/StructuresPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { useIsAuthenticated } from '@/lib/auth/auth-store';
@@ -137,6 +139,13 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Lot 6.5.A — flux forgot password self-service. Routes publiques
+          (sans ProtectedRoute) car l'utilisateur n'est pas authentifié
+          quand il lance le flow. Le backend rate-limite l'endpoint
+          /auth/forgot-password à 3/15min/IP. */}
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Lot 6.4.C.2 — page bloquante de changement obligatoire de
           mdp. Hors du AuthLayout (pas de sidebar, plein écran) car
