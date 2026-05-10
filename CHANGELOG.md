@@ -4,6 +4,59 @@ Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Lot 6.5 — Notifications résiduelles — frontend (mai 2026)
+
+#### Ajouté
+
+**Forgot password self-service (Lot 6.5.A)**
+- Page `/forgot-password` (`ForgotPasswordPage`) : form 1 champ email
+  + bandeau confirmation anti-énumération (message identique
+  qu'email connu ou inconnu côté backend).
+- Page `/reset-password?token=XYZ` (`ResetPasswordPage`) : form
+  2 champs (nouveau + confirmation) avec validation zod policy
+  (≥ 12 + 1 maj + 1 min + 1 chiffre + 1 spécial), lit token via
+  `useSearchParams`, redirige `/login` au succès, toast spécifique
+  sur EXPIRED_TOKEN ("Le lien a expiré") vs INVALID_TOKEN ("Lien
+  invalide ou déjà utilisé").
+- Lien "Mot de passe oublié ?" sur `LoginPage`
+  (`testid="login-lien-forgot-password"`).
+- Routes `/forgot-password` et `/reset-password` (publiques, hors
+  `ProtectedRoute` — l'utilisateur n'est pas authentifié quand il
+  lance le flow).
+- API client : `forgotPassword(email)` + `resetPassword(token,
+  nouveauMdp)` dans `lib/api/auth.ts` ; types
+  `ForgotPasswordResponse` + `ResetPasswordResponse` dans
+  `lib/api/types.ts`.
+
+#### Tests Vitest
+
+- `ForgotPasswordPage.test.tsx` : 4 tests (rendu, validation API
+  non appelée pour email invalide, succès avec confirmation, erreur
+  API).
+- `ResetPasswordPage.test.tsx` : 8 tests (sans token / avec token,
+  validation policy ≥ 12 + complexité, confirmation, succès +
+  navigate /login, erreur EXPIRED_TOKEN avec toast spécifique,
+  erreur INVALID_TOKEN avec toast spécifique).
+
+#### Tests Playwright
+
+- `07-forgot-password.spec.ts` (SMOKE.7) : login → click "Mot de
+  passe oublié ?" → /forgot-password → fill email aléatoire →
+  submit → bandeau de confirmation visible. Email aléatoire (pas
+  un persona) car la sortie est identique pour connu/inconnu.
+
+#### Décisions
+
+- **Pas de pre-check du token** au chargement de
+  `/reset-password?token=XYZ` (cohérence backend) — l'erreur
+  remonte au submit. Pattern UX standard (Google, GitHub).
+- **Pas d'auto-login après reset** — redirige vers `/login` avec
+  toast d'invitation à se reconnecter.
+- **`BandeauNotificationJ3` non livré** (notif J-3 délégation est
+  un email, pas une notif in-app). Reporté Lot 6.7 (UX résiduel).
+
+---
+
 ### Lot 6.4 — Sécurisation des mots de passe (mai 2026)
 
 #### Ajouté

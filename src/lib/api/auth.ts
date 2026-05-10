@@ -3,8 +3,10 @@ import type {
   ChangerMdpResponse,
   CurrentUserView,
   EffectivePermission,
+  ForgotPasswordResponse,
   LoginResponse,
   RefreshResponse,
+  ResetPasswordResponse,
 } from './types';
 
 export async function login(email: string, motDePasse: string): Promise<LoginResponse> {
@@ -49,5 +51,35 @@ export async function getMe(): Promise<CurrentUserView> {
 
 export async function getMyPermissions(): Promise<EffectivePermission[]> {
   const { data } = await apiClient.get<EffectivePermission[]>('/users/me/permissions');
+  return data;
+}
+
+/**
+ * Lot 6.5.A — Demande un lien de réinitialisation de mot de passe.
+ * Réponse identique pour email connu/inconnu (anti-énumération).
+ */
+export async function forgotPassword(
+  email: string,
+): Promise<ForgotPasswordResponse> {
+  const { data } = await apiClient.post<ForgotPasswordResponse>(
+    '/auth/forgot-password',
+    { email },
+  );
+  return data;
+}
+
+/**
+ * Lot 6.5.A — Valide un token reçu par email + applique un nouveau
+ * mdp. Le user doit se reconnecter normalement après (pas de
+ * tokens JWT auto-émis).
+ */
+export async function resetPassword(
+  token: string,
+  nouveauMdp: string,
+): Promise<ResetPasswordResponse> {
+  const { data } = await apiClient.post<ResetPasswordResponse>(
+    '/auth/reset-password',
+    { token, nouveauMdp },
+  );
   return data;
 }

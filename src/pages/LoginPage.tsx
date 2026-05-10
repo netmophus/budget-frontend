@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -118,6 +118,13 @@ export function LoginPage() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Connexion...' : 'Se connecter'}
               </Button>
+              <Link
+                to="/forgot-password"
+                data-testid="login-lien-forgot-password"
+                className="text-sm text-(--muted-foreground) hover:underline"
+              >
+                Mot de passe oublié&nbsp;?
+              </Link>
               <p className="text-xs text-(--muted-foreground)">
                 MIZNAS — Module Budgétaire Bancaire UEMOA — v0.1
               </p>
