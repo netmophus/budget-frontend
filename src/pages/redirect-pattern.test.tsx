@@ -64,8 +64,8 @@ describe('Redirection pattern (no navigate() in render)', () => {
 
   function getRenderWarnings(): string[] {
     return consoleErrorSpy.mock.calls
-      .map((args) => args.map(String).join(' '))
-      .filter((m) => /Cannot update a component .* while rendering/.test(m));
+      .map((args: unknown[]) => args.map(String).join(' '))
+      .filter((m: string) => /Cannot update a component .* while rendering/.test(m));
   }
 
   it('LoginPage avec isAuth=true ne déclenche pas le warning React `Cannot update`', () => {
