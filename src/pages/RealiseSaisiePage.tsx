@@ -138,10 +138,12 @@ export function RealiseSaisiePage(): JSX.Element {
       .catch(() =>
         toast.error('Impossible de charger les référentiels (CR/devises).'),
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pattern mount-only fetch : init CR/devises une seule fois au montage
   }, []);
 
   useEffect(() => {
     void fetchGrille();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchGrille est une fonction inline qui depend deja de crId/moisDebut/moisFin
   }, [crId, moisDebut, moisFin]);
 
   // Charge les caches dim_* à partir des ids présents dans la grille.
@@ -219,6 +221,7 @@ export function RealiseSaisiePage(): JSX.Element {
         })
         .catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pattern intentionnel : refetch caches dim_* quand `lignes` change, sans declencher si caches eux-memes changent (sinon boucle)
   }, [lignes]);
 
   async function resolveFkTemps(mois: string): Promise<string | null> {

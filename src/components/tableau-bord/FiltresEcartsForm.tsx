@@ -77,6 +77,7 @@ export function FiltresEcartsForm({
       .catch(() =>
         toast.error('Impossible de charger les référentiels du formulaire.'),
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pattern mount-only fetch : init versions/scenarios une seule fois au montage
   }, []);
 
   const erreurs = useMemo(() => {
