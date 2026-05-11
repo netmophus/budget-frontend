@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shadcn/ui pattern : re-exports Radix primitives + composants forwardRef dans un seul fichier */
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import * as React from 'react';
 import { cn } from '@/lib/utils';

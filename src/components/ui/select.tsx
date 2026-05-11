@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shadcn/ui pattern : re-exports Radix primitives + composants forwardRef dans un seul fichier */
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 import * as React from 'react';
