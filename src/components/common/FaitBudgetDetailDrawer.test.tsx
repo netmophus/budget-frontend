@@ -98,7 +98,7 @@ describe('FaitBudgetDetailDrawer', () => {
       // Le drawer est rendu en portail → on doit chercher dans
       // document.body, pas seulement dans `container`.
       const text = document.body.textContent ?? '';
-      expect(text).toMatch(/655[\s  .]957/); // 655 957 FCFA
+      expect(text).toMatch(/655\s957/); // 655 957 FCFA
       expect(text).toMatch(/655,957000/); // taux à 6 décimales
     });
     expect(container).toBeTruthy();

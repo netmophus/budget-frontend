@@ -41,7 +41,7 @@ const FORMATTER_TIE_AFFICHAGE = new Intl.NumberFormat('fr-FR', {
 function parseMontantFr(input: string): number | null {
   const cleaned = input
     .trim()
-    .replace(/\s| /g, '') // espaces (incl. insécable)
+    .replace(/\s/g, '') // espaces (incl. insécable)
     .replace(',', '.');
   if (cleaned === '' || cleaned === '-') return null;
   const n = Number(cleaned);

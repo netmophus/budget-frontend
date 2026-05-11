@@ -29,6 +29,17 @@ export default defineConfig([
       //    -> Suspense + use() ou react-query (data-layer)
       // exhaustive-deps reste actif (vrais bugs deps React).
       'react-hooks/set-state-in-effect': 'off',
+      // Lot 6.6 : convention _var pour parametres/vars intentionnellement
+      // non utilises (signature interface, callback partiel). Coherent
+      // avec backend (eslint.config.mjs).
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
 ])

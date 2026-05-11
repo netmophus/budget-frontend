@@ -37,7 +37,6 @@ vi.mock('@/lib/auth/permissions', () => ({
 
 import {
   getGrilleSaisie,
-  saveGrilleSaisie,
   type GrilleSaisie,
 } from '@/lib/api/budget-grille';
 import { listScenarios } from '@/lib/api/scenarios';
@@ -48,7 +47,6 @@ import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { SaisieBudgetairePage } from './SaisieBudgetairePage';
 
 const mockGetGrille = getGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
-const mockSaveGrille = saveGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
 const mockListVersions = listVersions as unknown as ReturnType<typeof vi.fn>;
 const mockListScenarios = listScenarios as unknown as ReturnType<typeof vi.fn>;
 const mockListCrs = listCrs as unknown as ReturnType<typeof vi.fn>;

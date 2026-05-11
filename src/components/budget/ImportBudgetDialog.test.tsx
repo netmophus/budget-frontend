@@ -95,7 +95,7 @@ function buildAxiosError(status: number, message: string): AxiosError {
   });
 }
 
-function makeFile(name: string, size = 1024): File {
+function makeFile(name: string): File {
   return new File(['content'], name, { type: 'text/csv' });
 }
 
