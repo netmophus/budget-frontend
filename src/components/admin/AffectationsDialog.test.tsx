@@ -283,16 +283,6 @@ describe('AffectationsDialog', () => {
   // ─── Lot Administration ADMIN.D — fix réel ─────────────────────
 
   describe('ADMIN.D fix réel — refresh + bouton désactivé', () => {
-    function selectionnerCr(): void {
-      // Sélectionne cible_type = 'CR' + un CR pour passer la
-      // validation et activer le bouton "Ajouter".
-      fireEvent.click(screen.getByTestId('select-cible-type'));
-      // Pour les Selects radix on ne peut pas simuler facilement —
-      // donc ce helper change juste le DOM via les test ids fournis
-      // par AffectationsDialog. On bypass par useState dans le
-      // composant via un click direct sur SelectItem si dispo.
-    }
-
     it('dette 2 — la zone "Affectations actuelles" se rafraîchit immédiatement après création', async () => {
       // Liste initiale : 1 affectation
       mockListerPerimetres.mockResolvedValueOnce([

@@ -91,7 +91,7 @@ export function EcartsTable({ lignes }: Props): JSX.Element {
         typeof va === 'number' ? va : va === null ? -Infinity : Number.NaN;
       const bn =
         typeof vb === 'number' ? vb : vb === null ? -Infinity : Number.NaN;
-      let cmp = 0;
+      let cmp: number;
       if (Number.isFinite(an) && Number.isFinite(bn)) {
         cmp = an - bn;
       } else {

@@ -8,7 +8,6 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   Coins,
   Grid2x2,
   Layers,

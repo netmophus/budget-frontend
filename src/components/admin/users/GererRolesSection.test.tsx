@@ -24,16 +24,11 @@ vi.mock('@/lib/api/users', async () => {
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { listRoles } from '@/lib/api/roles';
-import {
-  attribuerRoleUser,
-  listerRolesUser,
-  retirerRoleUser,
-} from '@/lib/api/users';
+import { listerRolesUser, retirerRoleUser } from '@/lib/api/users';
 import { GererRolesSection } from './GererRolesSection';
 
 const mockListRoles = listRoles as unknown as ReturnType<typeof vi.fn>;
 const mockListUserRoles = listerRolesUser as unknown as ReturnType<typeof vi.fn>;
-const mockAttribuer = attribuerRoleUser as unknown as ReturnType<typeof vi.fn>;
 const mockRetirer = retirerRoleUser as unknown as ReturnType<typeof vi.fn>;
 
 describe('GererRolesSection', () => {

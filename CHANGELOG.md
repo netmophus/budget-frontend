@@ -4,6 +4,91 @@ Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Lot 6.6 — Nettoyage codebase — frontend (mai 2026)
+
+Objectif : atteindre 0 problems ESLint + 0 erreurs tsc strict
+frontend pour activer ces checks en Required CI.
+
+Documentation complète : voir `docs/lot-6/6.6-nettoyage-codebase.md`
+côté backend (le Lot 6.6 est traité de manière cross-repo).
+
+#### Métriques
+
+- ESLint frontend : **96 → 0 problems** (−100 %)
+- tsc strict frontend : **63 → 0 erreurs**
+- `npm run build` (`tsc -b && vite build`) : VERT (cassé sur main
+  avant le lot, 5 TS préexistantes)
+- Vitest : **561 verts** (inchangé)
+
+#### Ajouté
+
+- Shim JSX global `src/types/jsx.d.ts` qui ré-expose `JSX` comme
+  alias de `React.JSX`. React 19 a déprécié le namespace global
+  JSX ; le code existant utilise extensively `JSX.Element` comme
+  type de retour des composants (pattern React 18) dans 59
+  occurrences. Solution non invasive : 1 fichier ajouté, 0 modif
+  du code existant.
+- Configuration ESLint `no-unused-vars` avec `argsIgnorePattern: '^_'` /
+  `varsIgnorePattern: '^_'` (convention `_var`, cohérent backend).
+
+#### Refactor
+
+- Sync mock `Version` dans `VersionsPage.test.tsx` avec les 10
+  champs workflow Lot 3.5 (`commentaireSoumission`,
+  `commentaireValidation`, `commentaireRejet`,
+  `commentairePublication`, `dateSoumission`, etc.).
+- Types explicites `args: unknown[]` + `m: string` sur callbacks
+  dans `redirect-pattern.test.tsx`.
+- Retrait de variables/imports inutilisés (`ClipboardList`,
+  `mockAttribuer`, `mockSaveGrille`, `attribuerRoleUser`,
+  `saveGrilleSaisie`, `selectionnerCr`, paramètre `size` dans
+  `makeFile`).
+- 2 regex `irregular whitespace` simplifiés en `/\s/g` (la classe
+  ECMAScript `\s` inclut déjà U+00A0 nbsp).
+- `let cmp = 0` remplacé par `let cmp: number` dans `EcartsTable.tsx`
+  (les 2 branches if/else affectent immédiatement,
+  initialisation à 0 inutile).
+
+#### Désactivations globales avec rationale
+
+- `react-hooks/set-state-in-effect` désactivée projet-wide. Règle
+  React 19 v5+ qui détecte les cascading renders (performance
+  suboptimale, pas bug fonctionnel). 68 occurrences sur Dialog,
+  Combobox, Drawer idiomatiques React 18. Refactor data-layer
+  (Suspense + `use()` ou react-query) tracé pour Lot 7+
+  modernisation UI. `react-hooks/exhaustive-deps` reste actif
+  (vrais bugs deps React).
+
+#### Désactivations locales avec rationale
+
+- Pattern shadcn/ui : variants + composants forwardRef
+  co-exportés dans `components/ui/{button,dialog,dropdown-menu,select}.tsx`.
+  Disable `react-refresh/only-export-components` file-level.
+- 6 `useEffect` avec patterns intentionnels (mount-only fetch,
+  refresh closure, caches refetch ciblé) : disable
+  `react-hooks/exhaustive-deps` ligne par ligne avec rationale.
+- `@tanstack/react-table` non React Compiler compatible
+  (`DataTable.tsx`) : disable `react-hooks/incompatible-library`
+  avec dette tracée Lot 7+.
+
+#### Dette tracée pour Lot 7+
+
+- Refactor Pattern 1 hydratation (~30 cas) : `useEffect(() => setX(props.X), [props])`
+  → `<Component key={props.id} />` + `useState(() => initFromProps)`
+- Refactor Pattern 2 fetch+loading (~35 cas) :
+  `useEffect(() => { setLoading(true); fetch(...) }, [])` →
+  Suspense + `use(promise)` ou react-query
+- Migration `JSX.Element` → `React.ReactElement` (59 occurrences,
+  shim global à retirer)
+- Optimisation chunks > 500 kB (warning vite build,
+  code-splitting + lazy routes)
+
+#### Action post-merge
+
+Activer en branch protection main frontend :
+- Required check : `ESLint frontend`
+- Required check : `tsc strict frontend`
+
 ### Lot 6.5 — Notifications résiduelles — frontend (mai 2026)
 
 #### Ajouté

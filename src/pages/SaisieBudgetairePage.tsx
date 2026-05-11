@@ -103,6 +103,7 @@ export function SaisieBudgetairePage() {
         // les boutons workflow.
         setVersionComplete(null);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pattern intentionnel : ne refetch version que quand id/statut change, pas sur grille entiere
   }, [grille?.version.id, grille?.version.statut]);
 
   async function handleSauvegarder() {

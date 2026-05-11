@@ -55,6 +55,7 @@ export function GererRolesSection({
 
   useEffect(() => {
     refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh est une fonction locale stable definie inline (pas useCallback) ; pattern intentionnel "refetch quand userId change"
   }, [userId]);
 
   function refresh(): void {

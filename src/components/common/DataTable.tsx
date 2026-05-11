@@ -37,6 +37,7 @@ export function DataTable<T>({
   onPageChange,
   onRowClick,
 }: DataTableProps<T>) {
+  // eslint-disable-next-line react-hooks/incompatible-library -- @tanstack/react-table v8 retourne des fonctions non memoizable safe ; refactor au Lot 7+ si bascule React Compiler
   const table = useReactTable({
     data,
     columns,
