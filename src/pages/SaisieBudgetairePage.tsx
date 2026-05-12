@@ -14,7 +14,7 @@
  *  - permission BUDGET.SAISIR absente.
  */
 import { AxiosError } from 'axios';
-import { ChartBar, FileUp, Lock, RotateCcw, Save } from 'lucide-react';
+import { ChartBar, FileUp, Info, Lock, RotateCcw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -179,6 +179,27 @@ export function SaisieBudgetairePage() {
         }
       />
       <BandeauDelegations />
+
+      {/* Lot 6.7.3 — bandeau informatif quand la version éditée est un
+          reforecast (typeVersion='reforecast'). Permet à l'utilisateur
+          qui arrive depuis ReforecastDetailPage de savoir où il est. */}
+      {versionComplete?.typeVersion === 'reforecast' && (
+        <div
+          className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900"
+          role="status"
+          data-testid="bandeau-saisie-reforecast"
+        >
+          <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Vous éditez un{' '}
+            <strong>
+              reforecast T{versionComplete.trimestreConsolide ?? '?'}{' '}
+              {versionComplete.anneeConsolide ?? '?'}
+            </strong>
+            . Les modifications sont sauvegardées en place.
+          </span>
+        </div>
+      )}
 
       {grille && (
         <div className="mb-3 flex flex-wrap items-center gap-3">

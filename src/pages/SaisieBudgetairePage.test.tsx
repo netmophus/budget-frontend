@@ -12,7 +12,9 @@ vi.mock('@/lib/api/scenarios', () => ({
 vi.mock('@/lib/api/versions', () => ({
   listVersions: vi.fn(),
   // Lot 3.5 — SaisieBudgetairePage charge la version complète pour
-  // afficher WorkflowActions. Le test n'a pas besoin du résultat.
+  // afficher WorkflowActions. Le test n'a pas besoin du résultat
+  // par défaut, mais Lot 6.7.3 permet de mocker explicitement
+  // (pour tester le bandeau reforecast).
   getVersionById: vi.fn().mockRejectedValue(new Error('mock')),
 }));
 vi.mock('@/lib/api/referentiels', () => ({
@@ -40,7 +42,7 @@ import {
   type GrilleSaisie,
 } from '@/lib/api/budget-grille';
 import { listScenarios } from '@/lib/api/scenarios';
-import { listVersions } from '@/lib/api/versions';
+import { listVersions, getVersionById } from '@/lib/api/versions';
 import { listCrs, listLignesMetier } from '@/lib/api/referentiels';
 import { useHasPermission } from '@/lib/auth/permissions';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
@@ -48,6 +50,7 @@ import { SaisieBudgetairePage } from './SaisieBudgetairePage';
 
 const mockGetGrille = getGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
 const mockListVersions = listVersions as unknown as ReturnType<typeof vi.fn>;
+const mockGetVersionById = getVersionById as unknown as ReturnType<typeof vi.fn>;
 const mockListScenarios = listScenarios as unknown as ReturnType<typeof vi.fn>;
 const mockListCrs = listCrs as unknown as ReturnType<typeof vi.fn>;
 const mockListLignesMetier = listLignesMetier as unknown as ReturnType<typeof vi.fn>;
@@ -366,5 +369,41 @@ describe('SaisieBudgetairePage', () => {
       name: /Annuler les modifs/i,
     }) as HTMLButtonElement;
     expect(annulerBtn.disabled).toBe(true);
+  });
+
+  // ─── Lot 6.7.3 — bandeau contextuel reforecast ──────────────────
+
+  it('bandeau reforecast visible si versionComplete.typeVersion = reforecast', async () => {
+    configureMocks();
+    mockGetVersionById.mockResolvedValue({
+      ...VERSION_OUVERT,
+      typeVersion: 'reforecast',
+      trimestreConsolide: 2,
+      anneeConsolide: 2027,
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('bandeau-saisie-reforecast'),
+      ).toBeInTheDocument(),
+    );
+    const bandeau = screen.getByTestId('bandeau-saisie-reforecast');
+    expect(bandeau).toHaveTextContent('reforecast T2 2027');
+    expect(bandeau).toHaveTextContent(
+      'Les modifications sont sauvegardées en place',
+    );
+  });
+
+  it("bandeau reforecast caché si versionComplete.typeVersion = budget_initial", async () => {
+    configureMocks();
+    mockGetVersionById.mockResolvedValue({
+      ...VERSION_OUVERT,
+      typeVersion: 'budget_initial',
+    });
+    renderPage();
+    await waitFor(() => screen.getByText('611100'));
+    expect(
+      screen.queryByTestId('bandeau-saisie-reforecast'),
+    ).not.toBeInTheDocument();
   });
 });

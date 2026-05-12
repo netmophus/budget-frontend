@@ -1,12 +1,8 @@
 /**
  * Tests Vitest ReforecastGrille (Lot 5.3.B).
  */
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -125,11 +121,15 @@ describe('ReforecastGrille', () => {
     ).toBeInTheDocument();
   });
 
-  it('en mode Brouillon + ACTIVE : affiche le bouton "Éditer dans la saisie budgétaire"', async () => {
+  it('en mode Brouillon + ACTIVE : affiche le bouton "Éditer ce reforecast"', async () => {
     mockGetCmp.mockResolvedValue(COMPARAISON_OK);
     renderG(makeRf({ statut: 'ouvert', statutPublication: 'ACTIVE' }));
     await waitFor(() =>
       expect(screen.getByTestId('rf-grille-edit-link')).toBeInTheDocument(),
+    );
+    // Lot 6.7.3 — texte du bouton renommé pour découvrabilité
+    expect(screen.getByTestId('rf-grille-edit-link')).toHaveTextContent(
+      'Éditer ce reforecast',
     );
     // Pas de bandeau lecture-seule
     expect(screen.queryByTestId('rf-grille-readonly')).not.toBeInTheDocument();

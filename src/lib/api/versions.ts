@@ -5,7 +5,10 @@ export type TypeVersion =
   | 'budget_initial'
   | 'reforecast_1'
   | 'reforecast_2'
-  | 'atterrissage';
+  | 'atterrissage'
+  // Lot 5.3 — reforecast trimestriel publication-écrasement. Aligné
+  // sur le backend DimVersion (Lot 6.7.3 frontend).
+  | 'reforecast';
 
 export type StatutVersion = 'ouvert' | 'soumis' | 'valide' | 'gele';
 
@@ -36,6 +39,16 @@ export interface Version {
   utilisateurValidation: string | null;
   dateRejet: string | null;
   utilisateurRejet: string | null;
+  // Lot 5.3 — champs reforecast trimestriel. Renseignés UNIQUEMENT
+  // pour les versions `typeVersion === 'reforecast'`. NULL sinon.
+  trimestreConsolide?: number | null;
+  anneeConsolide?: number | null;
+  methodeExtrapolation?:
+    | 'MOYENNE_TRIMESTRE'
+    | 'BUDGET_INITIAL'
+    | 'MANUELLE'
+    | null;
+  statutPublication?: 'ACTIVE' | 'OBSOLETE';
 }
 
 /** Vocabulaire UI : libellé d'affichage par statut DB. */

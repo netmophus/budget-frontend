@@ -14,6 +14,11 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   type ComparaisonResponse,
   type LigneComparaison,
   type Reforecast,
@@ -172,13 +177,22 @@ export function ReforecastGrille({ reforecast }: Props): JSX.Element {
       )}
       {editable && (
         <div className="flex justify-end">
-          <Link
-            to={`/budget/saisie?versionId=${reforecast.id}&scenarioId=${reforecast.fkScenarioSource}`}
-          >
-            <Button variant="outline" data-testid="rf-grille-edit-link">
-              Éditer dans la saisie budgétaire
-            </Button>
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                to={`/budget/saisie?versionId=${reforecast.id}&scenarioId=${reforecast.fkScenarioSource}`}
+              >
+                <Button variant="outline" data-testid="rf-grille-edit-link">
+                  Éditer ce reforecast
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              La saisie reforecast utilise la même grille que le budget.
+              Vous serez redirigé vers la page de saisie filtrée sur ce
+              reforecast.
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
 
