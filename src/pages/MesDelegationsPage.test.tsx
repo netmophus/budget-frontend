@@ -1,13 +1,8 @@
 /**
  * Tests Vitest MesDelegationsPage (Lot 4.2.C).
  */
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/api/delegations', () => ({
@@ -18,6 +13,13 @@ vi.mock('@/lib/api/delegations', () => ({
     SOUMISSION: 'Soumission',
     VALIDATION: 'Validation',
     PUBLICATION: 'Publication',
+  },
+  // Lot 6.7.2 — tooltips descriptifs.
+  PERMISSION_DELEGABLE_DESCRIPTIONS: {
+    SAISIE: 'desc-saisie',
+    SOUMISSION: 'desc-soumission',
+    VALIDATION: 'desc-validation',
+    PUBLICATION: 'desc-publication',
   },
   STATUT_LABELS: {
     ACTIVE: 'Active',
@@ -155,6 +157,18 @@ describe('MesDelegationsPage', () => {
     await waitFor(() => screen.getByTestId('empty-state'));
     expect(screen.getByTestId('empty-state')).toHaveTextContent(
       'Aucune délégation reçue.',
+    );
+  });
+
+  // ─── Lot 6.7.2 — tooltips descriptifs sur permissions (Z1) ──────
+
+  it('Z1 : trigger tooltip présent sur permission délégation reçue', async () => {
+    render(<MesDelegationsPage />);
+    await waitFor(() => screen.getByTestId('delegation-5'));
+    // Onglet "reçues" par défaut, délégation id=5 avec permissions=['VALIDATION']
+    expect(screen.getByTestId('perm-5-VALIDATION')).toBeInTheDocument();
+    expect(screen.getByTestId('perm-5-VALIDATION')).toHaveTextContent(
+      'Validation',
     );
   });
 });

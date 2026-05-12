@@ -30,9 +30,15 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { UserAutocomplete } from '@/components/common/UserAutocomplete';
 import {
   creerDelegation,
+  PERMISSION_DELEGABLE_DESCRIPTIONS,
   PERMISSION_DELEGABLE_LABELS,
   type PermissionDelegable,
 } from '@/lib/api/delegations';
@@ -262,7 +268,19 @@ export function CreerDelegationDialog({
                       checked={permissions.includes(p)}
                       onChange={() => togglePermission(p)}
                     />
-                    <span>{PERMISSION_DELEGABLE_LABELS[p]}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="underline decoration-dotted underline-offset-2"
+                          data-testid={`permission-label-${p}`}
+                        >
+                          {PERMISSION_DELEGABLE_LABELS[p]}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {PERMISSION_DELEGABLE_DESCRIPTIONS[p]}
+                      </TooltipContent>
+                    </Tooltip>
                   </label>
                 ))}
               </div>

@@ -69,6 +69,9 @@ export function ForceChangePasswordPage() {
   const navigate = useNavigate();
   const mdpExpire = useAuthStore((s) => s.mdpExpire);
   const doitChangerMdp = useAuthStore((s) => s.doitChangerMdp);
+  const mdpExpireProchainement = useAuthStore(
+    (s) => s.mdpExpireProchainement,
+  );
   const changerMdp = useAuthStore((s) => s.changerMdp);
   const userEmail = useAuthStore((s) => s.user?.email ?? '');
 
@@ -87,13 +90,22 @@ export function ForceChangePasswordPage() {
   // warning React "Cannot update a component while rendering"
   // qui interrompt la transition /login → /dashboard → /change-mdp
   // pour le user avec doitChangerMdp=true.
-  if (!mdpExpire && !doitChangerMdp) {
+  // Lot 6.7.1 — accepte aussi le cas J-7 (mdpExpireProchainement) :
+  // changement volontaire recommandé mais non bloquant.
+  if (!mdpExpire && !doitChangerMdp && !mdpExpireProchainement) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Lot 6.7.1 — cas J-7 pur : changement volontaire (pas de Guard
+  // backend, pas de redirection forcée). On expose un bouton
+  // "Plus tard" pour permettre de différer.
+  const casJ7Pur = mdpExpireProchainement && !mdpExpire && !doitChangerMdp;
+
   const raison = doitChangerMdp
     ? 'Mot de passe temporaire — vous devez le remplacer pour accéder à MIZNAS.'
-    : 'Votre mot de passe a expiré — vous devez le renouveler pour continuer.';
+    : mdpExpire
+      ? 'Votre mot de passe a expiré — vous devez le renouveler pour continuer.'
+      : 'Votre mot de passe expire dans moins de 7 jours — renouvelez-le dès maintenant.';
 
   async function onSubmit(values: FormValues) {
     try {
@@ -188,9 +200,25 @@ export function ForceChangePasswordPage() {
               >
                 {isSubmitting ? 'Modification…' : 'Changer mon mot de passe'}
               </Button>
+              {/* Lot 6.7.1 — bouton "Plus tard" exposé UNIQUEMENT en
+                  cas J-7 pur (avertissement non bloquant). En mdpExpire
+                  ou doitChangerMdp, le bouton reste caché pour éviter
+                  tout contournement du PasswordExpiredGuard backend. */}
+              {casJ7Pur && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate('/dashboard')}
+                  data-testid="cm-plus-tard"
+                >
+                  Plus tard
+                </Button>
+              )}
               <p className="text-xs text-(--muted-foreground) text-center">
-                Cette page est obligatoire — toute autre action sera refusée
-                tant que votre mot de passe n'est pas renouvelé.
+                {casJ7Pur
+                  ? 'Changement recommandé. Vous pouvez aussi le différer — un bandeau d\'alerte reste visible tant que votre mot de passe n\'est pas renouvelé.'
+                  : 'Cette page est obligatoire — toute autre action sera refusée tant que votre mot de passe n\'est pas renouvelé.'}
               </p>
             </CardFooter>
           </form>

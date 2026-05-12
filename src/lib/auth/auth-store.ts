@@ -21,6 +21,9 @@ interface AuthPersistedState {
   // refresh complet de la page (sinon on perdrait l'info au reload).
   mdpExpire: boolean;
   doitChangerMdp: boolean;
+  // Lot 6.7.1 — bandeau d'avertissement J-7, persisté pour que le
+  // BandeauMdpExpire reste visible après un refresh de page.
+  mdpExpireProchainement: boolean;
 }
 
 interface AuthState extends AuthPersistedState {
@@ -43,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       mdpExpire: false,
       doitChangerMdp: false,
+      mdpExpireProchainement: false,
       permissions: [],
       roles: [],
       isLoading: false,
@@ -57,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           mdpExpire: false,
           doitChangerMdp: false,
+          mdpExpireProchainement: false,
           permissions: [],
           roles: [],
         }),
@@ -70,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
             user,
             mdpExpire,
             doitChangerMdp,
+            mdpExpireProchainement,
           } = await authApi.login(email, motDePasse);
           set({
             accessToken,
@@ -77,10 +83,14 @@ export const useAuthStore = create<AuthState>()(
             user,
             mdpExpire,
             doitChangerMdp,
+            mdpExpireProchainement,
           });
           // Si le user doit changer son mdp, on ne charge PAS les
           // permissions (le backend va répondre 403 sur
           // /users/me/permissions tant que mdp expiré ou temporaire).
+          // Lot 6.7.1 — mdpExpireProchainement seul ne bloque PAS :
+          // l'utilisateur peut continuer à naviguer normalement,
+          // le bandeau l'avertira sans contraindre.
           if (!mdpExpire && !doitChangerMdp) {
             await get().loadCurrentUser();
           }
@@ -104,6 +114,7 @@ export const useAuthStore = create<AuthState>()(
           user,
           mdpExpire: false,
           doitChangerMdp: false,
+          mdpExpireProchainement: false,
         });
         await get().loadCurrentUser();
       },
@@ -137,6 +148,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         mdpExpire: state.mdpExpire,
         doitChangerMdp: state.doitChangerMdp,
+        mdpExpireProchainement: state.mdpExpireProchainement,
       }),
     },
   ),
@@ -160,4 +172,14 @@ export function useIsAuthenticated(): boolean {
  */
 export function useDoitChangerMdp(): boolean {
   return useAuthStore((s) => s.mdpExpire || s.doitChangerMdp);
+}
+
+/**
+ * Lot 6.7.1 — vrai si le mdp expire dans la fenêtre J-7 (calcul
+ * backend `dateExpirationMdp ∈ ]now, now+7j[`). Mutuellement
+ * exclusif avec mdpExpire. Utilisé par le <BandeauMdpExpire />
+ * pour avertir l'utilisateur sans bloquer son accès.
+ */
+export function useMdpExpireProchainement(): boolean {
+  return useAuthStore((s) => s.mdpExpireProchainement);
 }

@@ -4,7 +4,7 @@
  * L'admin peut révoquer n'importe quelle délégation active.
  */
 import { ShieldOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { RevoquerDelegationDialog } from '@/components/admin/RevoquerDelegationDialog';
@@ -18,9 +18,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   type Delegation,
   type DelegationStatut,
   listerToutesDelegations,
+  PERMISSION_DELEGABLE_DESCRIPTIONS,
   PERMISSION_DELEGABLE_LABELS,
   STATUT_LABELS,
 } from '@/lib/api/delegations';
@@ -136,9 +142,24 @@ export function AdminDelegationsPage(): JSX.Element {
               <div>
                 Permissions :{' '}
                 <span className="text-(--foreground)">
-                  {d.permissions
-                    .map((p) => PERMISSION_DELEGABLE_LABELS[p])
-                    .join(', ')}
+                  {d.permissions.map((p, i) => (
+                    <Fragment key={p}>
+                      {i > 0 && ', '}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="cursor-help underline decoration-dotted underline-offset-2"
+                            data-testid={`admin-perm-${d.id}-${p}`}
+                          >
+                            {PERMISSION_DELEGABLE_LABELS[p]}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {PERMISSION_DELEGABLE_DESCRIPTIONS[p]}
+                        </TooltipContent>
+                      </Tooltip>
+                    </Fragment>
+                  ))}
                 </span>
               </div>
               <div>

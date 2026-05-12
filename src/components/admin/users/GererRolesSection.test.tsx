@@ -1,13 +1,9 @@
 /**
  * Tests Vitest GererRolesSection (Lot Administration ADMIN.B).
  */
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { render } from '@/test/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/api/roles', () => ({ listRoles: vi.fn() }));
@@ -78,5 +74,77 @@ describe('GererRolesSection', () => {
     fireEvent.click(screen.getByTestId('btn-retirer-SAISISSEUR'));
     await waitFor(() => expect(mockRetirer).toHaveBeenCalledWith('5', '2'));
     confirmSpy.mockRestore();
+  });
+
+  // ─── Lot 6.7.2 — tooltips descriptifs (Z2) ──────────────────────
+
+  it('Z2 : tooltip rendu au hover si description du rôle présente', async () => {
+    mockListRoles.mockResolvedValue([
+      {
+        id: '2',
+        codeRole: 'SAISISSEUR',
+        libelle: 'Saisisseur de budget',
+        estActif: true,
+        description: 'Saisit les lignes budgétaires de son périmètre.',
+      },
+    ]);
+    mockListUserRoles.mockResolvedValue([
+      {
+        id: '50',
+        fkRole: '2',
+        codeRole: 'SAISISSEUR',
+        libelle: 'Saisisseur de budget',
+        estActif: true,
+        dateCreation: '2026-01-01',
+      },
+    ]);
+    render(<GererRolesSection userId="5" userEmail="a@m.io" />);
+    await waitFor(() => screen.getByTestId('badge-role-SAISISSEUR'));
+    await userEvent.hover(screen.getByTestId('badge-role-SAISISSEUR'));
+    expect(
+      await screen.findByTestId('tooltip-role-SAISISSEUR'),
+    ).toBeInTheDocument();
+  });
+
+  it('Z2 : pas de tooltip si description null (fallback rôle legacy)', async () => {
+    // Mock par défaut : tous les rôles sans `description` (cas legacy).
+    // Le badge doit être rendu normalement, sans wrapper Tooltip.
+    render(<GererRolesSection userId="5" userEmail="a@m.io" />);
+    await waitFor(() => screen.getByTestId('badge-role-SAISISSEUR'));
+    await userEvent.hover(screen.getByTestId('badge-role-SAISISSEUR'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(
+      screen.queryByTestId('tooltip-role-SAISISSEUR'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Z2 : contenu tooltip = libellé + description', async () => {
+    mockListRoles.mockResolvedValue([
+      {
+        id: '2',
+        codeRole: 'SAISISSEUR',
+        libelle: 'Saisisseur de budget',
+        estActif: true,
+        description: 'Saisit les lignes budgétaires de son périmètre.',
+      },
+    ]);
+    mockListUserRoles.mockResolvedValue([
+      {
+        id: '50',
+        fkRole: '2',
+        codeRole: 'SAISISSEUR',
+        libelle: 'Saisisseur de budget',
+        estActif: true,
+        dateCreation: '2026-01-01',
+      },
+    ]);
+    render(<GererRolesSection userId="5" userEmail="a@m.io" />);
+    await waitFor(() => screen.getByTestId('badge-role-SAISISSEUR'));
+    await userEvent.hover(screen.getByTestId('badge-role-SAISISSEUR'));
+    const tooltip = await screen.findByTestId('tooltip-role-SAISISSEUR');
+    expect(tooltip).toHaveTextContent('Saisisseur de budget');
+    expect(tooltip).toHaveTextContent(
+      'Saisit les lignes budgétaires de son périmètre.',
+    );
   });
 });

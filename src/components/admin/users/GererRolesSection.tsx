@@ -8,7 +8,7 @@
  */
 import { AxiosError } from 'axios';
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { listRoles } from '@/lib/api/roles';
 import type { RoleResponse } from '@/lib/api/types';
 import {
@@ -50,6 +55,12 @@ export function GererRolesSection({
 }: GererRolesSectionProps): JSX.Element {
   const [rolesActifs, setRolesActifs] = useState<UserRoleResume[]>([]);
   const [rolesDisponibles, setRolesDisponibles] = useState<RoleResponse[]>([]);
+  // Lot 6.7.2 — map fkRole → description pour les tooltips. La
+  // description vient de `listRoles()` (RoleResponse) car
+  // `listerRolesUser` (UserRoleResume) ne l'expose pas.
+  const [descriptions, setDescriptions] = useState<
+    Map<string, string | null>
+  >(new Map());
   const [selection, setSelection] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,6 +75,7 @@ export function GererRolesSection({
         setRolesActifs(actifs);
         const idsActifs = new Set(actifs.map((a) => a.fkRole));
         setRolesDisponibles(all.filter((r) => r.estActif && !idsActifs.has(r.id)));
+        setDescriptions(new Map(all.map((r) => [r.id, r.description])));
       })
       .catch(() => toast.error('Impossible de charger les rôles.'));
   }
@@ -108,25 +120,48 @@ export function GererRolesSection({
             Aucun rôle (le user ne pourra pas se connecter utilement).
           </span>
         )}
-        {rolesActifs.map((r) => (
-          <span
-            key={r.id}
-            className="inline-flex items-center gap-1 rounded-full bg-(--accent)/40 px-2 py-1 text-xs"
-            data-testid={`badge-role-${r.codeRole}`}
-          >
-            <span className="font-medium">{r.codeRole}</span>
-            <span className="text-(--muted-foreground)">— {r.libelle}</span>
-            <button
-              type="button"
-              onClick={() => handleRetirer(r)}
-              className="ml-1 hover:text-red-500"
-              aria-label={`Retirer ${r.codeRole}`}
-              data-testid={`btn-retirer-${r.codeRole}`}
+        {rolesActifs.map((r) => {
+          const description = descriptions.get(r.fkRole)?.trim() ?? '';
+          const hasDescription = description.length > 0;
+
+          const badge = (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-(--accent)/40 px-2 py-1 text-xs"
+              data-testid={`badge-role-${r.codeRole}`}
             >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
+              <span className="font-medium">{r.codeRole}</span>
+              <span className="text-(--muted-foreground)">— {r.libelle}</span>
+              <button
+                type="button"
+                onClick={() => handleRetirer(r)}
+                className="ml-1 hover:text-red-500"
+                aria-label={`Retirer ${r.codeRole}`}
+                data-testid={`btn-retirer-${r.codeRole}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          );
+
+          // Lot 6.7.2 — Fallback : pas de wrapper Tooltip si description
+          // null/vide (rôles legacy sans description) — évite un tooltip
+          // qui n'apporterait rien.
+          if (!hasDescription) {
+            return <Fragment key={r.id}>{badge}</Fragment>;
+          }
+
+          return (
+            <Tooltip key={r.id}>
+              <TooltipTrigger asChild>{badge}</TooltipTrigger>
+              <TooltipContent data-testid={`tooltip-role-${r.codeRole}`}>
+                <p className="font-medium">{r.libelle}</p>
+                <p className="mt-0.5 text-(--muted-foreground)">
+                  {description}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
 
       {rolesDisponibles.length > 0 && (
