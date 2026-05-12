@@ -1,13 +1,8 @@
 /**
  * Tests Vitest AdminDelegationsPage (Lot 4.2.C).
  */
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { render } from '@/test/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/api/delegations', () => ({
@@ -17,6 +12,13 @@ vi.mock('@/lib/api/delegations', () => ({
     SOUMISSION: 'Soumission',
     VALIDATION: 'Validation',
     PUBLICATION: 'Publication',
+  },
+  // Lot 6.7.2 — tooltips descriptifs.
+  PERMISSION_DELEGABLE_DESCRIPTIONS: {
+    SAISIE: 'desc-saisie',
+    SOUMISSION: 'desc-soumission',
+    VALIDATION: 'desc-validation',
+    PUBLICATION: 'desc-publication',
   },
   STATUT_LABELS: {
     ACTIVE: 'Active',
@@ -115,6 +117,20 @@ describe('AdminDelegationsPage', () => {
     await waitFor(() => screen.getByTestId('btn-admin-revoquer-1'));
     fireEvent.click(screen.getByTestId('btn-admin-revoquer-1'));
     expect(screen.getByTestId('revoq-dialog-stub')).toBeInTheDocument();
+  });
+
+  // ─── Lot 6.7.2 — tooltips descriptifs sur permissions (Z1) ──────
+
+  it('Z1 : trigger tooltip présent sur permission affichée', async () => {
+    mockToutes.mockResolvedValue([
+      makeDelegation({ id: '7', permissions: ['SAISIE'] }),
+    ]);
+    render(<AdminDelegationsPage />);
+    await waitFor(() => screen.getByTestId('admin-delegation-7'));
+    expect(screen.getByTestId('admin-perm-7-SAISIE')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-perm-7-SAISIE')).toHaveTextContent(
+      'Saisie',
+    );
   });
 
   it('affiche un état vide quand aucune délégation', async () => {

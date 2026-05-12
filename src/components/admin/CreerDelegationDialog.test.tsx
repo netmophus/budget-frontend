@@ -1,13 +1,9 @@
 /**
  * Tests Vitest CreerDelegationDialog (Lot 4.2.C).
  */
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { render } from '@/test/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/api/delegations', () => ({
@@ -17,6 +13,13 @@ vi.mock('@/lib/api/delegations', () => ({
     SOUMISSION: 'Soumission',
     VALIDATION: 'Validation',
     PUBLICATION: 'Publication',
+  },
+  // Lot 6.7.2 — tooltips descriptifs.
+  PERMISSION_DELEGABLE_DESCRIPTIONS: {
+    SAISIE: 'desc-saisie',
+    SOUMISSION: 'desc-soumission',
+    VALIDATION: 'desc-validation',
+    PUBLICATION: 'desc-publication',
   },
 }));
 
@@ -224,5 +227,49 @@ describe('CreerDelegationDialog', () => {
     expect(mockListUsers).not.toHaveBeenCalled();
     // Mais les périmètres natifs sont toujours chargés.
     expect(mockPerimetres).toHaveBeenCalled();
+  });
+
+  // ─── Lot 6.7.2 — tooltips descriptifs sur permissions (Z1) ──────
+
+  it('Z1 : trigger tooltip présent sur chaque permission délégable', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('permission-label-SAISIE')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('permission-label-SOUMISSION')).toBeInTheDocument();
+    expect(screen.getByTestId('permission-label-VALIDATION')).toBeInTheDocument();
+    expect(screen.getByTestId('permission-label-PUBLICATION')).toBeInTheDocument();
+  });
+
+  it('Z1 : tooltip contenu apparait au hover (smoke test PUBLICATION)', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('permission-label-PUBLICATION'),
+      ).toBeInTheDocument(),
+    );
+    await userEvent.hover(
+      screen.getByTestId('permission-label-PUBLICATION'),
+    );
+    // Le contenu du Tooltip arrive après l'open Radix (delayDuration=0
+    // côté test, cf. test-utils). On vérifie qu'au moins un noeud
+    // contient le texte mocké de description PUBLICATION.
+    await waitFor(() => {
+      expect(screen.getAllByText('desc-publication').length).toBeGreaterThan(0);
+    });
   });
 });

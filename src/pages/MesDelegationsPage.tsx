@@ -8,7 +8,7 @@
  * Bouton ligne "Révoquer" → RevoquerDelegationDialog.
  */
 import { Plus, ShieldOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CreerDelegationDialog } from '@/components/admin/CreerDelegationDialog';
@@ -16,9 +16,15 @@ import { RevoquerDelegationDialog } from '@/components/admin/RevoquerDelegationD
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   type Delegation,
   listerDelegationsEmises,
   listerDelegationsRecues,
+  PERMISSION_DELEGABLE_DESCRIPTIONS,
   PERMISSION_DELEGABLE_LABELS,
   STATUT_LABELS,
 } from '@/lib/api/delegations';
@@ -159,9 +165,24 @@ export function MesDelegationsPage(): JSX.Element {
               <div>
                 <span>Permissions : </span>
                 <span className="text-(--foreground)">
-                  {d.permissions
-                    .map((p) => PERMISSION_DELEGABLE_LABELS[p])
-                    .join(', ')}
+                  {d.permissions.map((p, i) => (
+                    <Fragment key={p}>
+                      {i > 0 && ', '}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="cursor-help underline decoration-dotted underline-offset-2"
+                            data-testid={`perm-${d.id}-${p}`}
+                          >
+                            {PERMISSION_DELEGABLE_LABELS[p]}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {PERMISSION_DELEGABLE_DESCRIPTIONS[p]}
+                        </TooltipContent>
+                      </Tooltip>
+                    </Fragment>
+                  ))}
                 </span>
               </div>
               <div>
