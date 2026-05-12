@@ -4,6 +4,108 @@ Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [Non publié]
 
+### Lot 6.7 — UX résiduel — frontend (mai 2026)
+
+Objectif : 3 améliorations UX avant recette finale Lot 6.8.
+Diagnostic préalable systématique (discipline acquise au Lot 6.6)
+a écarté une tâche basée sur hypothèse fausse (`structure_id`
+n'existe pas dans les entités) et a ramené une autre de 3-4h
+à 15 min (édition reforecast existe déjà via redirect).
+
+Documentation complète : voir `docs/lot-6/6.7-ux-residuel.md`
+côté backend (le Lot 6.7 est traité cross-repo).
+
+#### Métriques
+
+- ESLint frontend : **0 problems** (préservé)
+- tsc strict frontend : **0 erreurs** (préservé)
+- `npm run build` (`tsc -b && vite build`) : **VERT**
+- Vitest : **561 → 579 verts** (+18 tests cumulés sur 3 sous-lots)
+
+#### Ajouté
+
+- **Lot 6.7.1 — BandeauMdpExpire** : composant `<BandeauMdpExpire />`
+  affiché globalement dans `AuthLayout` quand
+  `mdpExpireProchainement === true` (calcul backend Lot 6.7.1).
+  Style orange (alerte modérée), lien « Changer maintenant » vers
+  `/change-mdp`. Persistance Zustand `mdpExpireProchainement` (résiste
+  au refresh). Hook `useMdpExpireProchainement()` exposé.
+- **Lot 6.7.1 — Extension `ForceChangePasswordPage` (Lot 6.4.C.2)** :
+  accepte le cas J-7 (`mdpExpireProchainement`) en plus de
+  `mdpExpire` / `doitChangerMdp`. Texte `raison` à 3 cas, bouton
+  **« Plus tard » VISIBLE uniquement en cas J-7 pur** (caché si
+  `mdpExpire` ou `doitChangerMdp` — sécurité : pas de
+  contournement du `PasswordExpiredGuard` backend), footer texte
+  adapté (« recommandé » vs « obligatoire »).
+- **Lot 6.7.2 — Tooltips délégation (Z1 + Z2)** :
+  - Install `shadcn/ui Tooltip` (`src/components/ui/tooltip.tsx`)
+    + dépendance `@radix-ui/react-tooltip`
+  - `<TooltipProvider delayDuration={200}>` racine dans `App.tsx`
+  - Helper test `src/test/test-utils.tsx` avec `delayDuration={0}`
+    pour tests déterministes
+  - Constante `PERMISSION_DELEGABLE_DESCRIPTIONS` (Z1) — 4
+    descriptions FR avec « Action irréversible » sur PUBLICATION,
+    consommée par `AdminDelegationsPage`, `MesDelegationsPage`,
+    `CreerDelegationDialog`
+  - `GererRolesSection` (Z2) enrichi par mapping `fkRole →
+    description` depuis `listRoles()`. Wrapping conditionnel : pas
+    de Tooltip si description null/vide (fallback rôle legacy).
+- **Lot 6.7.3 — Découvrabilité édition reforecast** :
+  - Bouton renommé `"Éditer ce reforecast"` (au lieu de « Éditer
+    dans la saisie budgétaire ») dans `ReforecastGrille`
+  - `<Tooltip>` explicatif au survol du bouton
+  - Bandeau bleu informatif sur `SaisieBudgetairePage` quand
+    `versionComplete?.typeVersion === 'reforecast'` : « Vous
+    éditez un reforecast T{trim} {annee}. Les modifications sont
+    sauvegardées en place. » (caché pour versions budget classiques)
+
+#### Refactor
+
+- **Mini-fix drift `TypeVersion`** (Lot 6.7.3) : étendu côté
+  frontend avec `'reforecast'` (le backend `DimVersion` l'a depuis
+  Lot 5.3 mais le frontend ne l'avait jamais aligné — bug
+  silencieux probable dans `VersionsPage` et `VersionFormDrawer`,
+  tracé pour Lot 7+). Interface `Version` enrichie de
+  `trimestreConsolide?`, `anneeConsolide?`,
+  `methodeExtrapolation?`, `statutPublication?`.
+- 3 mocks `vi.mock('@/lib/api/delegations')` (AdminDelegationsPage,
+  MesDelegationsPage, CreerDelegationDialog) synchronisés avec
+  `PERMISSION_DELEGABLE_DESCRIPTIONS`.
+- 1 mock `vi.mock('@/lib/auth/auth-store')` synchronisé avec
+  `useMdpExpireProchainement` (dans `AuthLayout.test.tsx`).
+
+#### Dépendances
+
+- **Production** : `@radix-ui/react-tooltip` (primitive Tooltip)
+- **Dev** : `@testing-library/user-event` (hover déclenche
+  correctement Radix Tooltip en JSDOM, `fireEvent.pointerEnter`
+  insuffisant)
+
+#### Tests
+
+- 18 tests Vitest régression cumulés :
+  - 9 sous Lot 6.7.1 (3 BandeauMdpExpire + 6 ForceChangePasswordPage)
+  - 7 sous Lot 6.7.2 (3 GererRolesSection Z2 + 4 Z1 répartis sur
+    AdminDelegationsPage / MesDelegationsPage / CreerDelegationDialog)
+  - 2 sous Lot 6.7.3 (bandeau reforecast visible / caché) + 1
+    test enrichi sur le renommage bouton
+
+#### Cleanup annexe
+
+- Lot 6.7.1 a retiré 1 `eslint-disable` inutile dans
+  `src/types/jsx.d.ts:17` (la règle `@typescript-eslint/no-namespace`
+  ne s'applique pas dans les fichiers `.d.ts` avec `declare global`).
+
+#### Dette tracée pour Lot 7+
+
+- Refactor `SaisiePanel` factorisé budget + reforecast (~3-4h) :
+  permet la vraie édition inline reforecast sans duplication.
+- Bug latent Origine REALISE/MANUEL mensongère après édition
+  manuelle dans reforecast (badge persiste à tort).
+- Investigation badges/libellés génériques pour les reforecasts
+  dans `VersionsPage` et `VersionFormDrawer` (potentiel bug drift
+  `TypeVersion`, corrigé en passant en Lot 6.7.3).
+
 ### Lot 6.6 — Nettoyage codebase — frontend (mai 2026)
 
 Objectif : atteindre 0 problems ESLint + 0 erreurs tsc strict
