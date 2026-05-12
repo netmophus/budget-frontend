@@ -14,7 +14,6 @@
 import 'react';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     type Element = React.JSX.Element;
     type ElementType = React.JSX.ElementType;

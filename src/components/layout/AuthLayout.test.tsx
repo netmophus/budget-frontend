@@ -25,6 +25,8 @@ vi.mock('@/lib/auth/auth-store', () => ({
     roles: ['ADMIN'],
     logout: vi.fn(),
   }),
+  // Lot 6.7.1 — AuthLayout rend <BandeauMdpExpire /> qui consomme ce hook.
+  useMdpExpireProchainement: () => false,
 }));
 
 import { AuthLayout } from './AuthLayout';

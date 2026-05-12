@@ -58,6 +58,7 @@ describe('ForceChangePasswordPage', () => {
     setStore({
       mdpExpire: false,
       doitChangerMdp: true,
+      mdpExpireProchainement: false,
       user: { id: '1', email: 'foo@bar.io', nom: 'X', prenom: 'Y' },
       changerMdp: vi.fn().mockResolvedValue(undefined),
     });
@@ -235,9 +236,79 @@ describe('ForceChangePasswordPage', () => {
     // router, sans passer par useNavigate() — donc `mockNavigate`
     // n'est plus invoqué. On asserte sur le DOM rendu : le
     // formulaire n'est PAS monté.
-    setStore({ mdpExpire: false, doitChangerMdp: false });
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: false,
+      mdpExpireProchainement: false,
+    });
     renderPage();
     expect(screen.queryByTestId('page-change-mdp')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cm-submit')).not.toBeInTheDocument();
+  });
+
+  // ─── Lot 6.7.1 — extension cas J-7 (mdpExpireProchainement) ──────
+
+  it('accès autorisé si mdpExpireProchainement=true (cas J-7 pur)', () => {
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: false,
+      mdpExpireProchainement: true,
+    });
+    renderPage();
+    expect(screen.getByTestId('page-change-mdp')).toBeInTheDocument();
+    expect(screen.getByTestId('cm-submit')).toBeInTheDocument();
+  });
+
+  it('affiche le motif "expire dans moins de 7 jours" en cas J-7 pur', () => {
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: false,
+      mdpExpireProchainement: true,
+    });
+    renderPage();
+    expect(screen.getByTestId('page-change-mdp')).toHaveTextContent(
+      /expire dans moins de 7 jours/i,
+    );
+  });
+
+  it('bouton "Plus tard" VISIBLE en cas J-7 pur', () => {
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: false,
+      mdpExpireProchainement: true,
+    });
+    renderPage();
+    expect(screen.getByTestId('cm-plus-tard')).toBeInTheDocument();
+  });
+
+  it('bouton "Plus tard" CACHÉ si mdpExpire=true (sécurité : pas de contournement)', () => {
+    setStore({
+      mdpExpire: true,
+      doitChangerMdp: false,
+      mdpExpireProchainement: false,
+    });
+    renderPage();
+    expect(screen.queryByTestId('cm-plus-tard')).not.toBeInTheDocument();
+  });
+
+  it('bouton "Plus tard" CACHÉ si doitChangerMdp=true (sécurité : pas de contournement)', () => {
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: true,
+      mdpExpireProchainement: false,
+    });
+    renderPage();
+    expect(screen.queryByTestId('cm-plus-tard')).not.toBeInTheDocument();
+  });
+
+  it('clic sur "Plus tard" → navigate vers /dashboard', () => {
+    setStore({
+      mdpExpire: false,
+      doitChangerMdp: false,
+      mdpExpireProchainement: true,
+    });
+    renderPage();
+    fireEvent.click(screen.getByTestId('cm-plus-tard'));
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
   });
 });

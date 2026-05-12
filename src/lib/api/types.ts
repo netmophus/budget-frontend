@@ -14,6 +14,9 @@ export interface LoginResponse {
   // le frontend doit rediriger vers /change-mdp avant tout accès.
   mdpExpire: boolean;
   doitChangerMdp: boolean;
+  // Lot 6.7.1 — bandeau d'avertissement J-7. Mutuellement exclusif
+  // avec mdpExpire (vrai uniquement si dateExpirationMdp ∈ ]now, now+7j[).
+  mdpExpireProchainement: boolean;
 }
 
 export interface RefreshResponse {
@@ -30,6 +33,9 @@ export interface ChangerMdpResponse {
   user: AuthUser;
   mdpExpire: false;
   doitChangerMdp: false;
+  // Lot 6.7.1 — toujours false après changement (date d'expiration
+  // renouvelée à mdpDureeValiditeJours, soit ~90j par défaut).
+  mdpExpireProchainement: false;
 }
 
 /** Lot 6.4.C — réponse refactorée POST /admin/users/:id/reset-password. */

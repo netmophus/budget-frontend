@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Toaster } from '@/components/ui/sonner';
+import { BandeauMdpExpire } from '@/components/auth/BandeauMdpExpire';
 import { BadgePerimetresHeader } from './BadgePerimetresHeader';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth/auth-store';
@@ -470,6 +471,9 @@ export function AuthLayout() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-(--secondary)/20 p-6">
+          {/* Lot 6.7.1 — bandeau d'avertissement mdp expirant J-7, global
+              à toutes les pages authentifiées. */}
+          <BandeauMdpExpire />
           <Outlet />
         </main>
       </div>
