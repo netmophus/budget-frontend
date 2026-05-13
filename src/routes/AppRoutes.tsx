@@ -368,11 +368,16 @@ export function AppRoutes() {
             </PermissionRoute>
           }
         />
-        {/* Lot 5.2 — tableau de bord budget vs réalisé */}
+        {/* Lot 5.2 — tableau de bord budget vs réalisé.
+            Aligné Lot 7.1 sur le backend tableau-bord.controller.ts
+            qui exige les 2 permissions (mode 'all'). */}
         <Route
           path="/tableau-de-bord/budget-vs-realise"
           element={
-            <PermissionRoute permission="REALISE.LIRE">
+            <PermissionRoute
+              permissions={['BUDGET.LIRE', 'REALISE.LIRE']}
+              mode="all"
+            >
               <Suspense fallback={<PageFallback />}>
                 <TableauBordBudgetVsRealisePage />
               </Suspense>

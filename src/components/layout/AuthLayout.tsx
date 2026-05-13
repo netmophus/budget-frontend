@@ -159,10 +159,14 @@ const NAV_EXECUTION: NavItem[] = [
     permission: 'REALISE.LIRE',
   },
   {
+    // Le groupe Exécution est déjà gardé par REALISE.LIRE (cf.
+    // NavGroup ligne 444). L'item exige en plus BUDGET.LIRE pour
+    // refléter le backend tableau-bord.controller.ts (Lot 5.2,
+    // double permission BUDGET.LIRE ∧ REALISE.LIRE).
     to: '/tableau-de-bord/budget-vs-realise',
     label: 'Tableau de bord',
     icon: BarChart3,
-    permission: 'REALISE.LIRE',
+    permission: 'BUDGET.LIRE',
   },
   // Lot 5.3 — reforecast trimestriel
   {
