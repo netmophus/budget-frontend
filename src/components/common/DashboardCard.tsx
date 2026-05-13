@@ -19,18 +19,25 @@ export function DashboardCard({
     <Link
       to={to}
       className={cn(
-        'block rounded-lg border border-(--border) bg-(--card) text-(--card-foreground) p-6 shadow-sm transition',
-        'hover:shadow-md hover:-translate-y-0.5 hover:border-(--primary)/40',
+        // Surface + bordure neutre + bordure gauche transparente au repos
+        'block rounded-md border border-(--border) bg-(--background) p-4',
+        'border-l-[3px] border-l-transparent',
+        // Hover signature charte v1 : border-left ambre + transition 150ms
+        // PAS de scale, PAS d'ombre portée, PAS de glow.
+        'hover:border-l-[#BA7517] transition-colors duration-150',
+        // Focus-ring accessibilité (shadcn standard, conservé)
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
       )}
     >
       <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-(--primary)/10 text-(--primary)">
-          <Icon className="h-5 w-5" />
-        </div>
+        <Icon className="h-6 w-6 shrink-0 text-[#0C447C]" />
         <div className="flex-1 space-y-1">
-          <h3 className="text-base font-semibold leading-tight">{title}</h3>
-          <p className="text-sm text-(--muted-foreground)">{description}</p>
+          <h3 className="text-sm font-medium leading-tight text-(--foreground)">
+            {title}
+          </h3>
+          <p className="text-xs leading-relaxed text-(--muted-foreground)">
+            {description}
+          </p>
         </div>
       </div>
     </Link>
