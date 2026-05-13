@@ -159,10 +159,14 @@ const NAV_EXECUTION: NavItem[] = [
     permission: 'REALISE.LIRE',
   },
   {
+    // Le groupe Exécution est déjà gardé par REALISE.LIRE (cf.
+    // NavGroup ligne 444). L'item exige en plus BUDGET.LIRE pour
+    // refléter le backend tableau-bord.controller.ts (Lot 5.2,
+    // double permission BUDGET.LIRE ∧ REALISE.LIRE).
     to: '/tableau-de-bord/budget-vs-realise',
     label: 'Tableau de bord',
     icon: BarChart3,
-    permission: 'REALISE.LIRE',
+    permission: 'BUDGET.LIRE',
   },
   // Lot 5.3 — reforecast trimestriel
   {
@@ -280,8 +284,26 @@ function NavGroup({
   state,
   onToggle,
 }: NavGroupProps): JSX.Element | null {
-  const visible = useHasPermission(permission ? [permission] : []);
-  if (!visible) return null;
+  const groupAllowed = useHasPermission(permission ? [permission] : []);
+
+  // Liste des permissions distinctes requises par les items.
+  const itemPermissions = items
+    .map((i) => i.permission)
+    .filter((p): p is string => Boolean(p));
+  // Au moins 1 item est visible si :
+  //  - certains items n'ont pas de permission requise (toujours rendus), ou
+  //  - le user possède au moins une des permissions des items.
+  const hasItemSansPermission = items.some((i) => !i.permission);
+  const anyItemPermAllowed = useHasPermission(itemPermissions, 'any');
+
+  // Garde optionnelle override : si la prop `permission` est posée et que
+  // le user ne l'a pas, le groupe entier est caché.
+  if (!groupAllowed) return null;
+  // Filtrage auto : si aucun item du groupe n'est visible (cas ex.
+  // SAISISSEUR sur le groupe ADMINISTRATION qui n'avait pas de prop
+  // `permission` mais dont aucun item n'est accessible), on cache aussi
+  // le label pour éviter d'afficher une section orpheline.
+  if (!hasItemSansPermission && !anyItemPermAllowed) return null;
 
   // Par défaut tout déployé. localStorage peut explicitement fermer.
   const ouvert = state[groupKey] !== false;

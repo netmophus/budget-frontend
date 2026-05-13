@@ -2,6 +2,68 @@
 
 Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [Lot 7.1] - 2026-05-13
+
+### Hygiène filtrage permission sidebar — fixes asymétrie + tests régression
+
+Premier sous-lot du Lot 7 (modernisation UI). Périmètre étroit
+de correction d'hygiène sur le filtrage permission existant,
+sans modification fonctionnelle pour les utilisateurs en place.
+
+#### Corrigé
+
+- **fix(sidebar)** — `NavGroup` se masque automatiquement si
+  tous ses items sont filtrés par permission. Corrige l'asymétrie
+  visible (anomalie 1 du diagnostic Lot 7.1) : le label
+  « ADMINISTRATION » apparaissait dans la sidebar pour les
+  rôles sans aucune permission d'admin (ex. SAISISSEUR sans
+  `USER.LIRE` / `USER.GERER` / `DELEGATION.GERER` / `AUDIT.LIRE`).
+  Refacto du composant `NavGroup` pour calculer la visibilité
+  agrégée des items via `useHasPermission` (`mode: 'any'`) +
+  gestion des items sans permission requise. Pattern robuste
+  élimine définitivement le risque sur tout `NavGroup` futur.
+  La prop `permission` existante reste optionnelle comme garde
+  override.
+- **fix(routes)** — route `/tableau-de-bord/budget-vs-realise`
+  alignée sur le backend `tableau-bord.controller.ts` Lot 5.2
+  qui exige `BUDGET.LIRE ∧ REALISE.LIRE` (anomalie 3 du
+  diagnostic Lot 7.1). `PermissionRoute permission="REALISE.LIRE"`
+  remplacé par `permissions={['BUDGET.LIRE','REALISE.LIRE']}
+  mode="all"`. Item sidebar correspondant aligné : la permission
+  exprimée par l'item devient `BUDGET.LIRE` (complément de
+  `REALISE.LIRE` déjà gardé au niveau du groupe Exécution).
+
+#### Tests
+
+- **test(sidebar)** — couverture du filtrage permission par
+  **5 personas** : ADMIN, SAISISSEUR, VALIDATEUR, AUDITEUR,
+  LECTEUR (anomalie 4 du diagnostic Lot 7.1). Le mock global
+  `useHasPermission: () => true` qui court-circuitait toute la
+  logique de filtrage a été supprimé — le test injecte
+  désormais les permissions du persona dans le vrai store
+  Zustand via `useAuthStore.setState`. Permissions de chaque
+  persona vérifiées contre les migrations sources backend
+  (`1779200000110`, `1779200000150`, `1779200000120`) et
+  `src/seeds/auth-seed.ts`. Discipline acquise au Lot 6.4
+  (`feedback_vitest_mocks_cachent_bugs_runtime`) appliquée.
+
+#### Métriques
+
+- Vitest frontend : **579 → 594 verts** (+15 tests régression
+  filtrage permission)
+- ESLint 0 problems, tsc -b strict 0 erreurs, vite build VERT
+  (Required CI préservé)
+
+#### Pas de modification fonctionnelle
+
+Le filtrage permission existait déjà depuis Lots 1-4 et
+fonctionnait correctement pour la majorité des cas. Ce lot
+corrige 2 anomalies d'asymétrie + comble un trou de couverture
+test, sans changer le comportement nominal pour les utilisateurs
+en place.
+
+---
+
 ## [v1.0.0-mvp] - 2026-05-13
 
 ### MVP MIZNAS — Frontend React 19
