@@ -2,7 +2,103 @@
 
 Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
-## [Non publié]
+## [v1.0.0-mvp] - 2026-05-13
+
+### MVP MIZNAS — Frontend React 19
+
+Tag de release MVP frontend, synchronisé avec backend
+v1.0.0-mvp. Le périmètre MVP du module Budgétaire Bancaire
+UEMOA est intégralement livré côté frontend (toutes pages
+Lots 1 → 6.7 fonctionnelles), prêt pour la recette manuelle en
+pré-prod chez la banque pilote BSIC.
+
+**Documentation complète centralisée backend** :
+
+- [Doc release v1.0.0-mvp](https://github.com/netmophus/budget-backend/blob/main/docs/RELEASE-v1.0.0-mvp.md)
+  — 8 sections, ~950 lignes : features, stack, déploiement,
+  comptes seed BSIC, endpoints, dette tracée, procédure de tag
+- [Recette MVP R1-R15](https://github.com/netmophus/budget-backend/blob/main/docs/RECETTE-MVP.md)
+  — 15 scénarios bout-en-bout à exécuter par BSIC en pré-prod
+
+#### Récap frontend au tag v1.0.0-mvp
+
+- **579 tests Vitest verts** (Testing Library + jsdom)
+- **9 tests Playwright** smoke locaux (Chromium headless,
+  ~10s — CI orchestrée reportée Lot 7+ avec pattern documenté
+  doc release §7.3)
+- ESLint **0 problems** + `tsc -b` strict **0 erreurs** +
+  `vite build` VERT (Required CI bloquant)
+- Branch protection active sur `main` du repo
+  `netmophus/budget-frontend` (Required checks ESLint, tsc -b
+  strict, Vitest, vite build, install + cache)
+
+#### Stack technique
+
+- **React 19.2** + **Vite 8** + **TypeScript 5** strict
+- **Tailwind CSS 4** + shadcn-style UI primitives + Radix UI
+  (Tooltip, Dialog, Dropdown, Select, Toast, etc.)
+- **Zustand 5** (auth store persist) + **axios** avec refresh
+  token rotation
+- **React Router v7** (routes protégées + permissions)
+- **TanStack Table v8** (DataTable serveur-paginée)
+- **React Hook Form** + **Zod** (validation formulaires)
+- **Sonner** (toasts) + **Lucide React** (icônes)
+- **Vitest** + **Testing Library** + **Playwright Chromium**
+
+#### Pages livrées au MVP
+
+Toutes les pages des Lots 1 → 6.7 sont opérationnelles
+(authentification, dashboard, profile, users / audit-logs /
+admin/users, configuration, saisie budgétaire, à valider,
+versions, scénarios, multi-périmètres, délégations, email-log,
+préférences notifications, saisie réalisé, tableau de bord
+budget vs réalisé, reforecast, forgot/reset/change password).
+
+> **Note** : `README.md` frontend documente uniquement les
+> pages Lot 1 (LoginPage / DashboardPage / Users / AuditLogs).
+> Une mise à jour exhaustive est tracée en dette mineure Lot 7+
+> (cf. doc release backend §7.2).
+
+#### Dette tracée frontend Lot 7+
+
+Cf. [doc release backend §7.2](https://github.com/netmophus/budget-backend/blob/main/docs/RELEASE-v1.0.0-mvp.md#72-dette-frontend).
+Principaux items :
+
+- Pattern 1 hydratation (~30 cas) : `useEffect(() => setX(props.X), [props])`
+  → `<Component key={props.id} />` + `useState(() => initFromProps)`
+- Pattern 2 fetch+loading (~35 cas) :
+  `useEffect(() => { setLoading(true); fetch(...) }, [])`
+  → Suspense + `use(promise)` ou react-query
+- Migration `JSX.Element` → `React.ReactElement` (59
+  occurrences, shim global `src/types/jsx.d.ts` à retirer)
+- Optimisation chunks > 500 kB (code-splitting + lazy routes)
+- DataTable `@tanstack/react-table v8` non React Compiler
+  compatible (`DataTable.tsx`)
+- Refresh token en `localStorage` → migration vers cookie
+  `httpOnly + Secure` côté backend (**sécurité**)
+- README frontend à actualiser (mention Lot 1 only)
+
+#### CI Playwright (orchestration)
+
+Reportée Lot 7+. Pattern préféré documenté dans
+[doc release backend §7.3](https://github.com/netmophus/budget-backend/blob/main/docs/RELEASE-v1.0.0-mvp.md#73-ci-playwright-non-orchestrée) :
+job `playwright-e2e` skipped en PR, lancé sur push `main`,
+avec services GitHub Actions Postgres + Redis + démarrage
+backend NestJS + `vite build && vite preview` + `npx
+playwright test`. Effort estimé 1-2j.
+
+---
+
+### Lot 6.8 — Recette finale + doc release MVP (mai 2026)
+
+Côté frontend : entrée CHANGELOG synchronisée avec le tag
+backend `v1.0.0-mvp`. Aucune modification de code applicatif.
+
+Le travail Lot 6.8 (recette transverse `docs/RECETTE-MVP.md`
++ doc release `docs/RELEASE-v1.0.0-mvp.md`) est centralisé
+côté backend (cf. CHANGELOG backend Lot 6.8).
+
+---
 
 ### Lot 6.7 — UX résiduel — frontend (mai 2026)
 
