@@ -24,6 +24,15 @@
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
   --radius: 0.5rem;
+
+  /* ─── Charte v1 MIZNAS (Lot 7.3) ───────────────────────────────────
+     Tokens dédiés à l'identité visuelle MIZNAS, distincts des tokens
+     shadcn standards ci-dessus. À privilégier pour toute couleur de
+     marque (wordmark, accent ambre au hover, fond crème de la zone
+     identité publique). Référence couleurs : Charte v1. */
+  --miznas-bleu-nuit: #0C447C;
+  --miznas-ambre: #BA7517;
+  --miznas-creme: #F1EFE8;
 }
 
 @theme inline {
@@ -48,6 +57,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-miznas-bleu-nuit: var(--miznas-bleu-nuit);
+  --color-miznas-ambre: var(--miznas-ambre);
+  --color-miznas-creme: var(--miznas-creme);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
