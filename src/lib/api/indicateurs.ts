@@ -5,9 +5,10 @@
  *  - GET  /budget/indicateurs/globaux      → IndicateursGlobaux
  *  - GET  /budget/indicateurs/par-cr       → IndicateursParCr[]
  *  - GET  /budget/indicateurs/comparaison  → IndicateursComparaison
+ *  - GET  /budget/indicateurs/home         → IndicateursHome (Lot 7.2)
  *  - POST /budget/indicateurs/refresh      → RefreshIndicateursResponse
  *
- * Permission requise : BUDGET.LIRE pour les 4 endpoints (lecture seule
+ * Permission requise : BUDGET.LIRE pour les 5 endpoints (lecture seule
  * + refresh manuel autorisé pour tout consultant).
  */
 import { apiClient } from './client';
@@ -116,6 +117,38 @@ export async function getIndicateursComparaison(
   const { data } = await apiClient.get<IndicateursComparaison>(
     '/budget/indicateurs/comparaison',
     { params: filters },
+  );
+  return data;
+}
+
+/**
+ * Triplet (version, scénario, exercice) résolu côté backend pour la
+ * page d'accueil — évite un sélecteur sur la home.
+ */
+export interface IndicateursHomeDefauts {
+  versionId: string;
+  codeVersion: string;
+  libelleVersion: string;
+  scenarioId: string;
+  codeScenario: string;
+  libelleScenario: string;
+  exerciceFiscal: number;
+}
+
+/**
+ * Réponse de GET /budget/indicateurs/home (Lot 7.2). `defauts` et
+ * `indicateurs` sont `null` ensemble si aucune version n'est éligible
+ * (cascade gele → valide → soumis vide). Le composant appelant doit
+ * gérer ce cas comme un état vide propre.
+ */
+export interface IndicateursHome {
+  defauts: IndicateursHomeDefauts | null;
+  indicateurs: IndicateursGlobaux | null;
+}
+
+export async function getIndicateursHome(): Promise<IndicateursHome> {
+  const { data } = await apiClient.get<IndicateursHome>(
+    '/budget/indicateurs/home',
   );
   return data;
 }

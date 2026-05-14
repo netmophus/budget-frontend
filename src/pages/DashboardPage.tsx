@@ -12,6 +12,7 @@ import {
 import { Can } from '@/components/common/Can';
 import { DashboardCard } from '@/components/common/DashboardCard';
 import { PageHeader } from '@/components/common/PageHeader';
+import { KpiBandeau } from '@/components/tableau-bord/KpiBandeau';
 import { useAuthStore } from '@/lib/auth/auth-store';
 
 export function DashboardPage() {
@@ -25,6 +26,8 @@ export function DashboardPage() {
         title={title}
         description="Module Budgétaire Bancaire UEMOA — accédez à vos modules selon vos permissions."
       />
+
+      <KpiBandeau />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Can permission="BUDGET.SAISIR">
