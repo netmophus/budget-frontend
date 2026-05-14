@@ -1,26 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Toaster } from '@/components/ui/sonner';
-import { useAuthStore, useIsAuthenticated } from '@/lib/auth/auth-store';
 import type { ApiError } from '@/lib/api/types';
+import { useAuthStore, useIsAuthenticated } from '@/lib/auth/auth-store';
 
 const schema = z.object({
-  email: z.string().email("Email invalide"),
+  email: z.string().email('Email invalide'),
   motDePasse: z.string().min(8, '8 caractères minimum'),
 });
 
@@ -30,12 +25,24 @@ interface LocationState {
   from?: { pathname: string };
 }
 
+interface LoginInlineError {
+  title: string;
+  message: string;
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuth = useIsAuthenticated();
   const login = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
+
+  // Bandeau d'erreur inline persistant (Lot 7.3). Affiché pour les
+  // erreurs auth critiques (401 / INVALID_CREDENTIALS / ACCOUNT_LOCKED)
+  // qui ne doivent pas disparaître au bout de 5 s comme un toast.
+  // Les erreurs réseau/serveur inattendues continuent à passer par
+  // toast.error (volatile, suffisant pour ces cas non auth).
+  const [loginError, setLoginError] = useState<LoginInlineError | null>(null);
 
   const {
     register,
@@ -48,9 +55,7 @@ export function LoginPage() {
 
   // Lot 6.4.C.2 — pattern <Navigate /> déclaratif (vs `navigate()`
   // impératif dans le render). Évite le warning React "Cannot
-  // update a component while rendering" qui peut interrompre la
-  // double redirection /login → /dashboard → /change-mdp en
-  // concurrent rendering pour un user avec `doitChangerMdp=true`.
+  // update a component while rendering".
   if (isAuth) {
     const from =
       (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
@@ -58,81 +63,139 @@ export function LoginPage() {
   }
 
   async function onSubmit(values: LoginFormValues) {
+    setLoginError(null);
     try {
       await login(values.email, values.motDePasse);
-      // Lot 6.4.C.2 — si le user a doitChangerMdp ou mdpExpire,
-      // ProtectedRoute le redirigera vers /change-mdp dès qu'on
-      // navigue vers /dashboard. On laisse la logique au guard.
-      const from = (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
+      const from =
+        (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (e) {
-      const message =
-        axios.isAxiosError<ApiError>(e) && e.response?.data?.message
-          ? e.response.data.message
-          : 'Erreur de connexion';
-      toast.error(message);
+      const apiErr =
+        axios.isAxiosError<ApiError>(e) && e.response?.data
+          ? e.response.data
+          : null;
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+      const errMsg =
+        apiErr?.message ??
+        (e instanceof Error ? e.message : 'Erreur de connexion');
+
+      if (apiErr?.errorCode === 'INVALID_CREDENTIALS' || status === 401) {
+        setLoginError({
+          title: 'Identifiants invalides',
+          message:
+            'Vérifiez votre adresse email et votre mot de passe, puis réessayez.',
+        });
+      } else if (apiErr?.errorCode === 'ACCOUNT_LOCKED') {
+        // Compte verrouillé — affichage cohérent en bandeau inline.
+        // Le compteur de tentatives UI et la logique métier complète
+        // suivront en Lot 7.X-security (cf. CHANGELOG Lot 7.3).
+        setLoginError({
+          title: 'Compte verrouillé',
+          message: errMsg,
+        });
+      } else {
+        // Erreur réseau / serveur inattendue : toast volatile suffit.
+        toast.error(errMsg);
+      }
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-(--secondary)/30 p-4">
-      <div className="w-full max-w-sm">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">MIZNAS</CardTitle>
-            <CardDescription>
-              Module Budgétaire Bancaire UEMOA
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="username"
-                  placeholder="admin@miznas.local"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p className="text-xs text-(--destructive)">{errors.email.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="motDePasse">Mot de passe</Label>
-                <Input
-                  id="motDePasse"
-                  type="password"
-                  autoComplete="current-password"
-                  {...register('motDePasse')}
-                />
-                {errors.motDePasse && (
-                  <p className="text-xs text-(--destructive)">
-                    {errors.motDePasse.message}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Connexion...' : 'Se connecter'}
-              </Button>
-              <Link
-                to="/forgot-password"
-                data-testid="login-lien-forgot-password"
-                className="text-sm text-(--muted-foreground) hover:underline"
+    <PublicLayout>
+      <div className="max-w-sm mx-auto w-full">
+        <h1 className="text-2xl font-semibold tracking-tight mb-1.5">
+          Connexion
+        </h1>
+        <p className="text-[13px] text-(--muted-foreground) mb-6">
+          Identifiez-vous pour accéder à votre périmètre.
+        </p>
+
+        {loginError && (
+          <div
+            data-testid="login-error-bandeau"
+            role="alert"
+            className="bg-(--destructive)/10 border-l-[3px] border-(--destructive) px-3.5 py-2.5 mb-4"
+          >
+            <div className="text-[13px] font-medium text-(--destructive)">
+              {loginError.title}
+            </div>
+            <div className="text-xs text-(--destructive) mt-0.5 opacity-80">
+              {loginError.message}
+            </div>
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-3.5"
+          noValidate
+        >
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              placeholder="admin@miznas.local"
+              aria-invalid={errors.email ? true : undefined}
+              aria-describedby={errors.email ? 'email-error' : undefined}
+              {...register('email')}
+            />
+            {errors.email && (
+              <p
+                id="email-error"
+                role="alert"
+                className="text-xs text-(--destructive) mt-1.5"
               >
-                Mot de passe oublié&nbsp;?
-              </Link>
-              <p className="text-xs text-(--muted-foreground)">
-                MIZNAS — Module Budgétaire Bancaire UEMOA — v0.1
+                {errors.email.message}
               </p>
-            </CardFooter>
-          </form>
-        </Card>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="motDePasse">Mot de passe</Label>
+            <Input
+              id="motDePasse"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={errors.motDePasse ? true : undefined}
+              aria-describedby={
+                errors.motDePasse ? 'motDePasse-error' : undefined
+              }
+              {...register('motDePasse')}
+            />
+            {errors.motDePasse && (
+              <p
+                id="motDePasse-error"
+                role="alert"
+                className="text-xs text-(--destructive) mt-1.5"
+              >
+                {errors.motDePasse.message}
+              </p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-(--miznas-bleu-nuit) hover:bg-(--miznas-bleu-nuit)/90 text-white"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Connexion...' : 'Se connecter'}
+          </Button>
+
+          <div className="text-center pt-1">
+            <Link
+              to="/forgot-password"
+              data-testid="login-lien-forgot-password"
+              className="text-[13px] text-(--miznas-ambre) hover:underline underline-offset-[3px]"
+            >
+              Mot de passe oublié&nbsp;?
+            </Link>
+          </div>
+        </form>
+
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </PublicLayout>
   );
 }
