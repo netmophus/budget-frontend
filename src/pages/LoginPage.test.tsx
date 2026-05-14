@@ -101,7 +101,9 @@ describe('LoginPage (Lot 7.3)', () => {
 
   it('rend le wordmark MIZNAS et la zone identité PublicLayout', () => {
     renderPage();
-    expect(screen.getByTestId('miznas-wordmark').textContent).toBe('MIZNAS');
+    expect(screen.getByTestId('public-layout-wordmark').textContent).toBe(
+      'MIZNAS',
+    );
     expect(screen.getByTestId('public-layout')).toBeInTheDocument();
     expect(screen.getByTestId('public-layout-identite')).toBeInTheDocument();
   });
@@ -116,6 +118,48 @@ describe('LoginPage (Lot 7.3)', () => {
     expect(
       screen.getByTestId('login-lien-forgot-password'),
     ).toBeInTheDocument();
+  });
+
+  it('rend les icônes Mail et Lock dans les inputs', () => {
+    renderPage();
+    expect(screen.getByTestId('login-icon-email')).toBeInTheDocument();
+    expect(screen.getByTestId('login-icon-password')).toBeInTheDocument();
+  });
+
+  it('rend le cercle ambre contenant l\'icône cadenas en haut du formulaire', () => {
+    renderPage();
+    const circle = screen.getByTestId('login-lock-circle');
+    expect(circle).toBeInTheDocument();
+    expect(circle.className).toContain('rounded-full');
+    expect(circle.className).toContain('bg-(--miznas-ambre)/10');
+  });
+
+  it('bouton œil : type=password par défaut + aria-label "Afficher"', () => {
+    renderPage();
+    const motDePasse = screen.getByLabelText('Mot de passe');
+    expect(motDePasse).toHaveAttribute('type', 'password');
+    const toggle = screen.getByTestId('login-toggle-password-visibility');
+    expect(toggle).toHaveAttribute('aria-label', 'Afficher le mot de passe');
+  });
+
+  it('bouton œil : clic → type=text + aria-label "Masquer"', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const toggle = screen.getByTestId('login-toggle-password-visibility');
+
+    await user.click(toggle);
+
+    const motDePasse = screen.getByLabelText('Mot de passe');
+    expect(motDePasse).toHaveAttribute('type', 'text');
+    expect(toggle).toHaveAttribute('aria-label', 'Masquer le mot de passe');
+
+    // 2e clic → revient à password.
+    await user.click(toggle);
+    expect(screen.getByLabelText('Mot de passe')).toHaveAttribute(
+      'type',
+      'password',
+    );
+    expect(toggle).toHaveAttribute('aria-label', 'Afficher le mot de passe');
   });
 
   it('Zod : email invalide → erreur affichée + aria-invalid + aria-describedby', async () => {

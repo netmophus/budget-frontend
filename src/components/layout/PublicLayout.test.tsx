@@ -1,35 +1,116 @@
 /**
- * Tests PublicLayout (Lot 7.3).
+ * Tests PublicLayout (Lot 7.3 V4 — refonte selon maquette validée).
  *
  * Couvre :
- *  - rendu zone identité gauche (BANK_NAME + MiznasWordmark + tagline
- *    + mention prudentielle + footer version/sigle/année)
- *  - rendu des children dans la zone droite
- *  - classes responsive (grid-cols-1 md:grid-cols-2 + min-h-fit md:min-h-screen)
- *  - fond crème charte v1 sur la zone identité
+ *  - Rendu nom légal banque sur 2 lignes (header)
+ *  - Rendu losange ambre header (signature graphique)
+ *  - Rendu wordmark MIZNAS + sous-titre "Pilotage Budgétaire" ambre
+ *  - Filet ambre signature présent
+ *  - Slogan 2 lignes (APP_TAGLINE_LINE_1 + LINE_2)
+ *  - Badge BCEAO "Conforme aux normes prudentielles BCEAO."
+ *  - Footer version + sigle + année
+ *  - SVG BackgroundChart rendu en arrière-plan
+ *  - Gradient bleu nuit appliqué via style inline
+ *  - children rendus dans la zone formulaire droite
+ *  - Layout responsive (grid-cols-1 md:grid-cols-2)
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  APP_TAGLINE_LINE_1,
+  APP_TAGLINE_LINE_2,
   APP_VERSION,
-  BANK_NAME,
   BANK_SIGLE,
   BANK_YEAR,
 } from '@/lib/branding/bank';
 
 import { PublicLayout } from './PublicLayout';
 
-describe('PublicLayout (Lot 7.3)', () => {
+describe('PublicLayout (Lot 7.3 V4)', () => {
   afterEach(() => cleanup());
 
-  it('rend le nom légal complet de la banque dans le header identité', () => {
+  it('rend le nom légal banque sur 2 lignes dans le header identité', () => {
     render(
       <PublicLayout>
         <span>form</span>
       </PublicLayout>,
     );
-    expect(screen.getByText(BANK_NAME)).toBeInTheDocument();
+    expect(screen.getByText('Banque sahélo-saharienne')).toBeInTheDocument();
+    expect(
+      screen.getByText("pour l'investissement et le commerce"),
+    ).toBeInTheDocument();
+  });
+
+  it('rend le losange ambre du header (signature graphique)', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    const losange = screen.getByTestId('public-layout-losange');
+    expect(losange).toBeInTheDocument();
+    expect(losange.className).toContain('bg-(--miznas-ambre)');
+    expect(losange.textContent).toBe('B');
+  });
+
+  it('rend le wordmark MIZNAS à 52 px (text-[52px])', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    const wordmark = screen.getByTestId('public-layout-wordmark');
+    expect(wordmark.textContent).toBe('MIZNAS');
+    expect(wordmark.className).toContain('text-[52px]');
+    expect(wordmark.className).toContain('font-bold');
+  });
+
+  it('rend le sous-titre « Pilotage Budgétaire » en couleur ambre', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    const sousTitre = screen.getByTestId('public-layout-sous-titre');
+    expect(sousTitre.textContent).toBe('Pilotage Budgétaire');
+    expect(sousTitre.className).toContain('text-(--miznas-ambre)');
+  });
+
+  it('rend le filet ambre signature sous le wordmark', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    const filet = screen.getByTestId('public-layout-filet-ambre');
+    expect(filet).toBeInTheDocument();
+    expect(filet.className).toContain('bg-(--miznas-ambre)');
+  });
+
+  it('rend le slogan sur 2 lignes (LINE_1 + <br /> + LINE_2)', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    const slogan = screen.getByTestId('public-layout-slogan');
+    expect(slogan.textContent).toContain(APP_TAGLINE_LINE_1);
+    expect(slogan.textContent).toContain(APP_TAGLINE_LINE_2);
+    // Présence d'un <br /> entre les 2 lignes — vérifiée via le DOM
+    // (la maîtrise du retour à la ligne est volontaire, cf. bank.ts).
+    expect(slogan.querySelector('br')).not.toBeNull();
+  });
+
+  it('rend le badge BCEAO "Conforme aux normes prudentielles BCEAO."', () => {
+    render(
+      <PublicLayout>
+        <span>form</span>
+      </PublicLayout>,
+    );
+    expect(
+      screen.getByText('Conforme aux normes prudentielles BCEAO.'),
+    ).toBeInTheDocument();
   });
 
   it('rend le footer avec version, sigle et année', () => {
@@ -44,34 +125,31 @@ describe('PublicLayout (Lot 7.3)', () => {
     expect(footer.textContent).toContain(BANK_YEAR);
   });
 
-  it('rend le wordmark MIZNAS dans la zone identité', () => {
+  it('rend le SVG BackgroundChart décoratif (aria-hidden)', () => {
     render(
       <PublicLayout>
         <span>form</span>
       </PublicLayout>,
     );
-    const wordmark = screen.getByTestId('miznas-wordmark');
-    expect(wordmark.textContent).toBe('MIZNAS');
-    // Taille md (text-3xl, ~30 px) base — Lot 7.3 V3 a re-équilibré
-    // la hiérarchie typographique de la zone identité (auparavant
-    // text-6xl en V2). Override responsive md:text-4xl (~36 px)
-    // appliqué depuis PublicLayout via className.
-    expect(wordmark.className).toContain('text-3xl');
-    expect(wordmark.className).toContain('md:text-4xl');
+    const svg = screen.getByTestId('public-layout-background-chart');
+    expect(svg.tagName.toLowerCase()).toBe('svg');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('rend la tagline « Module Budgétaire Bancaire UEMOA » et la mention BCEAO', () => {
+  it('applique le gradient bleu nuit (style inline) sur la zone identité', () => {
     render(
       <PublicLayout>
         <span>form</span>
       </PublicLayout>,
     );
-    expect(
-      screen.getByText('Module Budgétaire Bancaire UEMOA'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/normes prudentielles BCEAO/i),
-    ).toBeInTheDocument();
+    const identite = screen.getByTestId('public-layout-identite');
+    // Le gradient est appliqué via `style.background` inline pour
+    // pouvoir interpoler les tokens CSS. JSDom expose les styles
+    // inline tels quels.
+    const bg = identite.style.background;
+    expect(bg).toContain('linear-gradient');
+    expect(bg).toContain('var(--miznas-bleu-nuit-dark)');
+    expect(bg).toContain('var(--miznas-bleu-nuit-light)');
   });
 
   it('rend les children dans la zone formulaire droite', () => {
@@ -83,7 +161,6 @@ describe('PublicLayout (Lot 7.3)', () => {
     const main = screen.getByTestId('public-layout-form');
     const child = screen.getByTestId('form-child');
     expect(main).toContainElement(child);
-    expect(child.textContent).toBe('contenu formulaire');
   });
 
   it('applique le layout split responsive (stacked sur mobile, 50/50 sur desktop)', () => {
@@ -96,16 +173,5 @@ describe('PublicLayout (Lot 7.3)', () => {
     expect(root.className).toContain('grid-cols-1');
     expect(root.className).toContain('md:grid-cols-2');
     expect(root.className).toContain('min-h-screen');
-  });
-
-  it('applique le fond crème charte v1 sur la zone identité', () => {
-    render(
-      <PublicLayout>
-        <span>form</span>
-      </PublicLayout>,
-    );
-    expect(
-      screen.getByTestId('public-layout-identite').className,
-    ).toContain('bg-(--miznas-creme)');
   });
 });
