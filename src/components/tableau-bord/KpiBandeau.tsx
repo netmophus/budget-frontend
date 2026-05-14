@@ -60,6 +60,15 @@ const CARD_BASE =
   'rounded-md border border-(--border) bg-(--background) p-4 ' +
   'border-l-[3px] border-l-transparent';
 
+/**
+ * Animation staggered (Lot 7.2 commit 3) — la bande KPI occupe les
+ * 3 premiers slots de l'apparition au mount (delays 0/50/100 ms).
+ * Les classes doivent être statiques pour que Tailwind les purge.
+ */
+const ANIM_BASE =
+  'animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both';
+const ANIM_DELAYS = ['delay-0', 'delay-60', 'delay-120'] as const;
+
 export function KpiBandeau() {
   return (
     <Can permission="BUDGET.LIRE">
@@ -152,7 +161,10 @@ function KpiPnb({ data, loading, erreur }: KpiChildProps): JSX.Element {
       ? '—'
       : formatMontant(data.indicateurs.pnb, 'XOF');
   return (
-    <div className={CARD_BASE} data-testid="kpi-pnb">
+    <div
+      className={cn(CARD_BASE, ANIM_BASE, ANIM_DELAYS[0])}
+      data-testid="kpi-pnb"
+    >
       <div className="flex items-start gap-3">
         <Coins className="h-5 w-5 shrink-0 text-[#0C447C]" />
         <div className="flex-1 min-w-0">
@@ -185,7 +197,10 @@ function KpiCoef({ data, loading, erreur }: KpiChildProps): JSX.Element {
   const valeur = loading || erreur ? '—' : formatCoef(coef);
   const couleur = loading || erreur ? 'text-[#0C447C]' : classeCoefCouleur(coef);
   return (
-    <div className={CARD_BASE} data-testid="kpi-coef">
+    <div
+      className={cn(CARD_BASE, ANIM_BASE, ANIM_DELAYS[1])}
+      data-testid="kpi-coef"
+    >
       <div className="flex items-start gap-3">
         <Percent className="h-5 w-5 shrink-0 text-[#0C447C]" />
         <div className="flex-1 min-w-0">
@@ -242,6 +257,8 @@ function KpiVersionsAValider(): JSX.Element {
         CARD_BASE,
         'block hover:border-l-[#BA7517] transition-colors duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
+        ANIM_BASE,
+        ANIM_DELAYS[2],
       )}
       data-testid="kpi-versions-a-valider"
     >

@@ -7,6 +7,12 @@ interface DashboardCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
+  /**
+   * Classes Tailwind additionnelles appliquées au `<Link>`. Utilisé
+   * notamment par DashboardPage pour appliquer les animations
+   * staggered tw-animate-css au mount (Lot 7.2 commit 3).
+   */
+  className?: string;
 }
 
 export function DashboardCard({
@@ -14,6 +20,7 @@ export function DashboardCard({
   icon: Icon,
   title,
   description,
+  className,
 }: DashboardCardProps) {
   return (
     <Link
@@ -27,6 +34,7 @@ export function DashboardCard({
         'hover:border-l-[#BA7517] transition-colors duration-150',
         // Focus-ring accessibilité (shadcn standard, conservé)
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
+        className,
       )}
     >
       <div className="flex items-start gap-4">
