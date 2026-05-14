@@ -24,6 +24,10 @@
 import { ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+// `BANK_NAME` reste exporté depuis bank.ts (réutilisable pour les
+// futures pages publiques / autres surfaces), mais la zone identité
+// V5 n'affiche plus le nom légal — décision UX validée 2026-05-14
+// pour alléger le haut de la zone identité.
 import {
   APP_TAGLINE_LINE_1,
   APP_TAGLINE_LINE_2,
@@ -56,7 +60,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 function IdentityZone() {
   return (
     <aside
-      className="relative overflow-hidden px-12 py-14 flex flex-col justify-between min-h-fit md:min-h-screen text-white"
+      className="relative overflow-hidden px-12 py-14 flex flex-col min-h-fit md:min-h-screen text-white"
       style={{
         background:
           'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
@@ -65,69 +69,49 @@ function IdentityZone() {
     >
       <BackgroundChart />
 
-      {/* ─── Header — losange ambre + nom banque (2 lignes) ──────── */}
-      <header className="relative z-10 flex items-center gap-3">
-        <div
-          className="w-8 h-8 bg-(--miznas-ambre) rounded flex items-center justify-center"
-          style={{ transform: 'rotate(45deg)' }}
-          aria-hidden="true"
-          data-testid="public-layout-losange"
-        >
-          <span
-            className="text-sm font-bold text-(--miznas-bleu-nuit-dark)"
-            style={{ transform: 'rotate(-45deg)' }}
+      {/* ─── Centre — wordmark + sous-titre + filet + slogan + bouclier ──
+          `flex-1` + `flex items-center` : le bloc central occupe tout
+          l'espace entre le haut (vide depuis le retrait du header
+          V5) et le footer, et son contenu est centré verticalement. */}
+      <div className="relative z-10 flex-1 flex items-center">
+        <div className="w-full">
+          <div
+            className="text-[52px] font-bold tracking-[-0.035em] leading-none mb-1"
+            data-testid="public-layout-wordmark"
           >
-            B
-          </span>
-        </div>
-        <div>
-          <div className="text-[13px] font-semibold leading-tight">
-            Banque sahélo-saharienne
+            MIZNAS
           </div>
-          <div className="text-[10px] opacity-55 leading-tight mt-0.5">
-            pour l&apos;investissement et le commerce
+          <div
+            className="text-[28px] font-bold text-(--miznas-ambre) tracking-[-0.02em] leading-none mb-7"
+            data-testid="public-layout-sous-titre"
+          >
+            Pilotage Budgétaire
           </div>
-        </div>
-      </header>
 
-      {/* ─── Centre — wordmark + sous-titre + filet + slogan + bouclier ── */}
-      <div className="relative z-10">
-        <div
-          className="text-[52px] font-bold tracking-[-0.035em] leading-none mb-1"
-          data-testid="public-layout-wordmark"
-        >
-          MIZNAS
-        </div>
-        <div
-          className="text-[28px] font-bold text-(--miznas-ambre) tracking-[-0.02em] leading-none mb-7"
-          data-testid="public-layout-sous-titre"
-        >
-          Pilotage Budgétaire
-        </div>
-
-        <div
-          className="w-16 h-[3px] bg-(--miznas-ambre) mb-6"
-          aria-hidden="true"
-          data-testid="public-layout-filet-ambre"
-        />
-
-        <p
-          className="text-[17px] opacity-90 leading-snug mb-6 max-w-[360px]"
-          data-testid="public-layout-slogan"
-        >
-          {APP_TAGLINE_LINE_1}
-          <br />
-          {APP_TAGLINE_LINE_2}
-        </p>
-
-        <div className="inline-flex items-center gap-2 bg-white/[0.06] px-3 py-2 rounded-md">
-          <ShieldCheck
-            className="w-4 h-4 text-(--miznas-ambre)"
+          <div
+            className="w-16 h-[3px] bg-(--miznas-ambre) mb-6"
             aria-hidden="true"
+            data-testid="public-layout-filet-ambre"
           />
-          <span className="text-xs opacity-80">
-            Conforme aux normes prudentielles BCEAO.
-          </span>
+
+          <p
+            className="text-[17px] opacity-90 leading-snug mb-6 max-w-[360px]"
+            data-testid="public-layout-slogan"
+          >
+            {APP_TAGLINE_LINE_1}
+            <br />
+            {APP_TAGLINE_LINE_2}
+          </p>
+
+          <div className="inline-flex items-center gap-2 bg-white/[0.06] px-3 py-2 rounded-md">
+            <ShieldCheck
+              className="w-4 h-4 text-(--miznas-ambre)"
+              aria-hidden="true"
+            />
+            <span className="text-xs opacity-80">
+              Conforme aux normes prudentielles BCEAO.
+            </span>
+          </div>
         </div>
       </div>
 

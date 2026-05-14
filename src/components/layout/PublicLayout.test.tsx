@@ -1,9 +1,7 @@
 /**
- * Tests PublicLayout (Lot 7.3 V4 — refonte selon maquette validée).
+ * Tests PublicLayout (Lot 7.3 V5 — retrait du header banque).
  *
  * Couvre :
- *  - Rendu nom légal banque sur 2 lignes (header)
- *  - Rendu losange ambre header (signature graphique)
  *  - Rendu wordmark MIZNAS + sous-titre "Pilotage Budgétaire" ambre
  *  - Filet ambre signature présent
  *  - Slogan 2 lignes (APP_TAGLINE_LINE_1 + LINE_2)
@@ -13,6 +11,10 @@
  *  - Gradient bleu nuit appliqué via style inline
  *  - children rendus dans la zone formulaire droite
  *  - Layout responsive (grid-cols-1 md:grid-cols-2)
+ *
+ * NB : les tests V4 du header (losange ambre + nom banque sur
+ * 2 lignes) ont été retirés en V5 — le header n'existe plus dans
+ * la zone identité après décision UX 2026-05-14.
  */
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -29,30 +31,6 @@ import { PublicLayout } from './PublicLayout';
 
 describe('PublicLayout (Lot 7.3 V4)', () => {
   afterEach(() => cleanup());
-
-  it('rend le nom légal banque sur 2 lignes dans le header identité', () => {
-    render(
-      <PublicLayout>
-        <span>form</span>
-      </PublicLayout>,
-    );
-    expect(screen.getByText('Banque sahélo-saharienne')).toBeInTheDocument();
-    expect(
-      screen.getByText("pour l'investissement et le commerce"),
-    ).toBeInTheDocument();
-  });
-
-  it('rend le losange ambre du header (signature graphique)', () => {
-    render(
-      <PublicLayout>
-        <span>form</span>
-      </PublicLayout>,
-    );
-    const losange = screen.getByTestId('public-layout-losange');
-    expect(losange).toBeInTheDocument();
-    expect(losange.className).toContain('bg-(--miznas-ambre)');
-    expect(losange.textContent).toBe('B');
-  });
 
   it('rend le wordmark MIZNAS à 52 px (text-[52px])', () => {
     render(
