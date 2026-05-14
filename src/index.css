@@ -31,6 +31,8 @@
      marque (wordmark, accent ambre au hover, fond crème de la zone
      identité publique). Référence couleurs : Charte v1. */
   --miznas-bleu-nuit: #0C447C;
+  --miznas-bleu-nuit-dark: #0A1F44;
+  --miznas-bleu-nuit-light: #133869;
   --miznas-ambre: #BA7517;
   --miznas-creme: #F1EFE8;
 }
@@ -58,6 +60,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-miznas-bleu-nuit: var(--miznas-bleu-nuit);
+  --color-miznas-bleu-nuit-dark: var(--miznas-bleu-nuit-dark);
+  --color-miznas-bleu-nuit-light: var(--miznas-bleu-nuit-light);
   --color-miznas-ambre: var(--miznas-ambre);
   --color-miznas-creme: var(--miznas-creme);
   --radius-sm: calc(var(--radius) - 4px);

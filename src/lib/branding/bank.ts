@@ -27,6 +27,21 @@ export const BANK_SIGLE = 'BSIC';
 export const BANK_YEAR = '2026';
 
 /**
+ * Nom commercial du module applicatif MIZNAS — utilisé dans la balise
+ * <title>, la meta description et la zone identité publique.
+ */
+export const APP_NAME = 'MIZNAS Pilotage Budgétaire';
+
+/**
+ * Slogan du module, affiché sur 2 lignes dans la zone identité
+ * publique (maquette validée Lot 7.3 V4). Deux constantes séparées
+ * pour que le rendu typographique reste maîtrisé (un `<br />` entre
+ * les 2 lignes, pas un retour à la ligne automatique).
+ */
+export const APP_TAGLINE_LINE_1 = 'Maîtrisez vos budgets,';
+export const APP_TAGLINE_LINE_2 = 'pilotez la performance bancaire.';
+
+/**
  * Version applicative MIZNAS affichée dans le footer des pages
  * publiques.
  *
