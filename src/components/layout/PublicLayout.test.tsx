@@ -52,8 +52,12 @@ describe('PublicLayout (Lot 7.3)', () => {
     );
     const wordmark = screen.getByTestId('miznas-wordmark');
     expect(wordmark.textContent).toBe('MIZNAS');
-    // Taille xl (text-6xl) sur la zone identité publique.
-    expect(wordmark.className).toContain('text-6xl');
+    // Taille md (text-3xl, ~30 px) base — Lot 7.3 V3 a re-équilibré
+    // la hiérarchie typographique de la zone identité (auparavant
+    // text-6xl en V2). Override responsive md:text-4xl (~36 px)
+    // appliqué depuis PublicLayout via className.
+    expect(wordmark.className).toContain('text-3xl');
+    expect(wordmark.className).toContain('md:text-4xl');
   });
 
   it('rend la tagline « Module Budgétaire Bancaire UEMOA » et la mention BCEAO', () => {

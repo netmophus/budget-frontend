@@ -1,35 +1,31 @@
 /**
- * PublicLayout (Lot 7.3 V2 — refonte esthétique premium).
+ * PublicLayout (Lot 7.3 V3 — hiérarchie re-équilibrée).
  *
  * Wrapper partagé pour les pages d'authentification publiques.
  * Layout split 50/50 sur desktop, stacked vertical sur mobile.
  *
- * Zone identité (gauche) :
- *  - Fond crème charte v1 + motif de points bleu nuit ~5 % opacité
- *    (signature graphique discrète, inspirée des grilles
- *    budgétaires UEMOA)
- *  - Wordmark MIZNAS XL (text-7xl mobile → text-8xl ≥xl) sur la
- *    /login ; par défaut taille xl pour les autres pages publiques.
- *  - Filet ambre court (12 px × 3 px) en signature sous le wordmark
- *  - Tagline + mention prudentielle BCEAO + footer version + sigle
- *  - Animations staggered au mount (fade-in + slide-in-from-bottom-1
- *    avec delays 0/100/200/300 ms) — discret, ~400 ms total
+ * Zone identité (gauche) — hiérarchie typographique resserrée :
+ *  - Nom légal banque       : 14 px, weight 500, bleu nuit lisible
+ *  - Wordmark MIZNAS        : 30 px (mobile) → 36 px (≥md)
+ *                              dominant mais pas écrasant
+ *  - Tagline produit        : 14 px, muted, lisible
+ *  - Mention prudentielle   : 12 px, muted, max-width contenu
+ *  - Footer version+sigle   : 11 px, muted
+ *  - Filet ambre signature  : 12 × 3 px sous le wordmark (charte v1)
+ *  - Fond crème UNI (pas de motif décoratif — Lot 7.3 V3)
  *
  * Zone formulaire (droite) :
  *  - Fond standard, padding généreux, centre vertical strict
  *  - children rendus tels quels (la page consommatrice contrôle
- *    son layout interne)
+ *    son layout interne — typiquement une Card encadrée)
  *
  * Responsive :
  *  - md+ (≥768 px) : split 50/50, min-h-screen sur chaque colonne
- *  - <md (mobile)  : stacked vertical, min-h-fit sur la zone
- *    identité (ne mange pas tout l'écran sur téléphone)
+ *  - <md (mobile)  : stacked vertical, min-h-fit sur la zone identité
  *
- * Tokens shadcn utilisés (pas de tokens fantaisistes) :
- *  --muted-foreground, --border, --background
- * Plus :
- *  --miznas-creme (fond identité), --miznas-bleu-nuit (motif points,
- *  wordmark), --miznas-ambre (filet signature).
+ * Animations au mount : fade-in staggered (0/100/200/300 ms) sur les
+ * 4 blocs de la zone identité — discret, ~300 ms total. Pas de
+ * slide pour respecter le ton sobre.
  */
 import type { ReactNode } from 'react';
 
@@ -45,8 +41,7 @@ interface PublicLayoutProps {
   children: ReactNode;
 }
 
-const ANIM_BASE =
-  'animate-in fade-in slide-in-from-bottom-1 duration-500 fill-mode-both';
+const ANIM_BASE = 'animate-in fade-in duration-500 fill-mode-both';
 
 export function PublicLayout({ children }: PublicLayoutProps) {
   return (
@@ -56,42 +51,28 @@ export function PublicLayout({ children }: PublicLayoutProps) {
     >
       {/* ─── Zone identité (gauche) ────────────────────────────────── */}
       <aside
-        className="relative bg-(--miznas-creme) px-10 py-12 flex flex-col justify-between min-h-fit md:min-h-screen overflow-hidden"
+        className="bg-(--miznas-creme) px-10 py-12 flex flex-col justify-between min-h-fit md:min-h-screen"
         data-testid="public-layout-identite"
-        // Motif de points bleu nuit ~5 % opacité — signature visuelle
-        // discrète, inspirée des grilles comptables. `color-mix` permet
-        // de garder le token --miznas-bleu-nuit comme source unique de
-        // vérité couleur.
-        style={{
-          backgroundImage:
-            'radial-gradient(circle, color-mix(in oklab, #0C447C 6%, transparent) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
       >
-        {/* Header — nom légal banque en small-caps */}
+        {/* Header — nom légal banque, lisible et sérieux */}
         <header className={`${ANIM_BASE} delay-0`}>
-          <div className="text-[11px] uppercase tracking-[0.08em] text-(--muted-foreground)">
+          <div className="text-sm font-medium text-(--miznas-bleu-nuit) leading-snug">
             {BANK_NAME}
           </div>
         </header>
 
-        {/* Centre — wordmark + filet signature + tagline + mention */}
-        <div className="relative">
+        {/* Centre — wordmark + filet ambre + tagline + mention BCEAO */}
+        <div>
           <div className={`${ANIM_BASE} delay-100`}>
-            <MiznasWordmark
-              size="xl"
-              className="md:text-7xl xl:text-8xl"
-            />
-            {/* Filet ambre signature (Lot 7.3 V2) — accent discret
-                directement sous le wordmark. */}
+            <MiznasWordmark size="md" className="md:text-4xl" />
             <div
-              className="h-[3px] w-12 bg-(--miznas-ambre) mt-4"
+              className="h-[3px] w-12 bg-(--miznas-ambre) mt-3"
               data-testid="public-layout-filet-ambre"
               aria-hidden="true"
             />
           </div>
           <p
-            className={`text-[15px] text-(--muted-foreground) mt-5 leading-relaxed ${ANIM_BASE} delay-200`}
+            className={`text-sm text-(--muted-foreground) mt-5 leading-relaxed ${ANIM_BASE} delay-200`}
           >
             Module Budgétaire Bancaire UEMOA
           </p>

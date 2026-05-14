@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Toaster } from '@/components/ui/sonner';
 import type { ApiError } from '@/lib/api/types';
@@ -31,14 +32,6 @@ interface LoginInlineError {
   message: string;
 }
 
-/**
- * Animation staggered au mount (cohérente avec la zone identité du
- * PublicLayout — total ≈ 600 ms). Les classes `delay-*` sont
- * statiques pour rester purge-safe Tailwind.
- */
-const ANIM_BASE =
-  'animate-in fade-in slide-in-from-bottom-1 duration-500 fill-mode-both';
-
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,8 +50,7 @@ export function LoginPage() {
     defaultValues: { email: '', motDePasse: '' },
   });
 
-  // Lot 6.4.C.2 — pattern <Navigate /> déclaratif (vs `navigate()`
-  // impératif dans le render).
+  // Lot 6.4.C.2 — pattern <Navigate /> déclaratif.
   if (isAuth) {
     const from =
       (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
@@ -101,77 +93,74 @@ export function LoginPage() {
 
   return (
     <PublicLayout>
-      <div className="max-w-sm mx-auto w-full">
-        <h1
-          className={`text-3xl font-semibold tracking-tight text-(--foreground) mb-1.5 ${ANIM_BASE} delay-200`}
-        >
-          Connexion
-        </h1>
-        <p
-          className={`text-[13px] text-(--muted-foreground) mb-7 ${ANIM_BASE} delay-300`}
-        >
-          Identifiez-vous avec vos identifiants BSIC pour accéder à votre périmètre.
-        </p>
+      {/* Card encadrée centrée — Lot 7.3 V3 : remplace la version
+          underline-only V2 par un cadre visible plus structurant.
+          Bordure 1 px gris pâle + rounded-lg + padding 32 px (p-8),
+          fond blanc explicite. Animation fade-in au mount. */}
+      <div className="max-w-sm mx-auto w-full animate-in fade-in duration-500 fill-mode-both delay-200">
+        <div className="rounded-lg border border-(--border) bg-(--background) p-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-(--foreground) mb-1.5">
+            Connexion
+          </h1>
+          <p className="text-[13px] text-(--muted-foreground) mb-6">
+            Identifiez-vous avec vos identifiants BSIC.
+          </p>
 
-        {loginError && (
-          <div
-            data-testid="login-error-bandeau"
-            role="alert"
-            className="flex items-start gap-2.5 bg-(--destructive)/10 border-l-[3px] border-(--destructive) px-3.5 py-2.5 mb-5 animate-in fade-in slide-in-from-top-1 duration-300"
-          >
-            <AlertCircle
-              className="h-4 w-4 mt-0.5 shrink-0 text-(--destructive)"
-              aria-hidden="true"
-            />
-            <div className="flex-1">
-              <div className="text-[13px] font-medium text-(--destructive)">
-                {loginError.title}
-              </div>
-              <div className="text-xs text-(--destructive) mt-0.5 opacity-80">
-                {loginError.message}
+          {loginError && (
+            <div
+              data-testid="login-error-bandeau"
+              role="alert"
+              className="flex items-start gap-2.5 bg-(--destructive)/10 border-l-[3px] border-(--destructive) px-3.5 py-2.5 mb-5 animate-in fade-in slide-in-from-top-1 duration-300"
+            >
+              <AlertCircle
+                className="h-4 w-4 mt-0.5 shrink-0 text-(--destructive)"
+                aria-hidden="true"
+              />
+              <div className="flex-1">
+                <div className="text-[13px] font-medium text-(--destructive)">
+                  {loginError.title}
+                </div>
+                <div className="text-xs text-(--destructive) mt-0.5 opacity-80">
+                  {loginError.message}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5"
-          noValidate
-        >
-          <UnderlineInput
-            id="email"
-            type="email"
-            label="Email"
-            icon={Mail}
-            autoComplete="username"
-            placeholder="admin@miznas.local"
-            errorMessage={errors.email?.message}
-            register={register('email')}
-            animationDelay="delay-400"
-          />
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
+            <FieldWithIcon
+              id="email"
+              type="email"
+              label="Email"
+              icon={Mail}
+              autoComplete="username"
+              placeholder="admin@miznas.local"
+              errorMessage={errors.email?.message}
+              register={register('email')}
+            />
 
-          <UnderlineInput
-            id="motDePasse"
-            type="password"
-            label="Mot de passe"
-            icon={Lock}
-            autoComplete="current-password"
-            errorMessage={errors.motDePasse?.message}
-            register={register('motDePasse')}
-            animationDelay="delay-500"
-          />
+            <FieldWithIcon
+              id="motDePasse"
+              type="password"
+              label="Mot de passe"
+              icon={Lock}
+              autoComplete="current-password"
+              errorMessage={errors.motDePasse?.message}
+              register={register('motDePasse')}
+            />
 
-          <div className={`pt-2 ${ANIM_BASE} delay-600`}>
             <Button
               type="submit"
               className={cn(
-                'w-full h-11 tracking-wide font-medium',
+                'w-full h-11 mt-2',
                 'bg-(--miznas-bleu-nuit) text-white',
-                'hover:bg-(--miznas-bleu-nuit)/90 hover:-translate-y-px',
-                'active:translate-y-0',
-                'transition-all duration-200',
-                'disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0',
+                'hover:bg-(--miznas-bleu-nuit)/90',
+                'transition-colors duration-200',
+                'disabled:opacity-70 disabled:cursor-not-allowed',
               )}
               disabled={isLoading}
             >
@@ -184,18 +173,18 @@ export function LoginPage() {
                 'Se connecter'
               )}
             </Button>
-          </div>
 
-          <div className={`text-center pt-1 ${ANIM_BASE} delay-700`}>
-            <Link
-              to="/forgot-password"
-              data-testid="login-lien-forgot-password"
-              className="text-[13px] text-(--miznas-ambre) hover:underline underline-offset-[3px] transition-colors"
-            >
-              Mot de passe oublié&nbsp;?
-            </Link>
-          </div>
-        </form>
+            <div className="text-center pt-1">
+              <Link
+                to="/forgot-password"
+                data-testid="login-lien-forgot-password"
+                className="text-[13px] text-(--miznas-ambre) hover:underline underline-offset-[3px] transition-colors"
+              >
+                Mot de passe oublié&nbsp;?
+              </Link>
+            </div>
+          </form>
+        </div>
 
         <Toaster />
       </div>
@@ -203,9 +192,9 @@ export function LoginPage() {
   );
 }
 
-// ─── UnderlineInput — input premium border-bottom-only (Lot 7.3 V2) ─
+// ─── FieldWithIcon — input shadcn standard + icône Lucide à gauche
 
-interface UnderlineInputProps {
+interface FieldWithIconProps {
   id: string;
   type: 'email' | 'password';
   label: string;
@@ -214,20 +203,20 @@ interface UnderlineInputProps {
   placeholder?: string;
   errorMessage?: string;
   register: UseFormRegisterReturn;
-  animationDelay: string;
 }
 
 /**
- * Input premium charte v1 V2 : border-bottom only qui s'épaissit et
- * passe au bleu nuit au focus, icône à gauche qui passe du gris au
- * bleu nuit. Plus moderne et plus léger visuellement que la border
- * complète shadcn standard.
+ * Field standard charte v1 V3 : <Label> shadcn classique au-dessus,
+ * <Input> shadcn bordure complète (h-11 pour confort), icône Lucide
+ * positionnée en absolu à gauche de l'input avec `pl-10` côté input
+ * pour laisser la place. Plus structurant et lisible que la version
+ * underline-only V2.
  *
- * Conservation stricte des points d'a11y : <label> avec htmlFor,
- * aria-invalid + aria-describedby sur erreur, role="alert" sur le
- * message d'erreur (immédiatement annoncé aux lecteurs d'écran).
+ * A11y stricte : <Label htmlFor>, aria-invalid + aria-describedby
+ * conditionnels, <p role="alert"> pour annonce immédiate aux
+ * lecteurs d'écran.
  */
-function UnderlineInput({
+function FieldWithIcon({
   id,
   type,
   label,
@@ -236,51 +225,39 @@ function UnderlineInput({
   placeholder,
   errorMessage,
   register,
-  animationDelay,
-}: UnderlineInputProps) {
+}: FieldWithIconProps) {
   const hasError = Boolean(errorMessage);
   return (
-    <div className={`${ANIM_BASE} ${animationDelay}`}>
-      <Label
-        htmlFor={id}
-        className="block text-[11px] uppercase tracking-[0.08em] text-(--muted-foreground) mb-2"
-      >
-        {label}
-      </Label>
-      <div className="relative group">
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
         <Icon
           className={cn(
-            'absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none transition-colors duration-200',
-            hasError
-              ? 'text-(--destructive)'
-              : 'text-(--muted-foreground) group-focus-within:text-(--miznas-bleu-nuit)',
+            'absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none transition-colors duration-200',
+            hasError ? 'text-(--destructive)' : 'text-(--muted-foreground)',
           )}
           aria-hidden="true"
         />
-        <input
+        <Input
           id={id}
           type={type}
           autoComplete={autoComplete}
           placeholder={placeholder}
           aria-invalid={hasError ? true : undefined}
           aria-describedby={hasError ? `${id}-error` : undefined}
-          {...register}
           className={cn(
-            'w-full bg-transparent pl-7 pr-1 pb-2 pt-1 text-sm text-(--foreground)',
-            'border-0 border-b border-(--border) rounded-none',
-            'placeholder:text-(--muted-foreground)/60',
-            'focus:outline-none focus:border-b-2 focus:border-(--miznas-bleu-nuit) focus:pb-[7px]',
-            'transition-[border-color,padding] duration-200',
+            'h-11 pl-10',
             hasError &&
-              'border-(--destructive) focus:border-(--destructive)',
+              'border-(--destructive) focus-visible:ring-(--destructive)',
           )}
+          {...register}
         />
       </div>
       {errorMessage && (
         <p
           id={`${id}-error`}
           role="alert"
-          className="text-xs text-(--destructive) mt-1.5"
+          className="text-xs text-(--destructive)"
         >
           {errorMessage}
         </p>
