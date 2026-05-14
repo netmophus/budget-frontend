@@ -1,5 +1,5 @@
 /**
- * DashboardCard (Lot 7.3 V6 — coloration par catégorie métier).
+ * DashboardCard (Lot 7.3 V6.1 — fix coloration via inline style).
  *
  * Carte pédagogique du dashboard. Chaque carte appartient à une
  * famille métier matérialisée par 2 accents visuels permanents :
@@ -13,6 +13,21 @@
  *  - reporting     (#BA7517) : analyse, écarts, reforecast
  *  - collaboration (#B05D3F) : délégations, échanges
  *  - config        (#5F6B7A) : admin, référentiels, audit
+ *
+ * Note technique — pourquoi inline style et pas classes Tailwind
+ * --------------------------------------------------------------
+ * La V6 initiale utilisait `border-l-(--miznas-cat-X)` et
+ * `text-(--miznas-cat-X)` mappées via un objet `COLOR_CLASSES`. Bien
+ * que `text-(--var)` et `bg-(--var)` fonctionnent en Tailwind v4
+ * (utilities 100 % color, pas d'ambiguïté), `border-l-(--var)` est
+ * ambigu (width vs color) et n'est pas généré par le scanner — la
+ * CSS finale ne contient pas la règle, donc rien ne s'affiche. Faux
+ * positif des tests Vitest : ils vérifient la className en string
+ * mais pas la CSS générée.
+ *
+ * Solution : double source de vérité acceptée (hex dans index.css
+ * pour la doc + hex ici pour le rendu garanti). 6 valeurs fixes,
+ * couplage faible, pas de dépendance Tailwind purge.
  */
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -38,34 +53,17 @@ interface DashboardCardProps {
   className?: string;
 }
 
-const COLOR_CLASSES: Record<
-  DashboardCardColor,
-  { border: string; icon: string }
-> = {
-  budget: {
-    border: 'border-l-(--miznas-cat-budget)',
-    icon: 'text-(--miznas-cat-budget)',
-  },
-  validation: {
-    border: 'border-l-(--miznas-cat-validation)',
-    icon: 'text-(--miznas-cat-validation)',
-  },
-  realise: {
-    border: 'border-l-(--miznas-cat-realise)',
-    icon: 'text-(--miznas-cat-realise)',
-  },
-  reporting: {
-    border: 'border-l-(--miznas-cat-reporting)',
-    icon: 'text-(--miznas-cat-reporting)',
-  },
-  collaboration: {
-    border: 'border-l-(--miznas-cat-collaboration)',
-    icon: 'text-(--miznas-cat-collaboration)',
-  },
-  config: {
-    border: 'border-l-(--miznas-cat-config)',
-    icon: 'text-(--miznas-cat-config)',
-  },
+/**
+ * Mapping color → hex. À garder synchronisé avec les tokens
+ * `--miznas-cat-*` dans `src/index.css` (source de vérité documentée).
+ */
+const COLOR_VALUES: Record<DashboardCardColor, string> = {
+  budget: '#0C447C',
+  validation: '#0F6E56',
+  realise: '#5B4E91',
+  reporting: '#BA7517',
+  collaboration: '#B05D3F',
+  config: '#5F6B7A',
 };
 
 export function DashboardCard({
@@ -76,13 +74,14 @@ export function DashboardCard({
   color,
   className,
 }: DashboardCardProps) {
-  const colorCls = COLOR_CLASSES[color];
+  const couleurHex = COLOR_VALUES[color];
   return (
     <Link
       to={to}
+      style={{ borderLeftColor: couleurHex }}
+      data-color={color}
       className={cn(
         'block bg-white border border-(--border) border-l-[3px]',
-        colorCls.border,
         'rounded-md p-4',
         'hover:shadow-sm transition-shadow',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
@@ -91,14 +90,13 @@ export function DashboardCard({
     >
       <div className="flex items-start gap-3">
         <Icon
-          className={cn('w-6 h-6 flex-shrink-0', colorCls.icon)}
+          className="w-6 h-6 flex-shrink-0"
+          style={{ color: couleurHex }}
           aria-hidden="true"
         />
         <div>
           {/* <h3> pour préserver la sémantique heading (les tests
-              DashboardPage existants utilisent getByRole('heading'))
-              — le style charte v1 est strictement identique à un
-              <div> grâce au reset Tailwind. */}
+              DashboardPage existants utilisent getByRole('heading')). */}
           <h3 className="text-sm font-medium">{title}</h3>
           <div className="text-xs text-(--muted-foreground) mt-1 leading-relaxed">
             {description}

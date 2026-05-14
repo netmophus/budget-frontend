@@ -71,13 +71,24 @@ describe('DashboardCard', () => {
     expect(screen.getByText('Page cible')).toBeInTheDocument();
   });
 
+  // Note V6.1 : on teste les valeurs hex appliquées en INLINE STYLE
+  // (`style.borderLeftColor`, `style.color` sur l'icône), pas les
+  // classes Tailwind. Cf. JSDoc DashboardCard.tsx pour le pourquoi
+  // (piège ambiguïté `border-l-(--var)` non généré par Tailwind v4).
+  // Les valeurs sont matchées de façon tolérante (hex OU rgb) car
+  // JSDom peut normaliser `#0C447C` en `rgb(12, 68, 124)` selon
+  // la version.
   it.each([
-    ['budget', '--miznas-cat-budget'],
-    ['validation', '--miznas-cat-validation'],
-    ['config', '--miznas-cat-config'],
+    ['budget', '#0C447C', /(rgb\(12,\s*68,\s*124\)|#0c447c)/i],
+    ['validation', '#0F6E56', /(rgb\(15,\s*110,\s*86\)|#0f6e56)/i],
+    ['config', '#5F6B7A', /(rgb\(95,\s*107,\s*122\)|#5f6b7a)/i],
   ] as const)(
-    'color=%s → border-l et icône portent le token catégorie',
-    (color: DashboardCardColor, token: string) => {
+    'color=%s → border-left + icône stylés avec %s',
+    (
+      color: DashboardCardColor,
+      _hex: string,
+      pattern: RegExp,
+    ) => {
       render(
         <MemoryRouter>
           <DashboardCard
@@ -90,10 +101,14 @@ describe('DashboardCard', () => {
         </MemoryRouter>,
       );
       const link = screen.getByRole('link');
-      expect(link.className).toContain(`border-l-(${token})`);
+      // border-left-color via style inline
+      expect(link.getAttribute('style')).toMatch(pattern);
+      // data-color permet aussi de vérifier la valeur logique
+      expect(link.getAttribute('data-color')).toBe(color);
+      // L'icône Lucide reçoit la couleur sur `style.color`
       const svg = link.querySelector('svg');
       expect(svg).not.toBeNull();
-      expect(svg?.getAttribute('class')).toContain(`text-(${token})`);
+      expect(svg?.getAttribute('style')).toMatch(pattern);
     },
   );
 
