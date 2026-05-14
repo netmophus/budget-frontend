@@ -15,11 +15,12 @@
  *   sm  → text-xl   (20px)  badge / mention footer
  *   md  → text-3xl  (30px)  header AuthLayout, défaut
  *   lg  → text-5xl  (48px)  page d'erreur, splash
- *   xl  → text-6xl  (60px)  zone identité PublicLayout (cible /login)
+ *   xl  → text-6xl  (60px)  zone identité PublicLayout
+ *   2xl → text-8xl  (96px)  zone identité /login premium (Lot 7.3 V2)
  */
 import { cn } from '@/lib/utils';
 
-export type MiznasWordmarkSize = 'sm' | 'md' | 'lg' | 'xl';
+export type MiznasWordmarkSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface MiznasWordmarkProps {
   size?: MiznasWordmarkSize;
@@ -31,6 +32,7 @@ const SIZE_CLASSES: Record<MiznasWordmarkSize, string> = {
   md: 'text-3xl',
   lg: 'text-5xl',
   xl: 'text-6xl',
+  '2xl': 'text-8xl',
 };
 
 export function MiznasWordmark({

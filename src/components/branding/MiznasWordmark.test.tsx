@@ -43,6 +43,7 @@ describe('MiznasWordmark (Lot 7.3)', () => {
     ['md', 'text-3xl'],
     ['lg', 'text-5xl'],
     ['xl', 'text-6xl'],
+    ['2xl', 'text-8xl'],
   ] as const)('applique la classe attendue pour size=%s', (size, expected) => {
     render(<MiznasWordmark size={size} />);
     expect(screen.getByTestId('miznas-wordmark').className).toContain(expected);
