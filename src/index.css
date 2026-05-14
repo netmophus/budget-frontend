@@ -35,6 +35,17 @@
   --miznas-bleu-nuit-light: #133869;
   --miznas-ambre: #BA7517;
   --miznas-creme: #F1EFE8;
+
+  /* ─── Catégories métier dashboard (Lot 7.3 V6) ──────────────────
+     Palette catégorielle utilisée par les cartes pédagogiques du
+     dashboard (border-left + icône). Chaque token correspond à une
+     famille d'actions métier MIZNAS. */
+  --miznas-cat-budget: #0C447C;         /* bleu nuit — saisie budget */
+  --miznas-cat-validation: #0F6E56;     /* vert validé — workflow */
+  --miznas-cat-realise: #5B4E91;        /* violet indigo — réalisé */
+  --miznas-cat-reporting: #BA7517;      /* ambre — analyse / reforecast */
+  --miznas-cat-collaboration: #B05D3F;  /* terracotta — délégations */
+  --miznas-cat-config: #5F6B7A;         /* gris ardoise — admin / config */
 }
 
 @theme inline {
@@ -64,6 +75,12 @@
   --color-miznas-bleu-nuit-light: var(--miznas-bleu-nuit-light);
   --color-miznas-ambre: var(--miznas-ambre);
   --color-miznas-creme: var(--miznas-creme);
+  --color-miznas-cat-budget: var(--miznas-cat-budget);
+  --color-miznas-cat-validation: var(--miznas-cat-validation);
+  --color-miznas-cat-realise: var(--miznas-cat-realise);
+  --color-miznas-cat-reporting: var(--miznas-cat-reporting);
+  --color-miznas-cat-collaboration: var(--miznas-cat-collaboration);
+  --color-miznas-cat-config: var(--miznas-cat-config);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
