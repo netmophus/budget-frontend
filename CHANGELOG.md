@@ -2,6 +2,115 @@
 
 Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [Lot 7.2] - 2026-05-14
+
+### Dashboard modernisé — bande KPI + animations staggered
+
+Deuxième sous-lot du Lot 7 (modernisation UI). La page d'accueil
+gagne une bande de 3 KPI au-dessus des 9 cartes pédagogiques
+livrées au Lot 7+ preview (PR #8), avec animations staggered au
+mount. Pas de sélecteur version/scénario sur la home : les défauts
+sont résolus côté backend par un nouvel endpoint dédié.
+
+#### Ajouté
+
+- **feat(dashboard)** — bande KPI haute (`<KpiBandeau />`) entre
+  `<PageHeader>` et la grille des 9 cartes pédagogiques. 3 cartes :
+  - **PNB consolidé** sur le périmètre RBAC de l'utilisateur,
+    formaté en FCFA (séparateurs fr-FR, 0 décimales)
+  - **Coefficient d'exploitation** coloré selon les seuils UEMOA
+    (vert < 70 %, ambre 70-100 %, rouge > 100 %) via le helper
+    existant `classerCoefExploitation`
+  - **Versions à valider** — compteur de versions au statut `'soumis'`,
+    visible uniquement avec `BUDGET.VALIDER OR BUDGET.PUBLIER` (any).
+    Card cliquable vers `/budget/versions`. Le PUBLICATEUR voit la
+    card autant que le VALIDATEUR (il publie ce que le VALIDATEUR
+    a validé — choix métier validé en arbitrage).
+  Les 2 premiers KPI consomment l'endpoint backend dédié
+  `GET /api/v1/budget/indicateurs/home` (Lot 7.2 backend — PR mergée
+  sur main backend hash `8abb9a7`) qui résout automatiquement le
+  triplet (version/scénario/exercice) en cascade `gele → valide → soumis`,
+  avec fallback héritage Lot 2.4 sur le scénario central. Pas de
+  chained calls fragiles côté frontend, pas de sélecteur sur la home.
+  Sous-libellé contextuel de chaque KPI au format
+  `"<libelleVersion> · <libelleScenario>"` — choix métier (libellés
+  humains) plutôt que codes techniques, et omission de l'exerciceFiscal
+  qui est déjà typiquement présent dans les libellés.
+- **feat(dashboard)** — animations staggered `tw-animate-css` au
+  mount sur les 12 cartes (3 KPI + 9 pédagogiques) :
+  `animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both`
+  avec délais incrémentaux 0 → 500 ms. Cadence ~40 ms entre cartes
+  pédagogiques, ~60 ms entre KPI. Cadence à valider visuellement
+  après merge (dette mineure Lot 7.X : ajustement éventuel vers
+  60/80 ms pour plus de respiration).
+
+#### Modifié
+
+- **refactor(dashboard)** — `DashboardPage` passé en `CARDS: CardSpec[]`
+  data-driven + boucle `.map()` pour appliquer les delays
+  incrémentaux sans dupliquer 9 blocs `<Can>`. Rendu visuel strictement
+  identique à la version précédente (mêmes 9 cartes, mêmes
+  permissions, même ordre, même grid).
+- **refactor(DashboardCard)** — ajout d'une prop optionnelle
+  `className?: string` pour ouvrir le composant aux delays
+  d'animation gérés depuis l'appelant. Pas de changement de comportement
+  par défaut.
+- **refactor(KpiBandeau)** — sous-libellé contextuel allégé après
+  revue : `"<codeVersion> · <libelleScenario> · <exerciceFiscal>"`
+  remplacé par `"<libelleVersion> · <libelleScenario>"`, pour
+  éliminer la triple répétition de l'année quand elle est déjà
+  présente dans les libellés (ex. évite "BI_2027 · Médian 2027 · 2027").
+- **feat(api-client)** — `src/lib/api/indicateurs.ts` étendu avec
+  `IndicateursHome`, `IndicateursHomeDefauts` et `getIndicateursHome()`.
+
+#### Tests
+
+- **test(dashboard)** — 10 tests régression dans
+  `src/components/tableau-bord/KpiBandeau.test.tsx`, organisés en
+  3 describes :
+  1. **PNB + Coefficient** (BUDGET.LIRE requis pour la bande) — 4 tests :
+     ADMIN, SAISISSEUR, AUDITEUR voient les 2 cards ; sans
+     BUDGET.LIRE toute la bande est masquée (`getIndicateursHome`
+     jamais appelé, vérification déterministe).
+  2. **Versions à valider** (BUDGET.VALIDER OR BUDGET.PUBLIER, any) —
+     5 tests : VALIDATEUR + PUBLICATEUR voient la card (compteur =
+     `listVersions({statut:'soumis', limit:1}).total`) ; SAISISSEUR,
+     AUDITEUR, LECTEUR ne la voient pas (`listVersions` jamais appelé).
+  3. **État vide** — 1 test : quand `/home` renvoie
+     `defauts:null + indicateurs:null`, PNB et Coef affichent `—`
+     + sous-libellé `Aucune version éligible`. Pas de crash, pas
+     d'erreur visuelle.
+  Stratégie de mock : `vi.mock` sur `@/lib/api/indicateurs` (avec
+  `vi.importActual` pour préserver `classerCoefExploitation`) et sur
+  `@/lib/api/versions`. Store d'auth manipulé directement via
+  `useAuthStore.setState`, suivant le pattern existant de
+  `DashboardPage.test.tsx`.
+
+#### Métriques
+
+- Vitest frontend : **600 → 610 verts** (+10 tests régression KPI)
+- ESLint 0 problems, `tsc -b` strict 0 erreurs, `vite build` VERT
+  (Required CI préservé)
+
+#### Endpoint backend associé
+
+- `GET /api/v1/budget/indicateurs/home` — Lot 7.2 backend mergé sur
+  `main` du repo `netmophus/budget-backend` (hash `8abb9a7`).
+  Résolveur cascade `gele → valide → soumis` avec
+  `statutPublication = 'ACTIVE'` uniquement. Délègue au calcul
+  existant `IndicateursService.getIndicateursGlobaux` (filtrage RBAC
+  périmètre Q5 garanti). 7 tests unitaires + 3 tests e2e
+  (1167 / 1167 sur la suite backend complète).
+
+#### À valider après merge
+
+La cadence d'animation (~40 ms / 60 ms) et le format exact du
+sous-libellé contextuel des KPI dépendent des libellés réellement
+seedés en base BSIC. À valider visuellement par l'équipe en
+pré-prod ; ajustement éventuel tracé comme dette mineure du Lot 7.X.
+
+---
+
 ## [Lot 7.1] - 2026-05-13
 
 ### Hygiène filtrage permission sidebar — fixes asymétrie + tests régression
