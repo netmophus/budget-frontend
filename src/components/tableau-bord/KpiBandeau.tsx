@@ -147,10 +147,15 @@ function SousLibelle({
       </span>
     );
   }
+  // Format Lot 7.2 (validé après revue) : on s'appuie sur les libellés
+  // métier renvoyés par le backend plutôt que sur les codes techniques.
+  // L'exerciceFiscal est volontairement omis du libellé : il est
+  // typiquement déjà présent dans `libelleVersion` (ex. "Budget initial
+  // 2027") et/ou `libelleScenario` (ex. "Médian 2027"), donc l'afficher
+  // séparément créerait une triple répétition.
   return (
     <span className="text-(--muted-foreground)">
-      {data.defauts.codeVersion} · {data.defauts.libelleScenario} ·{' '}
-      {data.defauts.exerciceFiscal}
+      {data.defauts.libelleVersion} · {data.defauts.libelleScenario}
     </span>
   );
 }
