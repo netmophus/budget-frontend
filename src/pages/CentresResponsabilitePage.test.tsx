@@ -262,7 +262,7 @@ describe('CentresResponsabilitePage', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: /Nouveau centre de responsabilité/i,
+          name: /Nouveau CR/i,
         }),
       ).toBeInTheDocument();
     });
@@ -283,7 +283,7 @@ describe('CentresResponsabilitePage', () => {
     });
     expect(
       screen.queryByRole('button', {
-        name: /Nouveau centre de responsabilité/i,
+        name: /Nouveau CR/i,
       }),
     ).not.toBeInTheDocument();
   });
