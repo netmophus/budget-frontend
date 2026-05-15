@@ -1,8 +1,10 @@
 /**
- * Tests Vitest ForgotPasswordPage (Lot 6.5.A).
+ * Tests Vitest ForgotPasswordPage (Lot 6.5.A + Lot 7.3 V8 refonte).
  *
  * Couvre :
  *  - rendu initial (form, champ email, bouton submit) ;
+ *  - rendu PublicLayout V5 : zone identité MIZNAS visible,
+ *    icône Key dans cercle ambre, lien retour vers /login ;
  *  - validation : email invalide → erreur zod, pas d'appel API ;
  *  - succès : POST /auth/forgot-password appelé, message de
  *    confirmation affiché (même message pour connu/inconnu côté
@@ -49,6 +51,38 @@ describe('ForgotPasswordPage', () => {
     expect(screen.getByTestId('fp-email')).toBeInTheDocument();
     expect(screen.getByTestId('fp-submit')).toBeInTheDocument();
     expect(screen.queryByTestId('forgot-confirmation')).not.toBeInTheDocument();
+  });
+
+  it('rend le PublicLayout V5 (zone identité MIZNAS visible)', () => {
+    renderPage();
+    expect(screen.getByTestId('public-layout')).toBeInTheDocument();
+    expect(screen.getByTestId('public-layout-identite')).toBeInTheDocument();
+    expect(screen.getByTestId('public-layout-wordmark').textContent).toBe(
+      'MIZNAS',
+    );
+  });
+
+  it('rend l\'icône Key dans un cercle ambre (signature visuelle)', () => {
+    renderPage();
+    const circle = screen.getByTestId('forgot-key-circle');
+    expect(circle).toBeInTheDocument();
+    expect(circle.className).toContain('rounded-full');
+    expect(circle.className).toContain('bg-(--miznas-ambre)/10');
+  });
+
+  it('le bouton submit porte le libellé « Envoyer le lien » + icône Send', () => {
+    renderPage();
+    const submit = screen.getByTestId('fp-submit');
+    expect(submit.textContent).toContain('Envoyer le lien');
+    // Icône Lucide Send rendue dans le bouton
+    expect(submit.querySelector('svg')).not.toBeNull();
+  });
+
+  it('le lien retour pointe vers /login (avec icône ArrowLeft)', () => {
+    renderPage();
+    const lien = screen.getByRole('link', { name: /retour à la connexion/i });
+    expect(lien).toHaveAttribute('href', '/login');
+    expect(lien.querySelector('svg')).not.toBeNull();
   });
 
   it("validation zod : email invalide → l'API n'est pas appelée + DOM reste sur le form", async () => {

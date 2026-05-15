@@ -1,34 +1,35 @@
 /**
- * ForgotPasswordPage (Lot 6.5.A) — formulaire 1 champ email pour
- * demander un lien de réinitialisation de mot de passe.
+ * ForgotPasswordPage (Lot 7.3 V8 — refonte selon PublicLayout
+ * et Charte v1, à l'identique de LoginPage V5).
  *
- * Après soumission, message de succès **identique** quelle que soit
- * la réalité côté backend (email connu / inconnu / inactif) — c'est
- * la promesse anti-énumération du backend qu'on respecte côté UI.
+ * Formulaire 1 champ email pour demander un lien de
+ * réinitialisation de mot de passe (Lot 6.5.A). La promesse
+ * anti-énumération du backend est respectée côté UI : message de
+ * succès identique quelle que soit la réalité côté backend (email
+ * connu / inconnu / inactif).
+ *
+ * Migré du Card centré générique vers PublicLayout split 50/50.
+ * Pattern visuel : icône Key dans cercle ambre, titre + sous-titre
+ * centrés, séparateurs fins encadrant le form, bouton "Envoyer le
+ * lien" avec icône Send, lien retour avec flèche.
  */
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
-import { Mail } from 'lucide-react';
+import { ArrowLeft, Key, Mail, Send } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Toaster } from '@/components/ui/sonner';
 import { forgotPassword } from '@/lib/api/auth';
 import type { ApiError } from '@/lib/api/types';
+import { cn } from '@/lib/utils';
 
 const schema = z.object({
   email: z.string().email('Email invalide'),
@@ -63,81 +64,144 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-(--secondary)/30 p-4">
-      <div className="w-full max-w-md">
-        <Card data-testid="page-forgot-password">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-2">
-              <Mail className="h-10 w-10 text-(--primary)" />
+    <PublicLayout>
+      <div className="max-w-md mx-auto w-full" data-testid="page-forgot-password">
+        {/* Icône clé dans cercle ambre clair — signature visuelle de
+            la page "mot de passe oublié", parallèle au cadenas Lock
+            de la page de connexion. */}
+        <div className="flex justify-center mb-4">
+          <div
+            className="w-14 h-14 rounded-full bg-(--miznas-ambre)/10 flex items-center justify-center"
+            data-testid="forgot-key-circle"
+            aria-hidden="true"
+          >
+            <Key className="w-6 h-6 text-(--miznas-bleu-nuit-dark)" />
+          </div>
+        </div>
+
+        <h3 className="text-center text-xl font-semibold tracking-tight text-(--foreground) mb-1.5">
+          Mot de passe oublié
+        </h3>
+        <p className="text-[13px] text-(--muted-foreground) text-center mb-7 max-w-sm mx-auto">
+          Saisissez votre adresse email professionnelle.
+          <br />
+          <span className="text-(--muted-foreground)/70">
+            Vous recevrez un lien valable 30 minutes.
+          </span>
+        </p>
+
+        {envoye ? (
+          // Bandeau de confirmation — anti-énumération : message
+          // identique quelle que soit la réalité côté backend.
+          <>
+            <div className="h-px bg-(--border) mb-6" aria-hidden="true" />
+            <div
+              data-testid="forgot-confirmation"
+              className="rounded-md border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900"
+              role="status"
+            >
+              <p className="font-medium">Demande enregistrée.</p>
+              <p className="mt-1 text-xs text-emerald-800">
+                Si l&apos;email existe, un lien de réinitialisation a été
+                envoyé. Vérifiez votre boîte mail (et les spams) puis
+                cliquez sur le lien dans les 30 minutes.
+              </p>
             </div>
-            <CardTitle className="text-2xl">Mot de passe oublié</CardTitle>
-            <CardDescription className="text-sm text-(--muted-foreground)">
-              Saisissez votre email. Si un compte est associé, vous recevrez
-              un lien de réinitialisation valable 30 minutes.
-            </CardDescription>
-          </CardHeader>
-          {envoye ? (
-            <>
-              <CardContent>
-                <div
-                  data-testid="forgot-confirmation"
-                  className="rounded-md border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900"
-                >
-                  <p className="font-medium">Demande enregistrée.</p>
-                  <p className="mt-1 text-xs text-emerald-800">
-                    Si l'email existe, un lien de réinitialisation a été
-                    envoyé. Vérifiez votre boîte mail (et les spams) puis
-                    cliquez sur le lien dans les 30 minutes.
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Link to="/login" className="text-sm text-(--primary) hover:underline">
-                  Retour à la connexion
-                </Link>
-              </CardFooter>
-            </>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+            <div className="h-px bg-(--border) my-5" aria-hidden="true" />
+            <div className="text-center">
+              <Link
+                to="/login"
+                className="text-[13px] text-(--miznas-ambre) font-medium hover:underline underline-offset-[3px] inline-flex items-center gap-1.5 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                Retour à la connexion
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="h-px bg-(--border) mb-6" aria-hidden="true" />
+
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-3.5"
+              noValidate
+            >
+              <div className="space-y-2">
+                <Label htmlFor="email">Email professionnel</Label>
+                <div className="relative">
+                  <Mail
+                    className={cn(
+                      'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
+                      errors.email
+                        ? 'text-(--destructive)'
+                        : 'text-(--muted-foreground)',
+                    )}
+                    aria-hidden="true"
+                    data-testid="forgot-icon-email"
+                  />
                   <Input
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="vous@bsic.ne"
+                    placeholder="votre.email@bsic.com"
                     data-testid="fp-email"
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={
+                      errors.email ? 'email-error' : undefined
+                    }
+                    className={cn(
+                      'pl-10 h-10',
+                      errors.email &&
+                        'border-(--destructive) focus-visible:ring-(--destructive)',
+                    )}
                     {...register('email')}
                   />
-                  {errors.email && (
-                    <p className="text-xs text-(--destructive)">
-                      {errors.email.message}
-                    </p>
-                  )}
                 </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting}
-                  data-testid="fp-submit"
-                >
-                  {isSubmitting ? 'Envoi…' : 'Envoyer le lien'}
-                </Button>
-                <Link
-                  to="/login"
-                  className="text-sm text-(--muted-foreground) hover:underline"
-                >
-                  Retour à la connexion
-                </Link>
-              </CardFooter>
+                {errors.email && (
+                  <p
+                    id="email-error"
+                    role="alert"
+                    className="text-xs text-(--destructive)"
+                  >
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className={cn(
+                  'w-full h-10 font-semibold gap-2',
+                  'bg-(--miznas-bleu-nuit-dark) text-white',
+                  'hover:bg-(--miznas-bleu-nuit-dark)/90',
+                  'transition-colors duration-200',
+                  'disabled:opacity-70 disabled:cursor-not-allowed',
+                )}
+                disabled={isSubmitting}
+                data-testid="fp-submit"
+              >
+                <Send className="w-4 h-4" aria-hidden="true" />
+                {isSubmitting ? 'Envoi...' : 'Envoyer le lien'}
+              </Button>
             </form>
-          )}
-        </Card>
+
+            <div className="h-px bg-(--border) my-5" aria-hidden="true" />
+
+            <div className="text-center">
+              <Link
+                to="/login"
+                className="text-[13px] text-(--miznas-ambre) font-medium hover:underline underline-offset-[3px] inline-flex items-center gap-1.5 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                Retour à la connexion
+              </Link>
+            </div>
+          </>
+        )}
+
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </PublicLayout>
   );
 }
