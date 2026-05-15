@@ -1,10 +1,15 @@
 /**
- * DashboardCard (Lot 7.3 V6.1 — fix coloration via inline style).
+ * DashboardCard (Lot 7.3 V7 — variante C : fond pastel + cercle blanc).
  *
  * Carte pédagogique du dashboard. Chaque carte appartient à une
- * famille métier matérialisée par 2 accents visuels permanents :
- *  - border-left 3 px de la couleur catégorie (toujours visible)
- *  - icône Lucide dans la couleur catégorie (toujours visible)
+ * famille métier matérialisée visuellement par 3 accents :
+ *  - fond de carte coloré pastel (~6 % opacité de la couleur catégorie)
+ *  - cercle blanc 36 px contenant l'icône Lucide en couleur catégorie
+ *  - titre dans la couleur catégorie
+ *
+ * Pas de bordure visible (la V6 l'avait sur le côté gauche), pas
+ * d'ombre portée sauf le subtle shadow-sm du cercle blanc qui fait
+ * ressortir l'icône sur le fond pastel.
  *
  * Catégories disponibles (cf. tokens `--miznas-cat-*` dans index.css) :
  *  - budget        (#0C447C) : saisie / élaboration budget
@@ -14,20 +19,17 @@
  *  - collaboration (#B05D3F) : délégations, échanges
  *  - config        (#5F6B7A) : admin, référentiels, audit
  *
- * Note technique — pourquoi inline style et pas classes Tailwind
- * --------------------------------------------------------------
- * La V6 initiale utilisait `border-l-(--miznas-cat-X)` et
- * `text-(--miznas-cat-X)` mappées via un objet `COLOR_CLASSES`. Bien
- * que `text-(--var)` et `bg-(--var)` fonctionnent en Tailwind v4
- * (utilities 100 % color, pas d'ambiguïté), `border-l-(--var)` est
- * ambigu (width vs color) et n'est pas généré par le scanner — la
- * CSS finale ne contient pas la règle, donc rien ne s'affiche. Faux
- * positif des tests Vitest : ils vérifient la className en string
- * mais pas la CSS générée.
+ * Note technique : couleurs en INLINE STYLE
+ * -----------------------------------------
+ * Voir l'historique du fix V6.1 : `text-(--var)` et `bg-(--var)`
+ * fonctionnent en Tailwind v4 mais le composé utility-fonction
+ * comme `border-l-(--var)` est ambigu (width vs color) et n'est
+ * pas généré. Pour la cohérence + garantie cross-utility, on
+ * applique TOUTES les couleurs catégorie via inline style.
  *
- * Solution : double source de vérité acceptée (hex dans index.css
- * pour la doc + hex ici pour le rendu garanti). 6 valeurs fixes,
- * couplage faible, pas de dépendance Tailwind purge.
+ * `${hex}0F` ajoute un alpha de 0x0F (15/255 ≈ 6 %) sur la couleur
+ * catégorie pour obtenir le fond pastel. JSDom et browsers modernes
+ * acceptent la syntaxe hex 8-digit (#RRGGBBAA).
  */
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -47,7 +49,7 @@ interface DashboardCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  /** Catégorie métier — pilote la couleur de bordure gauche + icône. */
+  /** Catégorie métier — pilote les 3 accents (fond, icône, titre). */
   color: DashboardCardColor;
   /** Classes Tailwind additionnelles (utilisé pour delays d'animation). */
   className?: string;
@@ -75,29 +77,40 @@ export function DashboardCard({
   className,
 }: DashboardCardProps) {
   const couleurHex = COLOR_VALUES[color];
+  const fondPastel = `${couleurHex}0F`; // alpha 0x0F ≈ 6 %
   return (
     <Link
       to={to}
-      style={{ borderLeftColor: couleurHex }}
+      style={{ backgroundColor: fondPastel }}
       data-color={color}
       className={cn(
-        'block bg-white border border-(--border) border-l-[3px]',
-        'rounded-md p-4',
+        'block rounded-md p-4',
         'hover:shadow-sm transition-shadow',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
         className,
       )}
     >
       <div className="flex items-start gap-3">
-        <Icon
-          className="w-6 h-6 flex-shrink-0"
-          style={{ color: couleurHex }}
+        <div
+          className="w-9 h-9 rounded-md bg-white flex items-center justify-center flex-shrink-0 shadow-sm"
           aria-hidden="true"
-        />
+        >
+          <Icon
+            className="w-5 h-5"
+            style={{ color: couleurHex }}
+            aria-hidden="true"
+          />
+        </div>
+
         <div>
           {/* <h3> pour préserver la sémantique heading (les tests
               DashboardPage existants utilisent getByRole('heading')). */}
-          <h3 className="text-sm font-medium">{title}</h3>
+          <h3
+            className="text-sm font-medium"
+            style={{ color: couleurHex }}
+          >
+            {title}
+          </h3>
           <div className="text-xs text-(--muted-foreground) mt-1 leading-relaxed">
             {description}
           </div>

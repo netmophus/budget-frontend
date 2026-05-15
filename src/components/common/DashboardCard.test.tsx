@@ -1,13 +1,12 @@
 /**
- * Tests DashboardCard (Lot 7.3 V6 — coloration par catégorie).
+ * Tests DashboardCard (Lot 7.3 V7 — variante C : fond pastel).
  *
  * Couvre :
  *  - Rendu basique : titre + description + lien correctement câblé
  *    + navigation cliquable
- *  - Mapping color → border-l-(--miznas-cat-X) + text-(--miznas-cat-X)
- *    (3 catégories suffisent pour valider le pattern, le reste suit
- *    la même mécanique mappée 1-pour-1 dans `COLOR_CLASSES`)
- *  - Bordure 3 px gauche permanente + fond blanc
+ *  - Mapping color → fond pastel (background-color avec ~6 % alpha)
+ *    + icône colorée (svg style.color) + titre coloré (h3 style.color)
+ *  - Cercle blanc 36 px autour de l'icône
  *  - Propagation de `className` additionnelle (delays d'animation)
  *  - Icône Lucide aria-hidden (purement décorative)
  */
@@ -71,48 +70,66 @@ describe('DashboardCard', () => {
     expect(screen.getByText('Page cible')).toBeInTheDocument();
   });
 
-  // Note V6.1 : on teste les valeurs hex appliquées en INLINE STYLE
-  // (`style.borderLeftColor`, `style.color` sur l'icône), pas les
-  // classes Tailwind. Cf. JSDoc DashboardCard.tsx pour le pourquoi
-  // (piège ambiguïté `border-l-(--var)` non généré par Tailwind v4).
-  // Les valeurs sont matchées de façon tolérante (hex OU rgb) car
-  // JSDom peut normaliser `#0C447C` en `rgb(12, 68, 124)` selon
-  // la version.
+  // Note V7 : on teste les valeurs hex appliquées en INLINE STYLE
+  // - link.style.backgroundColor : couleur catégorie + alpha (~6 %)
+  // - svg.style.color            : couleur catégorie pure
+  // - h3.style.color             : couleur catégorie pure
+  // Les patterns sont tolérants (rgb / rgba / hex) car JSDom peut
+  // normaliser `#RRGGBBAA` en `rgba(R, G, B, 0.06)` selon la version.
   it.each([
-    ['budget', '#0C447C', /(rgb\(12,\s*68,\s*124\)|#0c447c)/i],
-    ['validation', '#0F6E56', /(rgb\(15,\s*110,\s*86\)|#0f6e56)/i],
-    ['config', '#5F6B7A', /(rgb\(95,\s*107,\s*122\)|#5f6b7a)/i],
+    [
+      'budget',
+      // Couleur pure (icône, titre)
+      /(rgb\(12,\s*68,\s*124\)|#0c447c)$/i,
+      // Couleur + alpha (fond pastel)
+      /background-color:\s*(rgba?\(12,\s*68,\s*124|#0c447c)/i,
+    ],
+    [
+      'validation',
+      /(rgb\(15,\s*110,\s*86\)|#0f6e56)$/i,
+      /background-color:\s*(rgba?\(15,\s*110,\s*86|#0f6e56)/i,
+    ],
+    [
+      'config',
+      /(rgb\(95,\s*107,\s*122\)|#5f6b7a)$/i,
+      /background-color:\s*(rgba?\(95,\s*107,\s*122|#5f6b7a)/i,
+    ],
   ] as const)(
-    'color=%s → border-left + icône stylés avec %s',
-    (
-      color: DashboardCardColor,
-      _hex: string,
-      pattern: RegExp,
-    ) => {
+    'color=%s → fond pastel + icône + titre stylés via inline style',
+    (color: DashboardCardColor, patternPure: RegExp, patternBg: RegExp) => {
       render(
         <MemoryRouter>
           <DashboardCard
             to="/x"
             icon={FileEdit}
-            title="t"
+            title="Mon titre"
             description="d"
             color={color}
           />
         </MemoryRouter>,
       );
       const link = screen.getByRole('link');
-      // border-left-color via style inline
-      expect(link.getAttribute('style')).toMatch(pattern);
-      // data-color permet aussi de vérifier la valeur logique
+
+      // Fond pastel via style inline (background-color avec alpha)
+      expect(link.getAttribute('style')).toMatch(patternBg);
+
+      // data-color permet de vérifier la valeur logique
       expect(link.getAttribute('data-color')).toBe(color);
-      // L'icône Lucide reçoit la couleur sur `style.color`
+
+      // Icône Lucide en couleur catégorie pure
       const svg = link.querySelector('svg');
       expect(svg).not.toBeNull();
-      expect(svg?.getAttribute('style')).toMatch(pattern);
+      // svg.style.color renvoie la valeur résolue ; on matche depuis
+      // la fin de la chaîne (car style sérialise "color: …")
+      expect(svg?.style.color).toMatch(patternPure);
+
+      // Titre <h3> en couleur catégorie pure
+      const heading = screen.getByRole('heading', { name: 'Mon titre' });
+      expect(heading.style.color).toMatch(patternPure);
     },
   );
 
-  it('rend toujours une bordure gauche 3 px et un fond blanc', () => {
+  it('rend un cercle blanc 36 px autour de l\'icône (rounded-md bg-white)', () => {
     render(
       <MemoryRouter>
         <DashboardCard
@@ -125,8 +142,34 @@ describe('DashboardCard', () => {
       </MemoryRouter>,
     );
     const link = screen.getByRole('link');
-    expect(link.className).toContain('border-l-[3px]');
-    expect(link.className).toContain('bg-white');
+    // Le cercle blanc est le wrapper direct de l'<svg> de l'icône.
+    const svg = link.querySelector('svg');
+    const circle = svg?.parentElement;
+    expect(circle).not.toBeNull();
+    expect(circle?.className).toContain('rounded-md');
+    expect(circle?.className).toContain('bg-white');
+    expect(circle?.className).toContain('w-9');
+    expect(circle?.className).toContain('h-9');
+  });
+
+  it('rend les classes structurelles permanentes (rounded-md, p-4)', () => {
+    render(
+      <MemoryRouter>
+        <DashboardCard
+          to="/x"
+          icon={FileEdit}
+          title="t"
+          description="d"
+          color="reporting"
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link');
+    expect(link.className).toContain('rounded-md');
+    expect(link.className).toContain('p-4');
+    // V7 : pas de bordure visible (suppression de border-l-[3px] et
+    // border-(--border) introduits en V6).
+    expect(link.className).not.toContain('border-l-[3px]');
   });
 
   it('propage la className additionnelle (delays d\'animation par exemple)', () => {
