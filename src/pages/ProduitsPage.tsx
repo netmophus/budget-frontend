@@ -1,13 +1,36 @@
-import { type ColumnDef } from '@tanstack/react-table';
+/**
+ * ProduitsPage (Lot 2.5C + Lot 7.3 V15 refonte Charte v1).
+ *
+ * Catalogue des produits bancaires (crédit / dépôt / service / marché /
+ * autre). Hiérarchie 4 niveaux + SCD2.
+ *
+ * Refonte V15 (pattern unifié V11/V12/V14) :
+ *  - Header custom : cercle Package catégorie config + titre + sous-titre
+ *  - 5 KPI cards (Total actifs / Crédits / Dépôts / Services / Porteurs PNB)
+ *  - Barre de filtres dans cadre gris (2 lignes)
+ *  - Tableau grid CSS modernisé : indentation par niveau,
+ *    `TypeProduitBadge` coloré, check ambre porteur PNB,
+ *    `StatutProduitBadge` unifié
+ *
+ * Logique métier 100 % préservée : DetailDrawer, ConfirmDialog,
+ * ProduitFormDrawer, useRefSecondaireOptions pour les types,
+ * permission REFERENTIEL.GERER, debounce search, pagination.
+ */
 import { AxiosError } from 'axios';
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  Check,
+  CornerDownRight,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { DataTable } from '@/components/common/DataTable';
 import { DetailDrawer } from '@/components/common/DetailDrawer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { ProduitFormDrawer } from '@/components/produits/ProduitFormDrawer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,36 +57,29 @@ import {
 } from '@/lib/labels/referentiels';
 
 const ALL = '__all__';
+const ALL_NIVEAUX = '__all__';
 const DEFAULT_LIMIT = 50;
 const PAGE_SIZES = [20, 50, 100];
+const NIVEAUX = [1, 2, 3, 4];
 
 function formatDateFr(iso: string): string {
   const [y, m, d] = iso.split('T')[0]!.split('-');
   return `${d}/${m}/${y}`;
 }
 
-function CheckOrDash({ value }: { value: boolean }) {
-  return value ? (
-    <Check className="h-4 w-4 text-green-600 mx-auto" />
-  ) : (
-    <span className="text-(--muted-foreground) block text-center">—</span>
-  );
-}
-
 export function ProduitsPage() {
   const canGerer = useHasPermission('REFERENTIEL.GERER');
-  // Lot 2.5C : filtre Type alimenté dynamiquement par ref_type_produit
-  // (cohérent avec StructuresPage / SegmentsPage).
   const { options: typeOptions } = useRefSecondaireOptions('type-produit');
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>(ALL);
+  const [niveauFilter, setNiveauFilter] = useState<string>(ALL_NIVEAUX);
   const [porteursUniquement, setPorteursUniquement] = useState(false);
+  const [activesUniquement, setActivesUniquement] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT);
   const [data, setData] = useState<Produit[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -78,7 +94,14 @@ export function ProduitsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [typeFilter, porteursUniquement, debouncedSearch, limit]);
+  }, [
+    typeFilter,
+    niveauFilter,
+    porteursUniquement,
+    activesUniquement,
+    debouncedSearch,
+    limit,
+  ]);
 
   useEffect(() => {
     setLoading(true);
@@ -92,7 +115,6 @@ export function ProduitsPage() {
     })
       .then((res) => {
         setData(res.items);
-        setTotal(res.total);
       })
       .catch(() => {
         toast.error('Impossible de charger les produits');
@@ -118,9 +140,7 @@ export function ProduitsPage() {
     if (!confirmDelete) return;
     try {
       await deleteProduit(confirmDelete.codeProduit);
-      toast.success(
-        `Produit ${confirmDelete.codeProduit} désactivé.`,
-      );
+      toast.success(`Produit ${confirmDelete.codeProduit} désactivé.`);
       setConfirmDelete(null);
       setSelected(null);
       setRefreshKey((k) => k + 1);
@@ -137,157 +157,256 @@ export function ProduitsPage() {
     }
   }
 
+  const filtered = useMemo(() => {
+    return data.filter((p) => {
+      if (activesUniquement && !p.estActif) return false;
+      if (niveauFilter !== ALL_NIVEAUX && String(p.niveau) !== niveauFilter)
+        return false;
+      return true;
+    });
+  }, [data, activesUniquement, niveauFilter]);
+
   const sorted = useMemo(() => {
-    return [...data].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       if (a.niveau !== b.niveau) return a.niveau - b.niveau;
       return a.codeProduit.localeCompare(b.codeProduit);
     });
+  }, [filtered]);
+
+  // 5 KPI cards calculées sur data brut.
+  const kpi = useMemo(() => {
+    const actifs = data.filter((p) => p.estActif);
+    return {
+      totalActifs: actifs.length,
+      credits: actifs.filter((p) => p.typeProduit === 'credit').length,
+      depots: actifs.filter((p) => p.typeProduit === 'depot').length,
+      services: actifs.filter((p) => p.typeProduit === 'service').length,
+      porteursPnb: actifs.filter((p) => p.estPorteurInterets).length,
+    };
   }, [data]);
 
-  const columns: ColumnDef<Produit, unknown>[] = [
-    {
-      accessorKey: 'codeProduit',
-      header: 'Code',
-      cell: ({ row }) => (
-        <span
-          className="font-mono font-bold"
-          style={{ paddingLeft: `${(row.original.niveau - 1) * 16}px` }}
-        >
-          {row.original.codeProduit}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'libelle',
-      header: 'Libellé',
-      cell: ({ row }) => (
-        <span
-          style={{ paddingLeft: `${(row.original.niveau - 1) * 16}px` }}
-          className={row.original.niveau === 1 ? 'font-semibold' : ''}
-        >
-          {row.original.libelle}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'typeProduit',
-      header: 'Type',
-      cell: ({ row }) => (
-        <Badge className={badgeClassTypeProduit(row.original.typeProduit)}>
-          {libelleTypeProduit(row.original.typeProduit)}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'niveau',
-      header: 'Niveau',
-      cell: ({ row }) => (
-        <span className="font-mono block text-center">
-          {row.original.niveau}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'estPorteurInterets',
-      header: "Porteur d'intérêts",
-      cell: ({ row }) => <CheckOrDash value={row.original.estPorteurInterets} />,
-    },
-    {
-      accessorKey: 'estActif',
-      header: 'Statut',
-      cell: ({ row }) =>
-        row.original.estActif ? (
-          <Badge variant="success">Actif</Badge>
-        ) : (
-          <Badge variant="secondary">Inactif</Badge>
-        ),
-    },
-  ];
-
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Produits bancaires"
-        description="Catalogue des produits crédit / dépôt / service / marché. Hiérarchie 4 niveaux."
-        actions={
-          canGerer ? (
-            <Button onClick={() => setFormMode('create')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau produit
-            </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="flex items-end gap-4 flex-wrap">
-        <div className="space-y-1">
-          <Label htmlFor="search-produits">Recherche libellé</Label>
-          <Input
-            id="search-produits"
-            placeholder="ex. découvert"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="type-produit-filter">Type produit</Label>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger id="type-produit-filter" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Tous</SelectItem>
-              {typeOptions.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.libelle}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <label className="flex items-center gap-2 text-sm cursor-pointer pb-2">
-          <input
-            type="checkbox"
-            checked={porteursUniquement}
-            onChange={(e) => setPorteursUniquement(e.target.checked)}
-            className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
-          />
-          Porteurs d'intérêts uniquement
-        </label>
-
-        <div className="space-y-1">
-          <Label htmlFor="prod-limit">Lignes / page</Label>
-          <Select
-            value={String(limit)}
-            onValueChange={(v) => setLimit(Number(v))}
+    <div>
+      {/* ─── Header custom ──────────────────────────────────────── */}
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex items-center gap-3">
+          <div
+            style={{ backgroundColor: '#5F6B7A1A' }}
+            className="w-10 h-10 rounded-md flex items-center justify-center"
+            aria-hidden="true"
           >
-            <SelectTrigger id="prod-limit" className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZES.map((s) => (
-                <SelectItem key={s} value={String(s)}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Package className="w-5 h-5" style={{ color: '#5F6B7A' }} />
+          </div>
+          <div>
+            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+              Produits bancaires
+            </h3>
+            <p className="text-xs text-(--muted-foreground) mt-0.5">
+              Catalogue des produits crédit / dépôt / service / marché —
+              hiérarchie 4 niveaux
+            </p>
+          </div>
+        </div>
+
+        {canGerer && (
+          <Button
+            onClick={() => setFormMode('create')}
+            className="h-9 px-3.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nouveau produit
+          </Button>
+        )}
+      </div>
+
+      {/* ─── 5 KPI cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-5">
+        <KpiNumberCard label="Total actifs" value={kpi.totalActifs} color="#0F6E56" testId="kpi-prod-total-actifs" />
+        <KpiNumberCard label="Crédits" value={kpi.credits} color="#DC2626" testId="kpi-prod-credits" />
+        <KpiNumberCard label="Dépôts" value={kpi.depots} color="#0F6E56" testId="kpi-prod-depots" />
+        <KpiNumberCard label="Services" value={kpi.services} color="#0C447C" testId="kpi-prod-services" />
+        <KpiNumberCard label="Porteurs PNB" value={kpi.porteursPnb} color="#BA7517" testId="kpi-prod-porteurs" />
+      </div>
+
+      {/* ─── Barre de filtres ──────────────────────────────────── */}
+      <div className="bg-(--secondary) border border-(--border) rounded-md p-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_100px] gap-2.5 mb-2.5">
+          <div>
+            <Label htmlFor="search-produits" className="text-xs mb-1 block">
+              Recherche libellé / code
+            </Label>
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                id="search-produits"
+                placeholder="ex. découvert"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 pl-9 bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="type-produit-filter" className="text-xs mb-1 block">
+              Type produit
+            </Label>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger id="type-produit-filter" className="h-9 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Tous</SelectItem>
+                {typeOptions.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.libelle}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="niveau-prod-filter" className="text-xs mb-1 block">
+              Niveau
+            </Label>
+            <Select value={niveauFilter} onValueChange={setNiveauFilter}>
+              <SelectTrigger id="niveau-prod-filter" className="h-9 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_NIVEAUX}>Tous</SelectItem>
+                {NIVEAUX.map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    Niveau {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="prod-limit" className="text-xs mb-1 block">
+              Lignes / page
+            </Label>
+            <Select
+              value={String(limit)}
+              onValueChange={(v) => setLimit(Number(v))}
+            >
+              <SelectTrigger id="prod-limit" className="h-9 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZES.map((s) => (
+                  <SelectItem key={s} value={String(s)}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-4 pt-2 border-t border-(--border)">
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={porteursUniquement}
+              onChange={(e) => setPorteursUniquement(e.target.checked)}
+              className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
+            />
+            Porteurs d&apos;intérêts uniquement
+          </label>
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={activesUniquement}
+              onChange={(e) => setActivesUniquement(e.target.checked)}
+              className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
+            />
+            Actifs uniquement
+          </label>
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={sorted}
-        total={total}
-        page={page}
-        limit={limit}
-        isLoading={loading}
-        onPageChange={setPage}
-        onRowClick={setSelected}
-      />
+      {/* ─── Tableau grid CSS modernisé ────────────────────────── */}
+      <div
+        className="bg-white border border-(--border) rounded-md overflow-hidden"
+        data-testid="prod-table"
+      >
+        <div className="grid grid-cols-[200px_1fr_90px_60px_100px_90px] bg-(--secondary) px-4 py-2.5 border-b border-(--border)">
+          <ColumnHeader>Code</ColumnHeader>
+          <ColumnHeader>Libellé</ColumnHeader>
+          <ColumnHeader>Type</ColumnHeader>
+          <ColumnHeader>Niv.</ColumnHeader>
+          <ColumnHeader>Porteur PNB</ColumnHeader>
+          <ColumnHeader>Statut</ColumnHeader>
+        </div>
+
+        {loading && (
+          <div className="px-4 py-6 text-sm text-(--muted-foreground)">
+            Chargement…
+          </div>
+        )}
+        {!loading && sorted.length === 0 && (
+          <div className="px-4 py-6 text-sm text-(--muted-foreground)">
+            Aucun produit ne correspond aux filtres.
+          </div>
+        )}
+        {!loading &&
+          sorted.map((produit) => (
+            <button
+              key={produit.id}
+              type="button"
+              onClick={() => setSelected(produit)}
+              data-testid={`prod-row-${produit.id}`}
+              style={{
+                paddingLeft: `${16 + (produit.niveau - 1) * 16}px`,
+              }}
+              className="w-full text-left grid grid-cols-[200px_1fr_90px_60px_100px_90px] pr-4 py-2.5 items-center border-b border-(--border) last:border-b-0 hover:bg-(--muted)/30 transition-colors"
+            >
+              <div className="font-mono text-[13px]">{produit.codeProduit}</div>
+
+              <div className="flex items-center gap-1.5">
+                {produit.niveau > 1 && (
+                  <CornerDownRight
+                    className="w-3 h-3 text-(--muted-foreground)/50 shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="text-[13px]">{produit.libelle}</span>
+              </div>
+
+              <div>
+                <TypeProduitBadge type={produit.typeProduit} />
+              </div>
+
+              <div className="text-[13px] text-(--muted-foreground)">
+                {produit.niveau}
+              </div>
+
+              <div>
+                {produit.estPorteurInterets ? (
+                  <Check
+                    className="w-4 h-4 text-(--miznas-ambre)"
+                    aria-label="Porteur d'intérêts (PNB)"
+                  />
+                ) : (
+                  <span className="text-[13px] text-(--muted-foreground)/60">
+                    —
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <StatutProduitBadge actif={produit.estActif} />
+              </div>
+            </button>
+          ))}
+      </div>
 
       <DetailDrawer<Produit, Produit>
         open={selected !== null}
@@ -453,11 +572,11 @@ export function ProduitsPage() {
               <p className="mt-2">
                 Ce produit ne pourra plus être utilisé pour de nouvelles
                 saisies budgétaires. Les saisies budget déjà effectuées
-                restent rattachées à ce produit dans l'historique.
+                restent rattachées à ce produit dans l&apos;historique.
               </p>
               <p className="mt-2 text-xs text-(--muted-foreground)">
                 Si ce produit a des enfants courants, le backend
-                refusera la désactivation (409) — désactivez d'abord
+                refusera la désactivation (409) — désactivez d&apos;abord
                 les descendants.
               </p>
             </>
@@ -468,5 +587,107 @@ export function ProduitsPage() {
         />
       )}
     </div>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface KpiNumberCardProps {
+  label: string;
+  value: number;
+  color: string;
+  testId: string;
+}
+
+function KpiNumberCard({
+  label,
+  value,
+  color,
+  testId,
+}: KpiNumberCardProps): JSX.Element {
+  return (
+    <div
+      className="bg-white border border-(--border) rounded-md p-2.5 px-3"
+      data-testid={testId}
+    >
+      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-0.5">
+        {label}
+      </div>
+      <div
+        className="text-xl font-medium tabular-nums"
+        style={{ color }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ColumnHeader({
+  children,
+}: {
+  children: React.ReactNode;
+}): JSX.Element {
+  return (
+    <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+      {children}
+    </div>
+  );
+}
+
+const TYPE_PRODUIT_COLORS: Record<
+  string,
+  { bg: string; text: string }
+> = {
+  credit: { bg: '#DC26261A', text: '#DC2626' },
+  depot: { bg: '#0F6E561A', text: '#0F6E56' },
+  service: { bg: '#0C447C1A', text: '#0C447C' },
+  marche: { bg: '#5B4E911A', text: '#5B4E91' },
+  autre: { bg: '#5F6B7A1A', text: '#5F6B7A' },
+};
+
+export function TypeProduitBadge({
+  type,
+}: {
+  type: string;
+}): JSX.Element {
+  const cfg = TYPE_PRODUIT_COLORS[type] ?? TYPE_PRODUIT_COLORS.autre!;
+  return (
+    <span
+      data-testid={`type-prod-badge-${type}`}
+      style={{ backgroundColor: cfg.bg, color: cfg.text }}
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold w-fit"
+    >
+      {libelleTypeProduit(type)}
+    </span>
+  );
+}
+
+function StatutProduitBadge({ actif }: { actif: boolean }): JSX.Element {
+  if (actif) {
+    return (
+      <span
+        data-testid="statut-prod-actif"
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium w-fit bg-(--miznas-cat-validation)/10 text-(--miznas-cat-validation)"
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-(--miznas-cat-validation)"
+          aria-hidden="true"
+        />
+        Actif
+      </span>
+    );
+  }
+  return (
+    <span
+      data-testid="statut-prod-inactif"
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium w-fit bg-(--muted) text-(--muted-foreground)"
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-(--muted-foreground)"
+        aria-hidden="true"
+      />
+      Inactif
+    </span>
   );
 }

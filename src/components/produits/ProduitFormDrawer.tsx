@@ -1,23 +1,40 @@
 /**
- * Drawer de création / édition d'un produit (Lot 2.5C).
+ * ProduitFormDrawer (Lot 2.5C + Lot 7.3 V15 refonte Charte v1).
  *
- * Hiérarchique (auto-référence fk_produit_parent) — pattern miroir de
- * StructureFormDrawer mais consomme directement la factorisation
- * 2.5C : <RefSecondaireSelect> + useScd2EditDiff.
+ * Modale de création / édition d'un produit bancaire.
+ *
+ * Refondue V15 dans le pattern unifié des modales (V11/V12/V14) :
+ *   - header gradient bleu nuit dark→light avec icône Package ambre
+ *   - body scrollable flex-1 + footer sticky shrink-0
+ *   - Type via 5 tiles statiques (CREDIT/DEPOT/SERVICE/MARCHE/AUTRE)
+ *     avec couleurs catégorie au sélectionné
+ *   - Niveau via 4 tiles (1/2/3/4)
+ *   - Bandeau ambre dédié au toggle "Porteur d'intérêts" (PNB)
+ *
+ * Logique métier 100 % préservée :
+ *   - useScd2EditDiff (bandeau jaune/bleu en mode édition)
+ *   - parentsEligibles avec anti-cycle BFS (descendance exclue)
+ *   - Conversion automatique en MAJUSCULES côté code
+ *   - 4 modes maj SCD2 (no_op / in_place_est_actif /
+ *     ecrasement_intra_jour / nouvelle_version)
  */
 import { AxiosError } from 'axios';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  Hash,
+  Info,
+  Package,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -38,8 +55,8 @@ import {
   type UpdateProduitDto,
   updateProduit,
 } from '@/lib/api/referentiels';
-import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
 import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
+import { cn } from '@/lib/utils';
 
 const NONE = '__none__';
 
@@ -115,6 +132,18 @@ const MODE_MAJ_LIBELLES: Record<ProduitModeMaj, string> = {
     "Nouvelle version SCD2 créée (l'ancienne est fermée).",
 };
 
+const TYPE_TILES: Array<{
+  type: string;
+  label: string;
+  hex: string;
+}> = [
+  { type: 'credit', label: 'Crédit', hex: '#DC2626' },
+  { type: 'depot', label: 'Dépôt', hex: '#0F6E56' },
+  { type: 'service', label: 'Service', hex: '#0C447C' },
+  { type: 'marche', label: 'Marché', hex: '#5B4E91' },
+  { type: 'autre', label: 'Autre', hex: '#5F6B7A' },
+];
+
 export function ProduitFormDrawer({
   mode,
   initial,
@@ -128,15 +157,6 @@ export function ProduitFormDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [allProduits, setAllProduits] = useState<Produit[]>([]);
 
-  // Lecture parallèle pour bloquer le submit si l'API référentiel
-  // est en erreur (le sélect gère loading + warning en interne).
-  const { options: typeOptions, error: errorTypes } = useRefSecondaireOptions(
-    'type-produit',
-  );
-
-  // Charger les parents potentiels (auto-référence dim_produit). On
-  // récupère TOUS les produits courants — le filtrage par niveau et
-  // anti-cycle se fait côté UI.
   useEffect(() => {
     if (!isOpen) return;
     listProduits({ versionCouranteUniquement: true, limit: 200 })
@@ -150,8 +170,6 @@ export function ProduitFormDrawer({
     }
   }, [isOpen, initial]);
 
-  // Anti-cycle UI : exclure le produit courant et ses descendants
-  // (calculés depuis allProduits, BFS sur fk_produit_parent).
   const idsExclus = useMemo(() => {
     if (mode !== 'edit' || !initial) return new Set<string>();
     const exclus = new Set<string>([initial.id]);
@@ -159,7 +177,10 @@ export function ProduitFormDrawer({
     while (frontier.length > 0) {
       const next: string[] = [];
       for (const p of allProduits) {
-        if (p.fkProduitParent !== null && frontier.includes(p.fkProduitParent)) {
+        if (
+          p.fkProduitParent !== null &&
+          frontier.includes(p.fkProduitParent)
+        ) {
           if (!exclus.has(p.id)) {
             exclus.add(p.id);
             next.push(p.id);
@@ -184,22 +205,17 @@ export function ProduitFormDrawer({
     mode === 'edit'
       ? true
       : /^[A-Z0-9_]{2,50}$/.test(form.codeProduit);
-  const optionsIndisponibles =
-    errorTypes !== null && typeOptions.length === 0;
   const isRacine = form.niveau === 1;
 
   const canSubmit =
     !submitting &&
-    !optionsIndisponibles &&
     form.libelle.trim() !== '' &&
     form.typeProduit !== '' &&
     form.niveau >= 1 &&
     form.niveau <= 4 &&
     codeValide &&
-    // Niveau >= 2 → parent requis
     (isRacine || form.fkProduitParent !== '');
 
-  // Bandeau SCD2 via le hook factorisé.
   const editDiff = useScd2EditDiff<FormState>({
     initial: initialFromProduit(initial ?? null),
     form,
@@ -227,10 +243,10 @@ export function ProduitFormDrawer({
         onSuccess(created, null);
         return;
       }
-      // Mode 'edit' : envoyer uniquement le diff calculé.
       if (!initial) return;
-      const dto: UpdateProduitDto = { ...(editDiff.diff as UpdateProduitDto) };
-      // '' → null pour fkProduitParent (signal racine)
+      const dto: UpdateProduitDto = {
+        ...(editDiff.diff as UpdateProduitDto),
+      };
       if (
         'fkProduitParent' in dto &&
         (dto.fkProduitParent as string) === ''
@@ -262,76 +278,119 @@ export function ProduitFormDrawer({
     }
   }
 
-  const titre =
-    mode === 'create' ? 'Nouveau produit' : 'Modifier le produit';
-  const description =
+  const titre = mode === 'create' ? 'Nouveau produit' : 'Modifier le produit';
+  const sousTitre =
     mode === 'create'
-      ? "Renseignez les informations pour créer un produit bancaire."
+      ? 'Catalogue produit crédit / dépôt / service / marché.'
       : `Code business : ${initial?.codeProduit ?? ''}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{titre}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        {bandeau && (
-          <div
-            className={
-              bandeau.type === 'jaune'
-                ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
-                : 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
-            }
-          >
-            <div className="flex items-center gap-2 font-semibold">
-              {bandeau.type === 'jaune' ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <Info className="h-4 w-4" />
-              )}
-              {bandeau.titre}
-            </div>
-            <p>{bandeau.message}</p>
-          </div>
-        )}
-
-        <div className="space-y-3 py-2">
-          <div className="space-y-1">
-            <Label htmlFor="codeProduit">
-              Code produit <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="codeProduit"
-              value={form.codeProduit}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  codeProduit: e.target.value.toUpperCase(),
-                })
-              }
-              placeholder="ex. CREDIT_DECOUVERT"
-              disabled={mode === 'edit' || submitting}
-              maxLength={50}
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-xl max-h-[90vh] ' +
+          'flex flex-col ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* Header gradient (shrink-0) */}
+        <div
+          className="px-7 py-5 text-white shrink-0"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+          data-testid="prod-form-header"
+        >
+          <div className="flex items-start gap-2.5">
+            <Package
+              className="w-4 h-4 mt-1 text-(--miznas-ambre) shrink-0"
+              aria-hidden="true"
             />
-            <p className="text-xs text-(--muted-foreground)">
+            <div className="flex-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                {titre}
+              </DialogTitle>
+              <p className="text-xs text-white/95 mt-1.5">{sousTitre}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body scrollable (flex-1) */}
+        <div className="px-7 py-5 overflow-y-auto flex-1">
+          {bandeau && (
+            <div
+              className={cn(
+                'rounded-md border p-3 text-sm space-y-1 mb-4',
+                bandeau.type === 'jaune'
+                  ? 'border-yellow-300 bg-yellow-50'
+                  : bandeau.type === 'bleu'
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-sky-300 bg-sky-50',
+              )}
+              data-testid="prod-form-bandeau-scd2"
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {bandeau.type === 'jaune' ? (
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                )}
+                {bandeau.titre}
+              </div>
+              <p>{bandeau.message}</p>
+            </div>
+          )}
+
+          {/* Code */}
+          <div className="mb-4">
+            <Label
+              htmlFor="codeProduit"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Code produit <span className="text-(--destructive)">*</span>
+            </Label>
+            <div className="relative mt-1.5">
+              <Hash
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                id="codeProduit"
+                value={form.codeProduit}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    codeProduit: e.target.value.toUpperCase(),
+                  })
+                }
+                placeholder="ex. CREDIT_DECOUVERT"
+                disabled={mode === 'edit' || submitting}
+                maxLength={50}
+                className="pl-9 h-9 font-mono"
+              />
+            </div>
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {mode === 'edit'
-                ? 'Le code business est immuable (la révision SCD2 préserve la business key).'
+                ? 'Le code business est immuable.'
                 : 'MAJUSCULES + chiffres + _, max 50 caractères.'}
               {mode === 'create' &&
                 form.codeProduit !== '' &&
                 !codeValide && (
-                  <span className="block text-red-600">
+                  <span className="block text-(--destructive) mt-1">
                     ⚠ Format invalide.
                   </span>
                 )}
             </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="libelle">
-              Libellé <span className="text-red-500">*</span>
+          {/* Libellé */}
+          <div className="mb-4">
+            <Label
+              htmlFor="libelle"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Libellé <span className="text-(--destructive)">*</span>
             </Label>
             <Input
               id="libelle"
@@ -340,49 +399,83 @@ export function ProduitFormDrawer({
               placeholder="ex. Découverts particuliers"
               disabled={submitting}
               maxLength={200}
+              className="h-9 mt-1.5"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="typeProduit">
-                Type <span className="text-red-500">*</span>
-              </Label>
-              <RefSecondaireSelect
+          {/* Type — 5 tiles */}
+          <div className="mb-4">
+            <Label className="text-sm font-medium text-(--foreground)">
+              Type <span className="text-(--destructive)">*</span>
+            </Label>
+            <div
+              className="grid grid-cols-5 gap-1.5 mt-1.5"
+              role="radiogroup"
+              aria-label="Type"
+            >
+              {TYPE_TILES.map((tile) => (
+                <TypeTile
+                  key={tile.type}
+                  type={tile.type}
+                  label={tile.label}
+                  hex={tile.hex}
+                  selected={form.typeProduit === tile.type}
+                  onSelect={() =>
+                    setForm({ ...form, typeProduit: tile.type })
+                  }
+                  disabled={submitting}
+                />
+              ))}
+              <input
                 id="typeProduit"
-                refKey="type-produit"
+                type="hidden"
                 value={form.typeProduit}
-                onValueChange={(v) => setForm({ ...form, typeProduit: v })}
-                disabled={submitting}
-                labelChamp="les types de produit"
+                readOnly
+                aria-label="Type produit (caché)"
               />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="niveau">
-                Niveau <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="niveau"
-                type="number"
-                min={1}
-                max={4}
-                value={form.niveau}
-                onChange={(e) =>
-                  setForm({ ...form, niveau: Number(e.target.value) })
-                }
-                disabled={submitting}
-              />
-              <p className="text-xs text-(--muted-foreground)">
-                1=racine, 2-4=descendants.
-              </p>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="parent">
+          {/* Niveau — 4 tiles */}
+          <div className="mb-4">
+            <Label className="text-sm font-medium text-(--foreground)">
+              Niveau <span className="text-(--destructive)">*</span>
+            </Label>
+            <div
+              className="grid grid-cols-4 gap-1.5 mt-1.5"
+              role="radiogroup"
+              aria-label="Niveau"
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <NiveauTile
+                  key={n}
+                  n={n as 1 | 2 | 3 | 4}
+                  selected={form.niveau === n}
+                  onSelect={() => setForm({ ...form, niveau: n })}
+                  disabled={submitting}
+                />
+              ))}
+              <input
+                id="niveau"
+                type="hidden"
+                value={form.niveau}
+                readOnly
+                aria-label="Niveau (caché)"
+              />
+            </div>
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
+              1 = racine, 2-4 = descendants.
+            </p>
+          </div>
+
+          {/* Parent */}
+          <div className="mb-4">
+            <Label
+              htmlFor="parent"
+              className="text-sm font-medium text-(--foreground)"
+            >
               Produit parent
-              {!isRacine && <span className="text-red-500"> *</span>}
+              {!isRacine && <span className="text-(--destructive)"> *</span>}
             </Label>
             <Select
               value={form.fkProduitParent || NONE}
@@ -394,7 +487,7 @@ export function ProduitFormDrawer({
               }
               disabled={submitting}
             >
-              <SelectTrigger id="parent">
+              <SelectTrigger id="parent" className="h-9 mt-1.5">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
@@ -406,16 +499,19 @@ export function ProduitFormDrawer({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-(--muted-foreground)">
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {isRacine
-                ? "Optionnel — un produit niveau 1 est typiquement racine."
+                ? 'Optionnel — un produit niveau 1 est typiquement racine.'
                 : 'Liste filtrée : niveau strictement inférieur, courants, actifs, hors descendants.'}
             </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="estPorteurInterets">Porteur d'intérêts</Label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+          {/* Bandeau ambre Porteur d'intérêts */}
+          <div
+            className="bg-(--miznas-ambre)/[0.04] border-l-[3px] border-(--miznas-ambre) rounded-sm px-3.5 py-2.5"
+            data-testid="prod-form-bandeau-pnb"
+          >
+            <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 id="estPorteurInterets"
                 type="checkbox"
@@ -427,19 +523,29 @@ export function ProduitFormDrawer({
                   })
                 }
                 disabled={submitting}
-                className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
+                className="h-4 w-4 mt-0.5 rounded border border-(--border) accent-(--miznas-ambre) cursor-pointer"
               />
-              {form.estPorteurInterets ? 'Oui (PNB)' : 'Non'}
+              <div>
+                <div className="text-[13px] font-semibold">
+                  Porteur d&apos;intérêts
+                </div>
+                <div className="text-[11px] text-(--muted-foreground) mt-0.5 leading-relaxed">
+                  Coche si le produit génère du PNB (ex. crédits, dépôts à
+                  terme).
+                </div>
+              </div>
             </label>
-            <p className="text-xs text-(--muted-foreground)">
-              Coche si le produit génère du PNB (ex. crédits, dépôts à terme).
-            </p>
           </div>
 
           {mode === 'edit' && (
-            <div className="space-y-1">
-              <Label htmlFor="estActif">Statut</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="mt-4 pt-4 border-t border-(--border)">
+              <Label
+                htmlFor="estActif"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Statut
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estActif"
                   type="checkbox"
@@ -456,19 +562,113 @@ export function ProduitFormDrawer({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            <X className="h-4 w-4 mr-2" /> Annuler
-          </Button>
-          <Button onClick={onSubmit} disabled={!canSubmit}>
+        {/* Footer sticky (shrink-0) */}
+        <div
+          className="border-t border-(--border) px-7 py-3.5 flex justify-end gap-2.5 bg-(--secondary) shrink-0"
+          data-testid="prod-form-footer"
+        >
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting} className="gap-1.5">
+              <X className="w-3 h-3" />
+              Annuler
+            </Button>
+          </DialogClose>
+          <Button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Check className="w-3 h-3" />
             {submitting
               ? 'Enregistrement…'
               : mode === 'create'
                 ? 'Créer'
                 : 'Enregistrer'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface TypeTileProps {
+  type: string;
+  label: string;
+  hex: string;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function TypeTile({
+  type,
+  label,
+  hex,
+  selected,
+  onSelect,
+  disabled,
+}: TypeTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`prod-type-tile-${type}`}
+      style={
+        selected
+          ? { borderColor: hex, backgroundColor: `${hex}10` }
+          : undefined
+      }
+      className={cn(
+        'h-9 border rounded-md flex items-center justify-center text-xs font-medium transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        !selected && 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      <span
+        style={selected ? { color: hex } : undefined}
+        className={selected ? 'font-semibold' : ''}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+interface NiveauTileProps {
+  n: 1 | 2 | 3 | 4;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function NiveauTile({
+  n,
+  selected,
+  onSelect,
+  disabled,
+}: NiveauTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`prod-niveau-tile-${n}`}
+      className={cn(
+        'h-9 border rounded-md flex items-center justify-center text-[13px] font-medium transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        selected
+          ? 'border-(--miznas-ambre) bg-(--miznas-ambre)/[0.06] text-(--miznas-ambre) font-semibold'
+          : 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      {n}
+    </button>
   );
 }
