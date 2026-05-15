@@ -241,7 +241,7 @@ export function CreerDelegationDialog({
               className="w-3 h-3 text-(--miznas-ambre)"
               aria-hidden="true"
             />
-            <span className="text-[11px] text-(--miznas-ambre) opacity-90">
+            <span className="text-[11px] text-white/95">
               Anti-chaînage : les périmètres reçus eux-mêmes ne sont
               pas re-délégables.
             </span>
