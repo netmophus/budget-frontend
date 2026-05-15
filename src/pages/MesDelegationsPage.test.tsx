@@ -160,6 +160,37 @@ describe('MesDelegationsPage', () => {
     );
   });
 
+  // ─── Lot 7.3 V9 — KPI cards + état vide modernisé ───────────────
+
+  it('V9 : rend les 3 KPI cards (Reçues actives / Émises actives / Historique)', async () => {
+    render(<MesDelegationsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('kpi-recues-actives')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('kpi-emises-actives')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-historique')).toBeInTheDocument();
+    // Reçues actives = 1 (la délégation id=5 active reçue)
+    expect(screen.getByTestId('kpi-recues-actives')).toHaveTextContent('1');
+  });
+
+  it('V9 : état vide affiche une icône Inbox + message contextuel selon onglet', async () => {
+    mockRecues.mockResolvedValue([]);
+    mockEmises.mockResolvedValue([]);
+    render(<MesDelegationsPage />);
+    const empty = await waitFor(() => screen.getByTestId('empty-state'));
+    // Icône Inbox (SVG Lucide) rendue dans l'état vide
+    expect(empty.querySelector('svg')).not.toBeNull();
+    // Onglet par défaut = reçues
+    expect(empty).toHaveTextContent('Aucune délégation reçue.');
+    // Bascule sur émises → message change
+    fireEvent.click(screen.getByTestId('tab-emises'));
+    await waitFor(() =>
+      expect(screen.getByTestId('empty-state')).toHaveTextContent(
+        'Aucune délégation émise.',
+      ),
+    );
+  });
+
   // ─── Lot 6.7.2 — tooltips descriptifs sur permissions (Z1) ──────
 
   it('Z1 : trigger tooltip présent sur permission délégation reçue', async () => {

@@ -1,9 +1,11 @@
 /**
- * CreerDelegationDialog (Lot 4.2.C) — création d'une délégation
- * temporaire. Le délégant est l'utilisateur courant.
+ * CreerDelegationDialog (Lot 4.2.C + Lot 7.3 V9 refonte Charte v1).
+ *
+ * Création d'une délégation temporaire. Le délégant est l'utilisateur
+ * courant.
  *
  * Choix possibles :
- *   - délégataire (parmi les users actifs ≠ moi)
+ *   - délégataire (parmi les users actifs ≠ moi, autocomplete serveur)
  *   - sous-ensemble de mes user_perimetres ACTIFS et NATIFS
  *     (origine ≠ DELEGATION — anti-chaînage strict côté UI ;
  *     le backend re-vérifie avec rejet 400)
@@ -11,21 +13,32 @@
  *   - dates de_début / de_fin
  *   - motif libre (≥ 3 caractères, ≤ 2000)
  *
- * Validation côté client uniquement informative — la règle
- * définitive vit côté backend (anti-chaînage, inclusion permissions,
- * etc.).
+ * Validation côté client uniquement informative — la règle définitive
+ * vit côté backend (anti-chaînage, inclusion permissions, etc.).
+ *
+ * Refonte V9 :
+ *  - Header gradient bleu nuit dark→light avec icône Plus ambre
+ *  - Bandeau ambre permanent rappelant la règle anti-chaînage métier
+ *  - Champs avec icônes Lucide (Search/Calendar/FolderX)
+ *  - Footer avec fond léger et bouton Check sur "Créer la délégation"
  */
 import { AxiosError } from 'axios';
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  FolderX,
+  Plus,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { UserAutocomplete } from '@/components/common/UserAutocomplete';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -35,7 +48,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { UserAutocomplete } from '@/components/common/UserAutocomplete';
 import {
   creerDelegation,
   PERMISSION_DELEGABLE_DESCRIPTIONS,
@@ -93,16 +105,10 @@ export function CreerDelegationDialog({
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    // Lot Administration ADMIN.C — la liste des délégataires possibles
-    // est désormais gérée par <UserAutocomplete /> avec recherche
-    // serveur. On ne charge plus que les périmètres natifs ici.
     listerMesPerimetres()
       .then((p) => {
-        // Anti-chaînage côté UI : on n'expose que les périmètres natifs.
         setPerimetres(
-          p.filter(
-            (x) => x.actif && x.origine !== 'DELEGATION',
-          ),
+          p.filter((x) => x.actif && x.origine !== 'DELEGATION'),
         );
       })
       .catch((err) => toast.error(`Chargement impossible : ${parseError(err)}`))
@@ -177,172 +183,268 @@ export function CreerDelegationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="!max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Créer une délégation</DialogTitle>
-          <DialogDescription>
-            Déléguez temporairement vos droits sur un sous-ensemble de
-            vos périmètres natifs. <strong>Anti-chaînage strict</strong> :
-            les périmètres reçus eux-mêmes par délégation ne sont pas
-            re-déléguables.
-          </DialogDescription>
-        </DialogHeader>
-
-        {loading ? (
-          <p className="text-sm text-(--muted-foreground)">Chargement…</p>
-        ) : (
-          <div className="space-y-4">
-            {/* Délégataire — Lot Administration ADMIN.C : autocomplete
-                avec recherche serveur (remplace la liste fixe) */}
-            <div className="space-y-1">
-              <Label htmlFor="delegataire">
-                Délégataire <span className="text-red-500">*</span>
-              </Label>
-              <UserAutocomplete
-                testId="select-delegataire"
-                value={fkDelegataire || null}
-                onChange={(id) => setFkDelegataire(id ?? '')}
-                excludeUserIds={[currentUserId]}
-                placeholder="Rechercher un utilisateur (email, nom, prénom)…"
-              />
-            </div>
-
-            {/* Périmètres délégables */}
-            <div className="space-y-2">
-              <Label>
-                Périmètres à déléguer <span className="text-red-500">*</span>
-                <span className="text-xs font-normal text-(--muted-foreground) ml-2">
-                  (vos affectations natives uniquement — anti-chaînage)
-                </span>
-              </Label>
-              <div
-                className="space-y-1 rounded-md border border-(--border) p-2 max-h-48 overflow-y-auto"
-                data-testid="liste-perimetres-delegables"
-              >
-                {perimetres.length === 0 && (
-                  <p className="text-xs text-(--muted-foreground)">
-                    Aucun périmètre natif délégable.
-                  </p>
-                )}
-                {perimetres.map((p) => (
-                  <label
-                    key={p.id}
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                    data-testid={`perimetre-${p.id}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={perimetreIds.includes(p.id)}
-                      onChange={() => togglePerimetre(p.id)}
-                    />
-                    <span className="font-mono text-xs bg-(--muted) px-1 rounded">
-                      {p.cibleType}
-                    </span>
-                    <span>
-                      {p.cibleType === 'CR_SET'
-                        ? `${p.cibleCrIds?.length ?? 0} CR`
-                        : (p.cibleId ?? '?')}
-                    </span>
-                    <span className="text-xs text-(--muted-foreground)">
-                      du {p.dateDebut} au {p.dateFin ?? '∞'}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Permissions */}
-            <div className="space-y-2">
-              <Label>
-                Permissions à déléguer <span className="text-red-500">*</span>
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                {PERMS_DELEGABLES.map((p) => (
-                  <label
-                    key={p}
-                    className="flex items-center gap-2 text-sm cursor-pointer rounded-md border border-(--border) px-2 py-1"
-                    data-testid={`permission-${p}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={permissions.includes(p)}
-                      onChange={() => togglePermission(p)}
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          className="underline decoration-dotted underline-offset-2"
-                          data-testid={`permission-label-${p}`}
-                        >
-                          {PERMISSION_DELEGABLE_LABELS[p]}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {PERMISSION_DELEGABLE_DESCRIPTIONS[p]}
-                      </TooltipContent>
-                    </Tooltip>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="date-debut">Date début *</Label>
-                <Input
-                  id="date-debut"
-                  type="date"
-                  value={dateDebut}
-                  onChange={(e) => setDateDebut(e.target.value)}
-                  data-testid="input-date-debut"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="date-fin">Date fin *</Label>
-                <Input
-                  id="date-fin"
-                  type="date"
-                  value={dateFin}
-                  onChange={(e) => setDateFin(e.target.value)}
-                  data-testid="input-date-fin"
-                />
-                {dateError && dateFin && (
-                  <p className="text-xs text-red-500">{dateError}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Motif */}
-            <div className="space-y-1">
-              <Label htmlFor="motif">
-                Motif <span className="text-red-500">*</span>
-              </Label>
-              <textarea
-                id="motif"
-                data-testid="input-motif"
-                className="w-full rounded-md border border-(--border) bg-(--background) p-2 text-sm"
-                rows={2}
-                value={motif}
-                onChange={(e) => setMotif(e.target.value)}
-                placeholder="Ex : Mission BCEAO du 15/01 au 31/01."
-              />
+      {/*
+        Override DialogContent par défaut :
+        - !p-0 : on gère nous-même les paddings par section
+        - gap-0 : pas d'espacement vertical entre nos sections
+        - overflow-hidden : pour que le gradient header soit clipé
+        - [&>button]:text-white : la <DialogPrimitive.Close> par défaut
+          (X en haut à droite, posé en absolute) reçoit notre couleur
+          blanche pour être lisible sur le gradient
+      */}
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-2xl max-h-[90vh] ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* ─── Header gradient ──────────────────────────────────── */}
+        <div
+          className="px-7 py-5 text-white"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+          data-testid="creer-delegation-header"
+        >
+          <div className="flex items-start gap-2.5">
+            <Plus
+              className="w-4 h-4 mt-1 text-(--miznas-ambre) shrink-0"
+              aria-hidden="true"
+            />
+            <div className="flex-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                Créer une délégation
+              </DialogTitle>
+              <p className="text-xs opacity-70 mt-1.5 leading-relaxed max-w-md">
+                Déléguez temporairement vos droits sur un sous-ensemble
+                de vos périmètres natifs.
+              </p>
             </div>
           </div>
-        )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
-            Annuler
-          </Button>
+          {/* Bandeau ambre permanent — règle métier anti-chaînage */}
+          <div
+            className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-sm border"
+            style={{
+              backgroundColor: '#BA751726',
+              borderColor: '#BA75174D',
+            }}
+            data-testid="creer-delegation-bandeau-anti-chainage"
+          >
+            <AlertTriangle
+              className="w-3 h-3 text-(--miznas-ambre)"
+              aria-hidden="true"
+            />
+            <span className="text-[11px] text-(--miznas-ambre) opacity-90">
+              Anti-chaînage : les périmètres reçus eux-mêmes ne sont
+              pas re-délégables.
+            </span>
+          </div>
+        </div>
+
+        {/* ─── Corps ───────────────────────────────────────────── */}
+        <div className="px-7 py-6 overflow-y-auto">
+          {loading ? (
+            <p className="text-sm text-(--muted-foreground)">Chargement…</p>
+          ) : (
+            <div className="space-y-4">
+              {/* Délégataire */}
+              <div className="space-y-1">
+                <Label htmlFor="delegataire">
+                  Délégataire <span className="text-(--destructive)">*</span>
+                </Label>
+                <UserAutocomplete
+                  testId="select-delegataire"
+                  value={fkDelegataire || null}
+                  onChange={(id) => setFkDelegataire(id ?? '')}
+                  excludeUserIds={[currentUserId]}
+                  placeholder="Rechercher un utilisateur (email, nom, prénom)…"
+                />
+              </div>
+
+              {/* Périmètres délégables */}
+              <div className="space-y-2">
+                <Label>
+                  Périmètres à déléguer{' '}
+                  <span className="text-(--destructive)">*</span>
+                  <span className="text-xs font-normal text-(--muted-foreground) ml-2">
+                    (vos affectations natives uniquement)
+                  </span>
+                </Label>
+                <div
+                  className="rounded-md border border-(--border) p-2 max-h-48 overflow-y-auto"
+                  data-testid="liste-perimetres-delegables"
+                >
+                  {perimetres.length === 0 ? (
+                    <div
+                      className="flex items-center gap-2 px-2 py-3"
+                      data-testid="perimetres-empty-state"
+                    >
+                      <FolderX
+                        className="w-4 h-4 shrink-0"
+                        style={{ color: '#B05D3F' }}
+                        aria-hidden="true"
+                      />
+                      <span className="text-xs text-(--muted-foreground)">
+                        Aucun périmètre natif délégable.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {perimetres.map((p) => (
+                        <label
+                          key={p.id}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
+                          data-testid={`perimetre-${p.id}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={perimetreIds.includes(p.id)}
+                            onChange={() => togglePerimetre(p.id)}
+                          />
+                          <span className="font-mono text-xs bg-(--muted) px-1 rounded">
+                            {p.cibleType}
+                          </span>
+                          <span>
+                            {p.cibleType === 'CR_SET'
+                              ? `${p.cibleCrIds?.length ?? 0} CR`
+                              : (p.cibleId ?? '?')}
+                          </span>
+                          <span className="text-xs text-(--muted-foreground)">
+                            du {p.dateDebut} au {p.dateFin ?? '∞'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div className="space-y-2">
+                <Label>
+                  Permissions à déléguer{' '}
+                  <span className="text-(--destructive)">*</span>
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERMS_DELEGABLES.map((p) => (
+                    <label
+                      key={p}
+                      className="flex items-center gap-2 text-sm cursor-pointer rounded-md border border-(--border) px-2.5 py-1.5 hover:bg-(--secondary)/40 transition-colors"
+                      data-testid={`permission-${p}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={permissions.includes(p)}
+                        onChange={() => togglePermission(p)}
+                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="underline decoration-dotted underline-offset-2"
+                            data-testid={`permission-label-${p}`}
+                          >
+                            {PERMISSION_DELEGABLE_LABELS[p]}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {PERMISSION_DELEGABLE_DESCRIPTIONS[p]}
+                        </TooltipContent>
+                      </Tooltip>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="date-debut">
+                    Date début <span className="text-(--destructive)">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Calendar
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--muted-foreground) pointer-events-none"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      id="date-debut"
+                      type="date"
+                      value={dateDebut}
+                      onChange={(e) => setDateDebut(e.target.value)}
+                      data-testid="input-date-debut"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="date-fin">
+                    Date fin <span className="text-(--destructive)">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Calendar
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--muted-foreground) pointer-events-none"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      id="date-fin"
+                      type="date"
+                      value={dateFin}
+                      onChange={(e) => setDateFin(e.target.value)}
+                      data-testid="input-date-fin"
+                      className="pl-10"
+                    />
+                  </div>
+                  {dateError && dateFin && (
+                    <p className="text-xs text-(--destructive)">{dateError}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Motif */}
+              <div className="space-y-1">
+                <Label htmlFor="motif">
+                  Motif <span className="text-(--destructive)">*</span>
+                </Label>
+                <textarea
+                  id="motif"
+                  data-testid="input-motif"
+                  className="w-full rounded-md border border-(--border) bg-(--background) p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring) min-h-16"
+                  rows={3}
+                  value={motif}
+                  onChange={(e) => setMotif(e.target.value)}
+                  placeholder="Ex : Mission BCEAO du 15/01 au 31/01."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Footer ──────────────────────────────────────────── */}
+        <div className="px-7 py-3.5 border-t border-(--border) bg-(--secondary)/30 flex justify-end gap-2.5">
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting}>
+              Annuler
+            </Button>
+          </DialogClose>
           <Button
             onClick={handleCreer}
             disabled={!peutCreer || submitting}
             data-testid="btn-creer-delegation"
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
           >
+            <Check className="w-4 h-4" aria-hidden="true" />
             {submitting ? 'Création…' : 'Créer la délégation'}
           </Button>
-        </DialogFooter>
+        </div>
+
+        {/* X de fermeture par défaut shadcn (rendu en absolute par
+            DialogContent) : sa couleur est forcée en blanc via
+            le sélecteur [&>button]:text-white du className parent
+            pour rester lisible sur le header gradient. La X
+            shadcn s'auto-positionne `absolute right-4 top-4` —
+            elle tombe naturellement sur notre header. */}
       </DialogContent>
     </Dialog>
   );
