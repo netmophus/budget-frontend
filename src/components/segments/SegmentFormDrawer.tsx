@@ -1,25 +1,38 @@
 /**
- * Drawer de création / édition d'un segment (Lot 2.5B, refactor 2.5C).
+ * SegmentFormDrawer (Lot 2.5B + Lot 7.3 V16 refonte Charte v1).
  *
- * Consomme depuis le Lot 2.5C les composants factorisés :
- *  - <RefSecondaireSelect> pour le sélect catégorie
- *  - useScd2EditDiff pour le diff + le bandeau SCD2
+ * Modale de création / édition d'un segment commercial.
  *
- * Pattern miroir StructureFormDrawer (refactor symétrique).
+ * Refondue V16 dans le pattern unifié des modales (V11/V12/V14/V15) :
+ *   - header gradient bleu nuit dark→light avec icône Target ambre
+ *   - body scrollable flex-1 + footer sticky shrink-0
+ *   - Catégorie via 6 tiles statiques (PARTICULIER/PME/GRANDE_ENTREPRISE
+ *     /PROFESSIONNEL/INSTITUTIONNEL/SECTEUR_PUBLIC) en grid 3×2 avec
+ *     couleurs distinctes au sélectionné
+ *
+ * Logique métier 100 % préservée :
+ *   - useScd2EditDiff (bandeau jaune/bleu/sky en mode édition)
+ *   - 4 modes maj SCD2 (no_op / in_place_est_actif /
+ *     ecrasement_intra_jour / nouvelle_version)
+ *   - Conversion automatique en MAJUSCULES côté code
  */
 import { AxiosError } from 'axios';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  Hash,
+  Info,
+  Target,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -32,8 +45,8 @@ import {
   type UpdateSegmentDto,
   updateSegment,
 } from '@/lib/api/referentiels';
-import { useRefSecondaireOptions } from '@/lib/hooks/useRefSecondaireOptions';
 import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
+import { cn } from '@/lib/utils';
 
 interface FormState extends Record<string, unknown> {
   codeSegment: string;
@@ -92,6 +105,19 @@ const MODE_MAJ_LIBELLES: Record<SegmentModeMaj, string> = {
     "Nouvelle version SCD2 créée (l'ancienne est fermée).",
 };
 
+const CATEGORIE_TILES: Array<{
+  cat: string;
+  label: string;
+  hex: string;
+}> = [
+  { cat: 'particulier', label: 'Particulier', hex: '#0C447C' },
+  { cat: 'pme', label: 'PME', hex: '#0F6E56' },
+  { cat: 'grande_entreprise', label: 'Grande entreprise', hex: '#5B4E91' },
+  { cat: 'professionnel', label: 'Professionnel', hex: '#B05D3F' },
+  { cat: 'institutionnel', label: 'Institutionnel', hex: '#5B4E91' },
+  { cat: 'secteur_public', label: 'Secteur public', hex: '#BA7517' },
+];
+
 export function SegmentFormDrawer({
   mode,
   initial,
@@ -104,21 +130,23 @@ export function SegmentFormDrawer({
   );
   const [submitting, setSubmitting] = useState(false);
 
-  // On garde une lecture du hook au niveau parent UNIQUEMENT pour
-  // bloquer le submit si l'API référentiel est en erreur (le sélect
-  // gère déjà loading + warning désactivée en interne).
-  const { options: categorieOptions, error: errorCategories } =
-    useRefSecondaireOptions('categorie-segment');
-  const optionsIndisponibles =
-    errorCategories !== null && categorieOptions.length === 0;
-
   useEffect(() => {
     if (isOpen) {
       setForm(initialFromSegment(initial ?? null));
     }
   }, [isOpen, initial]);
 
-  // Diff + modeMaj prédit + bandeau via le hook factorisé (Lot 2.5C).
+  const codeValide =
+    mode === 'edit'
+      ? true
+      : /^[A-Z0-9_]{2,50}$/.test(form.codeSegment);
+
+  const canSubmit =
+    !submitting &&
+    form.libelle.trim() !== '' &&
+    form.categorie !== '' &&
+    codeValide;
+
   const editDiff = useScd2EditDiff<FormState>({
     initial: initialFromSegment(initial ?? null),
     form,
@@ -126,19 +154,6 @@ export function SegmentFormDrawer({
     dateDebutValiditeInitiale: initial?.dateDebutValidite,
   });
   const bandeau = mode === 'edit' && initial ? editDiff.bandeau : null;
-
-  // Validation côté UI alignée sur le DTO backend (regex / longueur).
-  const codeValide =
-    mode === 'edit'
-      ? true
-      : /^[A-Z0-9_-]{1,50}$/.test(form.codeSegment);
-
-  const canSubmit =
-    !submitting &&
-    !optionsIndisponibles &&
-    form.libelle.trim() !== '' &&
-    form.categorie !== '' &&
-    codeValide;
 
   async function onSubmit() {
     if (!canSubmit) return;
@@ -151,16 +166,12 @@ export function SegmentFormDrawer({
           categorie: form.categorie,
         };
         const created = await createSegment(dto);
-        toast.success(`Segment ${created.codeSegment} créé.`);
         onSuccess(created, null);
         return;
       }
-      // Mode 'edit' : envoyer uniquement le diff (calculé par le hook).
       if (!initial) return;
-      const updated = await updateSegment(
-        initial.codeSegment,
-        editDiff.diff as UpdateSegmentDto,
-      );
+      const dto: UpdateSegmentDto = { ...(editDiff.diff as UpdateSegmentDto) };
+      const updated = await updateSegment(initial.codeSegment, dto);
       onSuccess(updated, updated.modeMaj ?? null);
       if (updated.modeMaj && updated.modeMaj !== 'no_op') {
         toast.success(MODE_MAJ_LIBELLES[updated.modeMaj]);
@@ -187,103 +198,173 @@ export function SegmentFormDrawer({
 
   const titre =
     mode === 'create' ? 'Nouveau segment' : 'Modifier le segment';
-  const description =
+  const sousTitre =
     mode === 'create'
-      ? 'Renseignez les informations pour créer un segment clientèle.'
+      ? 'Créer un segment commercial pour la clientèle.'
       : `Code business : ${initial?.codeSegment ?? ''}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{titre}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        {bandeau && (
-          <div
-            className={
-              bandeau.type === 'jaune'
-                ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
-                : 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
-            }
-          >
-            <div className="flex items-center gap-2 font-semibold">
-              {bandeau.type === 'jaune' ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <Info className="h-4 w-4" />
-              )}
-              {bandeau.titre}
-            </div>
-            <p>{bandeau.message}</p>
-          </div>
-        )}
-
-        <div className="space-y-3 py-2">
-          <div className="space-y-1">
-            <Label htmlFor="codeSegment">
-              Code segment <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="codeSegment"
-              value={form.codeSegment}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  codeSegment: e.target.value.toUpperCase(),
-                })
-              }
-              placeholder="ex. AGRICOLE"
-              disabled={mode === 'edit' || submitting}
-              maxLength={50}
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-xl max-h-[90vh] ' +
+          'flex flex-col ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* Header gradient (shrink-0) */}
+        <div
+          className="px-7 py-5 text-white shrink-0"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+          data-testid="seg-form-header"
+        >
+          <div className="flex items-start gap-2.5">
+            <Target
+              className="w-4 h-4 mt-1 text-(--miznas-ambre) shrink-0"
+              aria-hidden="true"
             />
-            <p className="text-xs text-(--muted-foreground)">
+            <div className="flex-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                {titre}
+              </DialogTitle>
+              <p className="text-xs text-white/95 mt-1.5">{sousTitre}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body scrollable (flex-1) */}
+        <div className="px-7 py-5 overflow-y-auto flex-1">
+          {bandeau && (
+            <div
+              className={cn(
+                'rounded-md border p-3 text-sm space-y-1 mb-4',
+                bandeau.type === 'jaune'
+                  ? 'border-yellow-300 bg-yellow-50'
+                  : bandeau.type === 'bleu'
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-sky-300 bg-sky-50',
+              )}
+              data-testid="seg-form-bandeau-scd2"
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {bandeau.type === 'jaune' ? (
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                )}
+                {bandeau.titre}
+              </div>
+              <p>{bandeau.message}</p>
+            </div>
+          )}
+
+          {/* Code segment */}
+          <div className="mb-4">
+            <Label
+              htmlFor="codeSegment"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Code segment <span className="text-(--destructive)">*</span>
+            </Label>
+            <div className="relative mt-1.5">
+              <Hash
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                id="codeSegment"
+                value={form.codeSegment}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    codeSegment: e.target.value.toUpperCase(),
+                  })
+                }
+                placeholder="ex. AGRICOLE"
+                disabled={mode === 'edit' || submitting}
+                maxLength={50}
+                className="pl-9 h-9 font-mono"
+              />
+            </div>
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {mode === 'edit'
                 ? 'Le code business est immuable (la révision SCD2 préserve la business key).'
-                : 'MAJUSCULES + chiffres + _ ou -, max 50 caractères.'}
+                : 'MAJUSCULES + chiffres + _, max 50 caractères.'}
               {mode === 'create' &&
                 form.codeSegment !== '' &&
                 !codeValide && (
-                  <span className="block text-red-600">
+                  <span className="block text-(--destructive) mt-1">
                     ⚠ Format invalide.
                   </span>
                 )}
             </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="libelle">
-              Libellé <span className="text-red-500">*</span>
+          {/* Libellé */}
+          <div className="mb-4">
+            <Label
+              htmlFor="libelle"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Libellé <span className="text-(--destructive)">*</span>
             </Label>
             <Input
               id="libelle"
               value={form.libelle}
               onChange={(e) => setForm({ ...form, libelle: e.target.value })}
-              placeholder="ex. Clients agricoles"
+              placeholder="ex. Clients agricoles UEMOA"
               disabled={submitting}
               maxLength={200}
+              className="h-9 mt-1.5"
             />
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="categorie">
-              Catégorie <span className="text-red-500">*</span>
+          {/* Catégorie commerciale — 6 tiles en grid 3×2 */}
+          <div className="mb-4">
+            <Label className="text-sm font-medium text-(--foreground)">
+              Catégorie commerciale{' '}
+              <span className="text-(--destructive)">*</span>
             </Label>
-            <RefSecondaireSelect
-              id="categorie"
-              refKey="categorie-segment"
-              value={form.categorie}
-              onValueChange={(v) => setForm({ ...form, categorie: v })}
-              disabled={submitting}
-              labelChamp="les catégories de segment"
-            />
+            <div
+              className="grid grid-cols-3 gap-1.5 mt-1.5"
+              role="radiogroup"
+              aria-label="Catégorie commerciale"
+            >
+              {CATEGORIE_TILES.map((tile) => (
+                <CategorieTile
+                  key={tile.cat}
+                  cat={tile.cat}
+                  label={tile.label}
+                  hex={tile.hex}
+                  selected={form.categorie === tile.cat}
+                  onSelect={() =>
+                    setForm({ ...form, categorie: tile.cat })
+                  }
+                  disabled={submitting}
+                />
+              ))}
+              <input
+                id="categorie"
+                type="hidden"
+                value={form.categorie}
+                readOnly
+                aria-label="Catégorie (caché)"
+              />
+            </div>
           </div>
 
           {mode === 'edit' && (
-            <div className="space-y-1">
-              <Label htmlFor="estActif">Statut</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="mt-4 pt-4 border-t border-(--border)">
+              <Label
+                htmlFor="estActif"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Statut
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estActif"
                   type="checkbox"
@@ -300,19 +381,79 @@ export function SegmentFormDrawer({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            <X className="h-4 w-4 mr-2" /> Annuler
-          </Button>
-          <Button onClick={onSubmit} disabled={!canSubmit}>
+        {/* Footer sticky (shrink-0) */}
+        <div
+          className="border-t border-(--border) px-7 py-3.5 flex justify-end gap-2.5 bg-(--secondary) shrink-0"
+          data-testid="seg-form-footer"
+        >
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting} className="gap-1.5">
+              <X className="w-3 h-3" />
+              Annuler
+            </Button>
+          </DialogClose>
+          <Button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Check className="w-3 h-3" />
             {submitting
               ? 'Enregistrement…'
               : mode === 'create'
                 ? 'Créer'
                 : 'Enregistrer'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface CategorieTileProps {
+  cat: string;
+  label: string;
+  hex: string;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function CategorieTile({
+  cat,
+  label,
+  hex,
+  selected,
+  onSelect,
+  disabled,
+}: CategorieTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`seg-categorie-tile-${cat}`}
+      style={
+        selected
+          ? { borderColor: hex, backgroundColor: `${hex}10` }
+          : undefined
+      }
+      className={cn(
+        'border rounded-md py-2.5 px-2 text-center transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        !selected && 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      <span
+        className={cn('text-xs font-medium')}
+        style={selected ? { color: hex, fontWeight: 600 } : undefined}
+      >
+        {label}
+      </span>
+    </button>
   );
 }
