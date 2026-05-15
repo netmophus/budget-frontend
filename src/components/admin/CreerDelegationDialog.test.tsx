@@ -272,7 +272,28 @@ describe('CreerDelegationDialog', () => {
     expect(bandeau.textContent).toContain('re-délégables');
   });
 
-  it('V9 : état vide périmètres affiche icône FolderOff + libellé', async () => {
+  it('V9.1 : footer sticky rendu avec boutons Annuler + Créer', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    const footer = await waitFor(() =>
+      screen.getByTestId('creer-delegation-footer'),
+    );
+    expect(footer).toBeInTheDocument();
+    // Le footer doit porter `shrink-0` (Tailwind class) pour rester
+    // ancré quand le body scrolle — anti-régression du fix V9.1.
+    expect(footer.className).toContain('shrink-0');
+    // 2 boutons d'action dans le footer (Annuler + Créer).
+    expect(footer.querySelectorAll('button').length).toBe(2);
+    expect(screen.getByTestId('btn-creer-delegation')).toBeInTheDocument();
+  });
+
+  it('V9 : état vide périmètres affiche icône FolderX + libellé', async () => {
     // Override : utilisateur sans périmètre natif (que des origine=DELEGATION).
     mockPerimetres.mockResolvedValue([
       {

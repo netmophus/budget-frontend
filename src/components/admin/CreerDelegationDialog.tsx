@@ -188,6 +188,10 @@ export function CreerDelegationDialog({
         - !p-0 : on gère nous-même les paddings par section
         - gap-0 : pas d'espacement vertical entre nos sections
         - overflow-hidden : pour que le gradient header soit clipé
+          + bord arrondi shadcn préservé
+        - flex flex-col : structure header/body/footer empilée pour
+          que le footer reste sticky en bas (Lot 7.3 V9.1 fix)
+        - max-h-[90vh] : limite la modale à 90 % du viewport
         - [&>button]:text-white : la <DialogPrimitive.Close> par défaut
           (X en haut à droite, posé en absolute) reçoit notre couleur
           blanche pour être lisible sur le gradient
@@ -195,12 +199,13 @@ export function CreerDelegationDialog({
       <DialogContent
         className={
           '!p-0 gap-0 overflow-hidden !max-w-2xl max-h-[90vh] ' +
+          'flex flex-col ' +
           '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
         }
       >
-        {/* ─── Header gradient ──────────────────────────────────── */}
+        {/* ─── Header gradient (shrink-0 = jamais rétracté) ───── */}
         <div
-          className="px-7 py-5 text-white"
+          className="px-7 py-5 text-white shrink-0"
           style={{
             background:
               'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
@@ -243,15 +248,21 @@ export function CreerDelegationDialog({
           </div>
         </div>
 
-        {/* ─── Corps ───────────────────────────────────────────── */}
-        <div className="px-7 py-6 overflow-y-auto">
+        {/* ─── Corps (flex-1 = prend l'espace dispo, scrollable) ──
+            Le `flex-1` est combiné à `overflow-y-auto` pour que
+            seul le body scrolle quand le contenu dépasse — header
+            et footer restent ancrés. */}
+        <div className="px-7 py-6 overflow-y-auto flex-1">
           {loading ? (
             <p className="text-sm text-(--muted-foreground)">Chargement…</p>
           ) : (
             <div className="space-y-4">
               {/* Délégataire */}
               <div className="space-y-1">
-                <Label htmlFor="delegataire">
+                <Label
+                  htmlFor="delegataire"
+                  className="text-sm font-medium text-(--foreground)"
+                >
                   Délégataire <span className="text-(--destructive)">*</span>
                 </Label>
                 <UserAutocomplete
@@ -265,7 +276,7 @@ export function CreerDelegationDialog({
 
               {/* Périmètres délégables */}
               <div className="space-y-2">
-                <Label>
+                <Label className="text-sm font-medium text-(--foreground)">
                   Périmètres à déléguer{' '}
                   <span className="text-(--destructive)">*</span>
                   <span className="text-xs font-normal text-(--muted-foreground) ml-2">
@@ -323,7 +334,7 @@ export function CreerDelegationDialog({
 
               {/* Permissions */}
               <div className="space-y-2">
-                <Label>
+                <Label className="text-sm font-medium text-(--foreground)">
                   Permissions à déléguer{' '}
                   <span className="text-(--destructive)">*</span>
                 </Label>
@@ -360,7 +371,10 @@ export function CreerDelegationDialog({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="date-debut">
+                  <Label
+                    htmlFor="date-debut"
+                    className="text-sm font-medium text-(--foreground)"
+                  >
                     Date début <span className="text-(--destructive)">*</span>
                   </Label>
                   <div className="relative">
@@ -379,7 +393,10 @@ export function CreerDelegationDialog({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="date-fin">
+                  <Label
+                    htmlFor="date-fin"
+                    className="text-sm font-medium text-(--foreground)"
+                  >
                     Date fin <span className="text-(--destructive)">*</span>
                   </Label>
                   <div className="relative">
@@ -404,7 +421,10 @@ export function CreerDelegationDialog({
 
               {/* Motif */}
               <div className="space-y-1">
-                <Label htmlFor="motif">
+                <Label
+                  htmlFor="motif"
+                  className="text-sm font-medium text-(--foreground)"
+                >
                   Motif <span className="text-(--destructive)">*</span>
                 </Label>
                 <textarea
@@ -421,8 +441,14 @@ export function CreerDelegationDialog({
           )}
         </div>
 
-        {/* ─── Footer ──────────────────────────────────────────── */}
-        <div className="px-7 py-3.5 border-t border-(--border) bg-(--secondary)/30 flex justify-end gap-2.5">
+        {/* ─── Footer (shrink-0 = sticky, toujours visible) ──────
+            Le `shrink-0` empêche le body scrollable de pousser le
+            footer hors de l'écran sur petits viewports — les
+            actions Annuler / Créer restent ancrées en bas. */}
+        <div
+          className="px-7 py-3.5 border-t border-(--border) bg-(--secondary) flex justify-end gap-2.5 shrink-0"
+          data-testid="creer-delegation-footer"
+        >
           <DialogClose asChild>
             <Button variant="outline" disabled={submitting}>
               Annuler
@@ -434,7 +460,7 @@ export function CreerDelegationDialog({
             data-testid="btn-creer-delegation"
             className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
           >
-            <Check className="w-4 h-4" aria-hidden="true" />
+            <Check className="w-3.5 h-3.5" aria-hidden="true" />
             {submitting ? 'Création…' : 'Créer la délégation'}
           </Button>
         </div>
