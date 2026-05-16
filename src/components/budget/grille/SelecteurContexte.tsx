@@ -172,15 +172,21 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-(--background) border-b border-(--border) py-3">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <div className="space-y-1">
-          <Label htmlFor="version-select">Version</Label>
+    <div
+      className="sticky top-0 z-10 bg-(--secondary) border border-(--border) rounded-md p-3 mb-4"
+      data-testid="selecteur-contexte"
+    >
+      {/* Ligne 1 : Version + Scénario + Classe */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-2.5">
+        <div>
+          <Label htmlFor="version-select" className="text-xs mb-1 block">
+            Version
+          </Label>
           <Select
             value={versionId ?? undefined}
             onValueChange={handleVersionChange}
           >
-            <SelectTrigger id="version-select">
+            <SelectTrigger id="version-select" className="h-9 bg-white">
               <SelectValue placeholder="Choisir…" />
             </SelectTrigger>
             <SelectContent>
@@ -192,19 +198,21 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             </SelectContent>
           </Select>
           {versionSelectionnee && versionSelectionnee.statut !== 'ouvert' && (
-            <p className="text-xs text-orange-600 dark:text-orange-400">
+            <p className="text-[11px] text-(--miznas-cat-validation) mt-1">
               🔒 Version verrouillée (statut « {versionSelectionnee.statut} »)
             </p>
           )}
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="scenario-select">Scénario</Label>
+        <div>
+          <Label htmlFor="scenario-select" className="text-xs mb-1 block">
+            Scénario
+          </Label>
           <Select
             value={scenarioId ?? undefined}
             onValueChange={handleScenarioChange}
           >
-            <SelectTrigger id="scenario-select">
+            <SelectTrigger id="scenario-select" className="h-9 bg-white">
               <SelectValue placeholder="Choisir…" />
             </SelectTrigger>
             <SelectContent>
@@ -217,10 +225,33 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
           </Select>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="cr-select">Centre de responsabilité</Label>
+        <div>
+          <Label htmlFor="classe-select" className="text-xs mb-1 block">
+            Classe de comptes
+          </Label>
+          <Select value={codeClasse} onValueChange={handleClasseChange}>
+            <SelectTrigger id="classe-select" className="h-9 bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CLASSES_OPTIONS.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.libelle}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Ligne 2 : CR + Ligne métier */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <div>
+          <Label htmlFor="cr-select" className="text-xs mb-1 block">
+            Centre de responsabilité
+          </Label>
           <Select value={crId ?? undefined} onValueChange={handleCrChange}>
-            <SelectTrigger id="cr-select">
+            <SelectTrigger id="cr-select" className="h-9 bg-white">
               <SelectValue placeholder="Choisir…" />
             </SelectTrigger>
             <SelectContent>
@@ -233,13 +264,21 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
           </Select>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="ligne-metier-select">Ligne métier</Label>
+        <div>
+          <Label
+            htmlFor="ligne-metier-select"
+            className="text-xs mb-1 block"
+          >
+            Ligne métier
+          </Label>
           <Select
             value={ligneMetierId ?? undefined}
             onValueChange={handleLigneMetierChange}
           >
-            <SelectTrigger id="ligne-metier-select">
+            <SelectTrigger
+              id="ligne-metier-select"
+              className="h-9 bg-white"
+            >
               <SelectValue placeholder="Choisir…" />
             </SelectTrigger>
             <SelectContent>
@@ -251,8 +290,8 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
             </SelectContent>
           </Select>
           {lignesMetier.length === 0 && (
-            <p className="text-xs text-orange-600">
-              ⚠ Aucune ligne métier active. L'admin doit en créer via{' '}
+            <p className="text-[11px] text-(--miznas-ambre) mt-1">
+              ⚠ Aucune ligne métier active. L&apos;admin doit en créer via{' '}
               <a
                 href="/referentiels/lignes-metier"
                 className="underline text-(--primary)"
@@ -262,22 +301,6 @@ export function SelecteurContexte({ onChange }: SelecteurContexteProps) {
               .
             </p>
           )}
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="classe-select">Classe de comptes</Label>
-          <Select value={codeClasse} onValueChange={handleClasseChange}>
-            <SelectTrigger id="classe-select">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CLASSES_OPTIONS.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.libelle}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
     </div>

@@ -24,6 +24,28 @@
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
   --radius: 0.5rem;
+
+  /* ─── Charte v1 MIZNAS (Lot 7.3) ───────────────────────────────────
+     Tokens dédiés à l'identité visuelle MIZNAS, distincts des tokens
+     shadcn standards ci-dessus. À privilégier pour toute couleur de
+     marque (wordmark, accent ambre au hover, fond crème de la zone
+     identité publique). Référence couleurs : Charte v1. */
+  --miznas-bleu-nuit: #0C447C;
+  --miznas-bleu-nuit-dark: #0A1F44;
+  --miznas-bleu-nuit-light: #133869;
+  --miznas-ambre: #BA7517;
+  --miznas-creme: #F1EFE8;
+
+  /* ─── Catégories métier dashboard (Lot 7.3 V6) ──────────────────
+     Palette catégorielle utilisée par les cartes pédagogiques du
+     dashboard (border-left + icône). Chaque token correspond à une
+     famille d'actions métier MIZNAS. */
+  --miznas-cat-budget: #0C447C;         /* bleu nuit — saisie budget */
+  --miznas-cat-validation: #0F6E56;     /* vert validé — workflow */
+  --miznas-cat-realise: #5B4E91;        /* violet indigo — réalisé */
+  --miznas-cat-reporting: #BA7517;      /* ambre — analyse / reforecast */
+  --miznas-cat-collaboration: #B05D3F;  /* terracotta — délégations */
+  --miznas-cat-config: #5F6B7A;         /* gris ardoise — admin / config */
 }
 
 @theme inline {
@@ -48,6 +70,17 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-miznas-bleu-nuit: var(--miznas-bleu-nuit);
+  --color-miznas-bleu-nuit-dark: var(--miznas-bleu-nuit-dark);
+  --color-miznas-bleu-nuit-light: var(--miznas-bleu-nuit-light);
+  --color-miznas-ambre: var(--miznas-ambre);
+  --color-miznas-creme: var(--miznas-creme);
+  --color-miznas-cat-budget: var(--miznas-cat-budget);
+  --color-miznas-cat-validation: var(--miznas-cat-validation);
+  --color-miznas-cat-realise: var(--miznas-cat-realise);
+  --color-miznas-cat-reporting: var(--miznas-cat-reporting);
+  --color-miznas-cat-collaboration: var(--miznas-cat-collaboration);
+  --color-miznas-cat-config: var(--miznas-cat-config);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

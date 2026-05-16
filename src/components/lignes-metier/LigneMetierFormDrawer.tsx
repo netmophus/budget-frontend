@@ -1,23 +1,38 @@
 /**
- * Drawer de création / édition d'une ligne métier (Lot 2.5D).
+ * LigneMetierFormDrawer (Lot 2.5D + Lot 7.3 V14 refonte Charte v1).
  *
- * Hiérarchique (auto-référence fk_ligne_metier_parent). Cas le plus
- * simple de la série 2.5A → 2.5F : 3 champs métier (code, libellé,
- * niveau) + parent. Aucune FK vers `ref_*` → pas de
- * <RefSecondaireSelect>. 4ᵉ consommateur de useScd2EditDiff.
+ * Modale de création / édition d'une ligne métier (axe d'activité
+ * bancaire). SCD2 + auto-référence parent.
+ *
+ * Refondue V14 dans le pattern unifié des modales (V11/V12) :
+ *   - header gradient bleu nuit dark→light avec icône LayoutGrid ambre
+ *   - body scrollable flex-1 + footer sticky shrink-0
+ *   - Niveau via 4 tiles (1/2/3/4) au lieu d'un input number
+ *
+ * Logique métier 100 % préservée :
+ *   - useScd2EditDiff (bandeau jaune/bleu en mode édition)
+ *   - parentsEligibles avec anti-cycle BFS (descendance exclue)
+ *   - Conversion automatique en MAJUSCULES côté code
+ *   - 4 modes maj SCD2 (no_op / in_place_est_actif /
+ *     ecrasement_intra_jour / nouvelle_version)
  */
 import { AxiosError } from 'axios';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  Hash,
+  Info,
+  LayoutGrid,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -39,6 +54,7 @@ import {
   updateLigneMetier,
 } from '@/lib/api/referentiels';
 import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
+import { cn } from '@/lib/utils';
 
 const NONE = '__none__';
 const NIVEAU_MAX = 4;
@@ -116,9 +132,6 @@ export function LigneMetierFormDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [allLignes, setAllLignes] = useState<LigneMetier[]>([]);
 
-  // Charger les parents potentiels (auto-référence). On récupère
-  // toutes les lignes courantes — le filtrage par niveau et anti-cycle
-  // est calculé côté UI.
   useEffect(() => {
     if (!isOpen) return;
     listLignesMetier({ versionCouranteUniquement: true, limit: 200 })
@@ -134,8 +147,6 @@ export function LigneMetierFormDrawer({
     }
   }, [isOpen, initial]);
 
-  // Anti-cycle UI : exclure la ligne courante et tous ses descendants
-  // (BFS sur fk_ligne_metier_parent).
   const idsExclus = useMemo(() => {
     if (mode !== 'edit' || !initial) return new Set<string>();
     const exclus = new Set<string>([initial.id]);
@@ -210,7 +221,6 @@ export function LigneMetierFormDrawer({
       const dto: UpdateLigneMetierDto = {
         ...(editDiff.diff as UpdateLigneMetierDto),
       };
-      // '' → null pour fkLigneMetierParent (signal racine)
       if (
         'fkLigneMetierParent' in dto &&
         (dto.fkLigneMetierParent as string) === ''
@@ -244,76 +254,119 @@ export function LigneMetierFormDrawer({
 
   const titre =
     mode === 'create' ? 'Nouvelle ligne métier' : 'Modifier la ligne métier';
-  const description =
+  const sousTitre =
     mode === 'create'
-      ? "Renseignez les informations pour créer une ligne métier."
+      ? "Créer un axe d'activité bancaire dans la hiérarchie SCD2."
       : `Code business : ${initial?.codeLigneMetier ?? ''}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{titre}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        {bandeau && (
-          <div
-            className={
-              bandeau.type === 'jaune'
-                ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
-                : bandeau.type === 'bleu'
-                  ? 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
-                  : 'rounded-md border border-sky-300 bg-sky-50 dark:bg-sky-950/30 p-3 text-sm space-y-1'
-            }
-          >
-            <div className="flex items-center gap-2 font-semibold">
-              {bandeau.type === 'jaune' ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <Info className="h-4 w-4" />
-              )}
-              {bandeau.titre}
-            </div>
-            <p>{bandeau.message}</p>
-          </div>
-        )}
-
-        <div className="space-y-3 py-2">
-          <div className="space-y-1">
-            <Label htmlFor="codeLigneMetier">
-              Code ligne métier <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="codeLigneMetier"
-              value={form.codeLigneMetier}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  codeLigneMetier: e.target.value.toUpperCase(),
-                })
-              }
-              placeholder="ex. RETAIL_PARTICULIERS"
-              disabled={mode === 'edit' || submitting}
-              maxLength={50}
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-xl max-h-[90vh] ' +
+          'flex flex-col ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* Header gradient (shrink-0) */}
+        <div
+          className="px-7 py-5 text-white shrink-0"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+          data-testid="lm-form-header"
+        >
+          <div className="flex items-start gap-2.5">
+            <LayoutGrid
+              className="w-4 h-4 mt-1 text-(--miznas-ambre) shrink-0"
+              aria-hidden="true"
             />
-            <p className="text-xs text-(--muted-foreground)">
+            <div className="flex-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                {titre}
+              </DialogTitle>
+              <p className="text-xs text-white/95 mt-1.5">{sousTitre}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body scrollable (flex-1) */}
+        <div className="px-7 py-5 overflow-y-auto flex-1">
+          {bandeau && (
+            <div
+              className={cn(
+                'rounded-md border p-3 text-sm space-y-1 mb-4',
+                bandeau.type === 'jaune'
+                  ? 'border-yellow-300 bg-yellow-50'
+                  : bandeau.type === 'bleu'
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-sky-300 bg-sky-50',
+              )}
+              data-testid="lm-form-bandeau-scd2"
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {bandeau.type === 'jaune' ? (
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                )}
+                {bandeau.titre}
+              </div>
+              <p>{bandeau.message}</p>
+            </div>
+          )}
+
+          {/* Code */}
+          <div className="mb-4">
+            <Label
+              htmlFor="codeLigneMetier"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Code ligne métier{' '}
+              <span className="text-(--destructive)">*</span>
+            </Label>
+            <div className="relative mt-1.5">
+              <Hash
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+                aria-hidden="true"
+              />
+              <Input
+                id="codeLigneMetier"
+                value={form.codeLigneMetier}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    codeLigneMetier: e.target.value.toUpperCase(),
+                  })
+                }
+                placeholder="ex. RETAIL_PARTICULIERS"
+                disabled={mode === 'edit' || submitting}
+                maxLength={50}
+                className="pl-9 h-9 font-mono"
+              />
+            </div>
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {mode === 'edit'
                 ? 'Le code business est immuable (la révision SCD2 préserve la business key).'
                 : 'MAJUSCULES + chiffres + _, max 50 caractères.'}
               {mode === 'create' &&
                 form.codeLigneMetier !== '' &&
                 !codeValide && (
-                  <span className="block text-red-600">
+                  <span className="block text-(--destructive) mt-1">
                     ⚠ Format invalide.
                   </span>
                 )}
             </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="libelle">
-              Libellé <span className="text-red-500">*</span>
+          {/* Libellé */}
+          <div className="mb-4">
+            <Label
+              htmlFor="libelle"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Libellé <span className="text-(--destructive)">*</span>
             </Label>
             <Input
               id="libelle"
@@ -322,34 +375,50 @@ export function LigneMetierFormDrawer({
               placeholder="ex. Particuliers"
               disabled={submitting}
               maxLength={200}
+              className="h-9 mt-1.5"
             />
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="niveau">
-              Niveau <span className="text-red-500">*</span>
+          {/* Niveau — 4 tiles */}
+          <div className="mb-4">
+            <Label className="text-sm font-medium text-(--foreground)">
+              Niveau <span className="text-(--destructive)">*</span>
             </Label>
-            <Input
-              id="niveau"
-              type="number"
-              min={1}
-              max={NIVEAU_MAX}
-              value={form.niveau}
-              onChange={(e) =>
-                setForm({ ...form, niveau: Number(e.target.value) })
-              }
-              disabled={submitting}
-              className="w-32"
-            />
-            <p className="text-xs text-(--muted-foreground)">
-              1 = racine, 2-{NIVEAU_MAX} = descendants.
+            <div
+              className="grid grid-cols-4 gap-1.5 mt-1.5"
+              role="radiogroup"
+              aria-label="Niveau"
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <NiveauTile
+                  key={n}
+                  n={n as 1 | 2 | 3 | 4}
+                  selected={form.niveau === n}
+                  onSelect={() => setForm({ ...form, niveau: n })}
+                  disabled={submitting}
+                />
+              ))}
+              <input
+                id="niveau"
+                type="hidden"
+                value={form.niveau}
+                readOnly
+                aria-label="Niveau (caché)"
+              />
+            </div>
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
+              1 = racine, 4 = feuille
             </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="parent">
+          {/* Parent */}
+          <div className="mb-2">
+            <Label
+              htmlFor="parent"
+              className="text-sm font-medium text-(--foreground)"
+            >
               Ligne parente
-              {!isRacine && <span className="text-red-500"> *</span>}
+              {!isRacine && <span className="text-(--destructive)"> *</span>}
             </Label>
             <Select
               value={form.fkLigneMetierParent || NONE}
@@ -361,7 +430,7 @@ export function LigneMetierFormDrawer({
               }
               disabled={submitting}
             >
-              <SelectTrigger id="parent">
+              <SelectTrigger id="parent" className="h-9 mt-1.5">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
@@ -373,17 +442,22 @@ export function LigneMetierFormDrawer({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-(--muted-foreground)">
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {isRacine
-                ? "Optionnel — une ligne niveau 1 est typiquement racine."
+                ? 'Optionnel — une ligne niveau 1 est typiquement racine.'
                 : 'Liste filtrée : niveau strictement inférieur, courantes, actives, hors descendants.'}
             </p>
           </div>
 
           {mode === 'edit' && (
-            <div className="space-y-1">
-              <Label htmlFor="estActif">Statut</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="mt-4 pt-4 border-t border-(--border)">
+              <Label
+                htmlFor="estActif"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Statut
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estActif"
                   type="checkbox"
@@ -400,19 +474,67 @@ export function LigneMetierFormDrawer({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            <X className="h-4 w-4 mr-2" /> Annuler
-          </Button>
-          <Button onClick={onSubmit} disabled={!canSubmit}>
+        {/* Footer sticky (shrink-0) */}
+        <div
+          className="border-t border-(--border) px-7 py-3.5 flex justify-end gap-2.5 bg-(--secondary) shrink-0"
+          data-testid="lm-form-footer"
+        >
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting} className="gap-1.5">
+              <X className="w-3 h-3" />
+              Annuler
+            </Button>
+          </DialogClose>
+          <Button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Check className="w-3 h-3" />
             {submitting
               ? 'Enregistrement…'
               : mode === 'create'
                 ? 'Créer'
                 : 'Enregistrer'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface NiveauTileProps {
+  n: 1 | 2 | 3 | 4;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function NiveauTile({
+  n,
+  selected,
+  onSelect,
+  disabled,
+}: NiveauTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`lm-niveau-tile-${n}`}
+      className={cn(
+        'h-9 border rounded-md flex items-center justify-center text-[13px] font-medium transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        selected
+          ? 'border-(--miznas-ambre) bg-(--miznas-ambre)/[0.06] text-(--miznas-ambre) font-semibold'
+          : 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      {n}
+    </button>
   );
 }

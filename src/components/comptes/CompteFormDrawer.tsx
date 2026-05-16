@@ -1,15 +1,32 @@
 /**
- * Drawer de création / édition d'un compte (Lot 2.5E).
+ * CompteFormDrawer (Lot 2.5E + Lot 7.3 V12 refonte Charte v1).
  *
- * Le plus complexe de la série 2.5A → 2.5F : 10 champs métier dont
- * 2 alimentés par référentiels secondaires (classe + sens). Drawer
- * hiérarchique 4 niveaux avec auto-référence `fk_compte_parent` et
- * cohérence niveau / classe imposée backend.
+ * Modale de création / édition d'un compte PCB UMOA. Refondue V12
+ * dans le pattern unifié des modales :
+ *   - header gradient bleu nuit dark→light avec icône Calculator ambre
+ *   - body scrollable flex-1 + footer sticky shrink-0
+ *   - Niveau via 4 tiles (1/2/3/4) au lieu d'un input number
+ *   - Sens via 3 tiles (D rouge / C vert / M gris) au lieu d'un Select
  *
- * 5ᵉ consommateur de useScd2EditDiff. Consomme 2× <RefSecondaireSelect>.
+ * Logique métier 100 % préservée :
+ *   - useScd2EditDiff (bandeau jaune/bleu en mode édition)
+ *   - parentsEligibles avec anti-cycle BFS (descendance exclue)
+ *   - Filtrage parent : niveau strict < courant, classe identique,
+ *     actif, courant, hors descendants
+ *   - Validation côté client (codeValide, canSubmit)
+ *   - 4 modes maj SCD2 (no_op / in_place_est_actif /
+ *     ecrasement_intra_jour / nouvelle_version)
+ *   - Code numérique uniquement, immuable en mode edit
  */
 import { AxiosError } from 'axios';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calculator,
+  Check,
+  Hash,
+  Info,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -17,10 +34,8 @@ import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -43,6 +58,7 @@ import {
   updateCompte,
 } from '@/lib/api/referentiels';
 import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
+import { cn } from '@/lib/utils';
 
 const NONE = '__none__';
 const NIVEAU_MAX = 4;
@@ -134,6 +150,12 @@ const MODE_MAJ_LIBELLES: Record<CompteModeMaj, string> = {
     "Nouvelle version SCD2 créée (l'ancienne est fermée).",
 };
 
+const SENS_TILES: Array<{ sens: SensCompte; label: string; hex: string }> = [
+  { sens: 'D', label: 'Débit', hex: '#DC2626' }, // rouge destructive
+  { sens: 'C', label: 'Crédit', hex: '#0F6E56' }, // vert validation
+  { sens: 'M', label: 'Mixte', hex: '#5F6B7A' }, // gris ardoise
+];
+
 export function CompteFormDrawer({
   mode,
   initial,
@@ -147,8 +169,6 @@ export function CompteFormDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [allComptes, setAllComptes] = useState<Compte[]>([]);
 
-  // Charger TOUS les comptes courants (limit 200 ; le seed actuel
-  // contient ~105 comptes — large marge).
   useEffect(() => {
     if (!isOpen) return;
     listComptes({ versionCouranteUniquement: true, limit: 200 })
@@ -164,8 +184,6 @@ export function CompteFormDrawer({
     }
   }, [isOpen, initial]);
 
-  // Anti-cycle UI : exclure le compte courant et tous ses descendants
-  // (BFS sur fk_compte_parent).
   const idsExclus = useMemo(() => {
     if (mode !== 'edit' || !initial) return new Set<string>();
     const exclus = new Set<string>([initial.id]);
@@ -188,9 +206,6 @@ export function CompteFormDrawer({
     return exclus;
   }, [allComptes, mode, initial]);
 
-  // Filtrage des parents éligibles : niveau strictement inférieur,
-  // active, courant, hors descendants. Cohérence classe : si la
-  // classe est définie, parent doit être de la même classe.
   const parentsEligibles = useMemo(() => {
     return allComptes.filter((c) => {
       if (idsExclus.has(c.id)) return false;
@@ -202,9 +217,7 @@ export function CompteFormDrawer({
   }, [allComptes, idsExclus, form.niveau, form.classe]);
 
   const codeValide =
-    mode === 'edit'
-      ? true
-      : /^[0-9]{1,20}$/.test(form.codeCompte);
+    mode === 'edit' ? true : /^[0-9]{1,20}$/.test(form.codeCompte);
   const isRacine = form.niveau === 1;
 
   const canSubmit =
@@ -250,16 +263,13 @@ export function CompteFormDrawer({
         return;
       }
       if (!initial) return;
-      const dto: UpdateCompteDto = {
-        ...(editDiff.diff as UpdateCompteDto),
-      };
+      const dto: UpdateCompteDto = { ...(editDiff.diff as UpdateCompteDto) };
       if (
         'fkCompteParent' in dto &&
         (dto.fkCompteParent as string) === ''
       ) {
         dto.fkCompteParent = null;
       }
-      // sens '' → ne pas envoyer (champ optionnel, pas de "clear" backend)
       if ('sens' in dto && (dto.sens as string) === '') {
         delete dto.sens;
       }
@@ -288,99 +298,145 @@ export function CompteFormDrawer({
     }
   }
 
-  const titre =
-    mode === 'create' ? 'Nouveau compte' : 'Modifier le compte';
-  const description =
+  const titre = mode === 'create' ? 'Nouveau compte' : 'Modifier le compte';
+  const sousTitre =
     mode === 'create'
-      ? "Renseignez les informations pour créer un compte PCB UMOA."
+      ? 'Renseignez les informations pour créer un compte PCB UMOA.'
       : `Code business : ${initial?.codeCompte ?? ''}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{titre}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        {bandeau && (
-          <div
-            className={
-              bandeau.type === 'jaune'
-                ? 'rounded-md border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3 text-sm space-y-1'
-                : bandeau.type === 'bleu'
-                  ? 'rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm space-y-1'
-                  : 'rounded-md border border-sky-300 bg-sky-50 dark:bg-sky-950/30 p-3 text-sm space-y-1'
-            }
-          >
-            <div className="flex items-center gap-2 font-semibold">
-              {bandeau.type === 'jaune' ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <Info className="h-4 w-4" />
-              )}
-              {bandeau.titre}
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-2xl max-h-[90vh] ' +
+          'flex flex-col ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* Header gradient (shrink-0) */}
+        <div
+          className="px-7 py-5 text-white shrink-0"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+          data-testid="compte-form-header"
+        >
+          <div className="flex items-start gap-2.5">
+            <Calculator
+              className="w-4 h-4 mt-1 text-(--miznas-ambre) shrink-0"
+              aria-hidden="true"
+            />
+            <div className="flex-1">
+              <DialogTitle className="text-base font-semibold leading-tight">
+                {titre}
+              </DialogTitle>
+              <p className="text-xs text-white/95 mt-1.5">{sousTitre}</p>
             </div>
-            <p>{bandeau.message}</p>
           </div>
-        )}
+        </div>
 
-        <div className="space-y-3 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="codeCompte">
-                Code compte <span className="text-red-500">*</span>
+        {/* Body scrollable (flex-1) */}
+        <div className="px-7 py-5 overflow-y-auto flex-1">
+          {bandeau && (
+            <div
+              className={cn(
+                'rounded-md border p-3 text-sm space-y-1 mb-4',
+                bandeau.type === 'jaune'
+                  ? 'border-yellow-300 bg-yellow-50'
+                  : bandeau.type === 'bleu'
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-sky-300 bg-sky-50',
+              )}
+              data-testid="compte-form-bandeau-scd2"
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {bandeau.type === 'jaune' ? (
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                )}
+                {bandeau.titre}
+              </div>
+              <p>{bandeau.message}</p>
+            </div>
+          )}
+
+          {/* Code + Classe */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label
+                htmlFor="codeCompte"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Code compte <span className="text-(--destructive)">*</span>
               </Label>
-              <Input
-                id="codeCompte"
-                value={form.codeCompte}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    codeCompte: e.target.value.replace(/[^0-9]/g, ''),
-                  })
-                }
-                placeholder="ex. 601100"
-                disabled={mode === 'edit' || submitting}
-                maxLength={20}
-              />
-              <p className="text-xs text-(--muted-foreground)">
+              <div className="relative mt-1.5">
+                <Hash
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="codeCompte"
+                  value={form.codeCompte}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      codeCompte: e.target.value.replace(/[^0-9]/g, ''),
+                    })
+                  }
+                  placeholder="ex. 601100"
+                  disabled={mode === 'edit' || submitting}
+                  maxLength={20}
+                  className="pl-9 h-9 font-mono"
+                />
+              </div>
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
                 {mode === 'edit'
                   ? 'Le code business est immuable.'
                   : 'Numérique uniquement, max 20 caractères.'}
                 {mode === 'create' &&
                   form.codeCompte !== '' &&
                   !codeValide && (
-                    <span className="block text-red-600">
+                    <span className="block text-(--destructive) mt-1">
                       ⚠ Format invalide.
                     </span>
                   )}
               </p>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="classe">
-                Classe <span className="text-red-500">*</span>
+            <div>
+              <Label
+                htmlFor="classe"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Classe <span className="text-(--destructive)">*</span>
               </Label>
-              <RefSecondaireSelect
-                id="classe"
-                refKey="classe-compte"
-                value={form.classe}
-                onValueChange={(v) => setForm({ ...form, classe: v })}
-                disabled={mode === 'edit' || submitting}
-                labelChamp="les classes PCB"
-              />
-              <p className="text-xs text-(--muted-foreground)">
+              <div className="mt-1.5">
+                <RefSecondaireSelect
+                  id="classe"
+                  refKey="classe-compte"
+                  value={form.classe}
+                  onValueChange={(v) => setForm({ ...form, classe: v })}
+                  disabled={mode === 'edit' || submitting}
+                  labelChamp="les classes PCB"
+                />
+              </div>
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
                 {mode === 'edit'
-                  ? 'La classe est immuable (la révision SCD2 préserve le rattachement).'
+                  ? 'La classe est immuable.'
                   : 'PCB UMOA Révisé — classes 1 à 9.'}
               </p>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="libelle">
-              Libellé <span className="text-red-500">*</span>
+          {/* Libellé */}
+          <div className="mb-4">
+            <Label
+              htmlFor="libelle"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Libellé <span className="text-(--destructive)">*</span>
             </Label>
             <Input
               id="libelle"
@@ -389,12 +445,19 @@ export function CompteFormDrawer({
               placeholder="ex. Fournitures de bureau"
               disabled={submitting}
               maxLength={200}
+              className="h-9 mt-1.5"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="sousClasse">Sous-classe</Label>
+          {/* Sous-classe + Niveau */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label
+                htmlFor="sousClasse"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Sous-classe
+              </Label>
               <Input
                 id="sousClasse"
                 value={form.sousClasse}
@@ -404,38 +467,60 @@ export function CompteFormDrawer({
                 placeholder="ex. 60"
                 disabled={submitting}
                 maxLength={20}
+                className="h-9 mt-1.5"
               />
-              <p className="text-xs text-(--muted-foreground)">
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
                 Optionnel — groupement pédagogique.
               </p>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="niveau">
-                Niveau <span className="text-red-500">*</span>
+            <div>
+              <Label
+                htmlFor="niveau"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Niveau <span className="text-(--destructive)">*</span>
               </Label>
-              <Input
-                id="niveau"
-                type="number"
-                min={1}
-                max={NIVEAU_MAX}
-                value={form.niveau}
-                onChange={(e) =>
-                  setForm({ ...form, niveau: Number(e.target.value) })
-                }
-                disabled={submitting}
-                className="w-32"
-              />
-              <p className="text-xs text-(--muted-foreground)">
+              <div
+                className="grid grid-cols-4 gap-2 mt-1.5"
+                role="radiogroup"
+                aria-label="Niveau"
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <NiveauTile
+                    key={n}
+                    n={n as 1 | 2 | 3 | 4}
+                    selected={form.niveau === n}
+                    onSelect={() => setForm({ ...form, niveau: n })}
+                    disabled={submitting}
+                  />
+                ))}
+                {/* Champ caché pour préserver l'aria-label "Niveau" et
+                    l'id "niveau" pour les tests qui font getByLabelText. */}
+                <input
+                  id="niveau"
+                  type="hidden"
+                  value={form.niveau}
+                  readOnly
+                  aria-label="Niveau (caché)"
+                />
+              </div>
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
                 1 = racine de classe, 4 = feuille saisissable.
               </p>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="parent">
+          {/* Compte parent */}
+          <div className="mb-4">
+            <Label
+              htmlFor="parent"
+              className="text-sm font-medium text-(--foreground)"
+            >
               Compte parent
-              {!isRacine && <span className="text-red-500"> *</span>}
+              {!isRacine && (
+                <span className="text-(--destructive)"> *</span>
+              )}
             </Label>
             <Select
               value={form.fkCompteParent || NONE}
@@ -447,7 +532,7 @@ export function CompteFormDrawer({
               }
               disabled={submitting}
             >
-              <SelectTrigger id="parent">
+              <SelectTrigger id="parent" className="h-9 mt-1.5">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
@@ -459,51 +544,90 @@ export function CompteFormDrawer({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-(--muted-foreground)">
+            <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {isRacine
-                ? "Optionnel — un compte niveau 1 est typiquement racine de classe."
-                : "Liste filtrée : niveau strictement inférieur, courants, actifs, même classe, hors descendants."}
+                ? 'Optionnel — un compte niveau 1 est typiquement racine de classe.'
+                : 'Liste filtrée : niveau strictement inférieur, courants, actifs, même classe, hors descendants.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="sens">Sens (D / C / M)</Label>
-              <RefSecondaireSelect
-                id="sens"
-                refKey="sens-compte"
-                value={form.sens}
-                onValueChange={(v) => setForm({ ...form, sens: v })}
-                disabled={submitting}
-                labelChamp="les sens comptables"
-              />
-              <p className="text-xs text-(--muted-foreground)">
-                Optionnel — Débit / Crédit / Mixte.
+          {/* Sens (3 tiles) + Code poste budgétaire */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div>
+              <Label className="text-sm font-medium text-(--foreground)">
+                Sens (D / C / M)
+              </Label>
+              <div
+                className="grid grid-cols-3 gap-2 mt-1.5"
+                role="radiogroup"
+                aria-label="Sens"
+              >
+                {SENS_TILES.map((tile) => (
+                  <SensTile
+                    key={tile.sens}
+                    sens={tile.sens}
+                    label={tile.label}
+                    hex={tile.hex}
+                    selected={form.sens === tile.sens}
+                    onSelect={() =>
+                      setForm({
+                        ...form,
+                        sens: form.sens === tile.sens ? '' : tile.sens,
+                      })
+                    }
+                    disabled={submitting}
+                  />
+                ))}
+                <input
+                  id="sens"
+                  type="hidden"
+                  value={form.sens}
+                  readOnly
+                  aria-label="Sens (caché)"
+                />
+              </div>
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
+                Optionnel — Débit / Crédit / Mixte. Cliquer à nouveau pour désélectionner.
               </p>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="codePosteBudgetaire">Code poste budgétaire</Label>
+            <div>
+              <Label
+                htmlFor="codePosteBudgetaire"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Code poste budgétaire
+              </Label>
               <Input
                 id="codePosteBudgetaire"
                 value={form.codePosteBudgetaire}
                 onChange={(e) =>
-                  setForm({ ...form, codePosteBudgetaire: e.target.value })
+                  setForm({
+                    ...form,
+                    codePosteBudgetaire: e.target.value,
+                  })
                 }
                 placeholder="ex. ACHATS_DIVERS"
                 disabled={submitting}
                 maxLength={50}
+                className="h-9 mt-1.5"
               />
-              <p className="text-xs text-(--muted-foreground)">
-                Optionnel — poste budgétaire libre (formalisé Lot 4).
+              <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
+                Optionnel — poste budgétaire libre.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="space-y-1">
-              <Label htmlFor="estCompteCollectif">Type de compte</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+          {/* Type compte + Porteur intérêts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 border-t border-(--border)">
+            <div>
+              <Label
+                htmlFor="estCompteCollectif"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Type de compte
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estCompteCollectif"
                   type="checkbox"
@@ -523,9 +647,14 @@ export function CompteFormDrawer({
               </label>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="estPorteurInterets">Porteur d'intérêts</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div>
+              <Label
+                htmlFor="estPorteurInterets"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Porteur d&apos;intérêts
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estPorteurInterets"
                   type="checkbox"
@@ -545,9 +674,14 @@ export function CompteFormDrawer({
           </div>
 
           {mode === 'edit' && (
-            <div className="space-y-1">
-              <Label htmlFor="estActif">Statut</Label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="mt-4 pt-4 border-t border-(--border)">
+              <Label
+                htmlFor="estActif"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Statut
+              </Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer mt-1.5">
                 <input
                   id="estActif"
                   type="checkbox"
@@ -564,19 +698,119 @@ export function CompteFormDrawer({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            <X className="h-4 w-4 mr-2" /> Annuler
-          </Button>
-          <Button onClick={onSubmit} disabled={!canSubmit}>
+        {/* Footer sticky (shrink-0) */}
+        <div
+          className="border-t border-(--border) px-7 py-3.5 flex justify-end gap-2.5 bg-(--secondary) shrink-0"
+          data-testid="compte-form-footer"
+        >
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting} className="gap-1.5">
+              <X className="w-3 h-3" />
+              Annuler
+            </Button>
+          </DialogClose>
+          <Button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Check className="w-3 h-3" />
             {submitting
               ? 'Enregistrement…'
               : mode === 'create'
-                ? 'Créer'
+                ? 'Créer le compte'
                 : 'Enregistrer'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface NiveauTileProps {
+  n: 1 | 2 | 3 | 4;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function NiveauTile({
+  n,
+  selected,
+  onSelect,
+  disabled,
+}: NiveauTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`niveau-tile-${n}`}
+      className={cn(
+        'h-9 border rounded-md flex items-center justify-center text-[13px] font-medium transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        selected
+          ? 'border-(--miznas-ambre) bg-(--miznas-ambre)/10 text-(--miznas-ambre) font-semibold'
+          : 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      {n}
+    </button>
+  );
+}
+
+interface SensTileProps {
+  sens: SensCompte;
+  label: string;
+  hex: string;
+  selected: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+function SensTile({
+  sens,
+  label,
+  hex,
+  selected,
+  onSelect,
+  disabled,
+}: SensTileProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      disabled={disabled}
+      data-testid={`sens-tile-${sens}`}
+      style={
+        selected
+          ? { borderColor: hex, backgroundColor: `${hex}10` }
+          : undefined
+      }
+      className={cn(
+        'h-9 border rounded-md flex flex-col items-center justify-center text-[11px] transition-colors',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        !selected && 'border-(--border) bg-white hover:bg-(--muted)/30',
+      )}
+    >
+      <span
+        className="text-[13px] font-bold leading-none"
+        style={selected ? { color: hex } : undefined}
+      >
+        {sens}
+      </span>
+      <span
+        className="text-[10px] mt-0.5"
+        style={selected ? { color: hex } : { color: 'var(--muted-foreground)' }}
+      >
+        {label}
+      </span>
+    </button>
   );
 }

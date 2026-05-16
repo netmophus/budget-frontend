@@ -1,16 +1,39 @@
-import { type ColumnDef } from '@tanstack/react-table';
+/**
+ * CentresResponsabilitePage (Lot 2.5F + Lot 7.3 V11 refonte Charte v1).
+ *
+ * Référentiel des centres de responsabilité (axes d'imputation
+ * budgétaire). SCD2 + rattachement structure.
+ *
+ * Refonte V11 :
+ *  - Header custom : cercle d'icône Building2 catégorie config (gris
+ *    ardoise) + titre + sous-titre + bouton CTA bleu nuit dark
+ *  - 4 KPI cards (Total actifs / CDP / CDC / CDR) calculés `useMemo`
+ *  - Barre de filtres dans cadre gris léger (Search icône, sélecteurs
+ *    h-9 fond blanc, checkbox alignée)
+ *  - Tableau grid CSS modernisé (au lieu de DataTable shadcn) avec
+ *    sous-composants `TypeCRBadge` et `StatutBadge`
+ *
+ * Logique métier 100 % préservée : DetailDrawer (clic ligne),
+ * ConfirmDialog (désactivation), CrFormDrawer (création/édition),
+ * filtrage actif uniquement, navigation vers structures, permissions.
+ */
 import { AxiosError } from 'axios';
-import { Link as LinkIcon, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  Building2,
+  ExternalLink,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { DataTable } from '@/components/common/DataTable';
-import { DetailDrawer } from '@/components/common/DetailDrawer';
-import { PageHeader } from '@/components/common/PageHeader';
-import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { CrFormDrawer } from '@/components/centres-responsabilite/CrFormDrawer';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { DetailDrawer } from '@/components/common/DetailDrawer';
+import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +52,7 @@ import {
   listCrs,
   listStructures,
   type Structure,
+  type TypeCr,
 } from '@/lib/api/referentiels';
 import { useHasPermission } from '@/lib/auth/permissions';
 import {
@@ -45,9 +69,7 @@ function formatDateFr(iso: string): string {
 }
 
 function indentSelectLabel(structure: Structure): string {
-  const indent = '  '.repeat(
-    Math.max(0, structure.niveauHierarchique - 1),
-  );
+  const indent = '  '.repeat(Math.max(0, structure.niveauHierarchique - 1));
   return `${indent}${structure.codeStructure}`;
 }
 
@@ -61,7 +83,6 @@ export function CentresResponsabilitePage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [activesUniquement, setActivesUniquement] = useState(false);
   const [data, setData] = useState<CentreResponsabilite[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [structuresForFilter, setStructuresForFilter] = useState<Structure[]>(
@@ -77,7 +98,7 @@ export function CentresResponsabilitePage() {
     listStructures({ page: 1, limit: 100 })
       .then((res) => setStructuresForFilter(res.items))
       .catch(() => {
-        // non bloquant
+        // non bloquant — le filtre Structure se contentera de "Toutes".
       });
   }, []);
 
@@ -97,7 +118,6 @@ export function CentresResponsabilitePage() {
     })
       .then((res) => {
         setData(res.items);
-        setTotal(res.total);
       })
       .catch(() => {
         toast.error('Impossible de charger les centres de responsabilité');
@@ -148,88 +168,16 @@ export function CentresResponsabilitePage() {
     });
   }, [data, activesUniquement]);
 
-  const columns: ColumnDef<CentreResponsabilite, unknown>[] = [
-    {
-      accessorKey: 'codeCr',
-      header: 'Code',
-      cell: ({ row }) => (
-        <span className="font-mono font-bold">{row.original.codeCr}</span>
-      ),
-    },
-    {
-      accessorKey: 'libelle',
-      header: 'Libellé',
-      cell: ({ row }) => (
-        <span>
-          {row.original.libelle}
-          {row.original.libelleCourt && (
-            <span className="text-(--muted-foreground) text-xs ml-2">
-              ({row.original.libelleCourt})
-            </span>
-          )}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'typeCr',
-      header: 'Type',
-      cell: ({ row }) => (
-        <Badge
-          className={badgeClassTypeCr(row.original.typeCr)}
-          title={libelleTypeCr(row.original.typeCr)}
-        >
-          {shortTypeCr(row.original.typeCr)}
-        </Badge>
-      ),
-    },
-    {
-      id: 'structure',
-      header: 'Structure rattachée',
-      cell: ({ row }) => {
-        const sc = row.original.structureCourante;
-        if (!sc) {
-          return <span className="text-(--muted-foreground)">—</span>;
-        }
-        return (
-          <span className="inline-flex items-center gap-2">
-            <span>{sc.libelle}</span>
-            <button
-              type="button"
-              className="text-(--primary) hover:opacity-80"
-              title={`Voir la structure ${sc.codeStructure}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(
-                  `/referentiels/structures?search=${encodeURIComponent(sc.codeStructure)}`,
-                );
-              }}
-            >
-              <LinkIcon className="h-3.5 w-3.5" />
-            </button>
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: 'estActif',
-      header: 'Statut',
-      cell: ({ row }) =>
-        row.original.estActif ? (
-          <Badge variant="success">Actif</Badge>
-        ) : (
-          <Badge variant="secondary">Inactif</Badge>
-        ),
-    },
-    {
-      accessorKey: 'dateDebutValidite',
-      header: 'Validité',
-      cell: ({ row }) => (
-        <span className="text-sm text-(--muted-foreground)">
-          depuis {formatDateFr(row.original.dateDebutValidite)}
-        </span>
-      ),
-    },
-  ];
+  // 4 KPI calculés sur les rows actuels (filtrage serveur appliqué).
+  const kpi = useMemo(() => {
+    const actifs = data.filter((cr) => cr.estActif);
+    return {
+      totalActifs: actifs.length,
+      cdp: actifs.filter((cr) => cr.typeCr === 'cdp').length,
+      cdc: actifs.filter((cr) => cr.typeCr === 'cdc').length,
+      cdr: actifs.filter((cr) => cr.typeCr === 'cdr').length,
+    };
+  }, [data]);
 
   const sortedStructures = [...structuresForFilter].sort((a, b) => {
     if (a.niveauHierarchique !== b.niveauHierarchique) {
@@ -239,36 +187,93 @@ export function CentresResponsabilitePage() {
   });
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Centres de responsabilité"
-        description="Axes d'imputation budgétaire (SCD2 + rattachement structure)."
-        actions={
-          canGerer ? (
-            <Button onClick={() => setFormMode('create')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau centre de responsabilité
-            </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="flex items-end gap-4 flex-wrap">
-        <div className="space-y-1">
-          <Label htmlFor="search-cr">Recherche libellé</Label>
-          <Input
-            id="search-cr"
-            placeholder="ex. retail"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64"
-          />
+    <div>
+      {/* ─── Header custom ──────────────────────────────────────── */}
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex items-center gap-3">
+          <div
+            style={{ backgroundColor: '#5F6B7A1A' }}
+            className="w-10 h-10 rounded-md flex items-center justify-center"
+            aria-hidden="true"
+          >
+            <Building2 className="w-5 h-5" style={{ color: '#5F6B7A' }} />
+          </div>
+          <div>
+            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+              Centres de responsabilité
+            </h3>
+            <p className="text-xs text-(--muted-foreground) mt-0.5">
+              Axes d&apos;imputation budgétaire (SCD2 + rattachement structure)
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="structure-filter">Structure</Label>
+        {canGerer && (
+          <Button
+            onClick={() => setFormMode('create')}
+            className="h-9 px-3.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nouveau CR
+          </Button>
+        )}
+      </div>
+
+      {/* ─── 4 KPI cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+        <KpiCard
+          label="Total CR actifs"
+          value={kpi.totalActifs}
+          color="#0F6E56"
+          testId="kpi-cr-total-actifs"
+        />
+        <KpiCard
+          label="CDP (profit)"
+          value={kpi.cdp}
+          color="#0C447C"
+          testId="kpi-cr-cdp"
+        />
+        <KpiCard
+          label="CDC (coût)"
+          value={kpi.cdc}
+          color="#BA7517"
+          testId="kpi-cr-cdc"
+        />
+        <KpiCard
+          label="CDR (revenu)"
+          value={kpi.cdr}
+          color="#5B4E91"
+          testId="kpi-cr-cdr"
+        />
+      </div>
+
+      {/* ─── Barre de filtres dans cadre gris ──────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-2.5 mb-4 p-3 bg-(--secondary) border border-(--border) rounded-md">
+        <div>
+          <Label htmlFor="search-cr" className="text-xs mb-1 block">
+            Recherche libellé
+          </Label>
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              id="search-cr"
+              placeholder="ex. retail"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-9 bg-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="structure-filter" className="text-xs mb-1 block">
+            Structure
+          </Label>
           <Select value={structureFilter} onValueChange={setStructureFilter}>
-            <SelectTrigger id="structure-filter" className="w-72">
+            <SelectTrigger id="structure-filter" className="h-9 bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -285,8 +290,10 @@ export function CentresResponsabilitePage() {
           </Select>
         </div>
 
-        <div className="space-y-1 w-56">
-          <Label htmlFor="type-cr-filter">Type CR</Label>
+        <div>
+          <Label htmlFor="type-cr-filter" className="text-xs mb-1 block">
+            Type CR
+          </Label>
           <RefSecondaireSelect
             id="type-cr-filter"
             refKey="type-cr"
@@ -298,27 +305,94 @@ export function CentresResponsabilitePage() {
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer pb-2">
-          <input
-            type="checkbox"
-            checked={activesUniquement}
-            onChange={(e) => setActivesUniquement(e.target.checked)}
-            className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
-          />
-          Actifs uniquement
-        </label>
+        <div className="flex items-end pb-1">
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={activesUniquement}
+              onChange={(e) => setActivesUniquement(e.target.checked)}
+              className="h-4 w-4 rounded border border-(--border) accent-(--primary) cursor-pointer"
+            />
+            Actifs uniquement
+          </label>
+        </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filtered}
-        total={total}
-        page={1}
-        limit={200}
-        isLoading={loading}
-        onPageChange={() => undefined}
-        onRowClick={setSelected}
-      />
+      {/* ─── Tableau grid CSS modernisé ────────────────────────── */}
+      <div
+        className="bg-white border border-(--border) rounded-md overflow-hidden"
+        data-testid="cr-table"
+      >
+        <div className="grid grid-cols-[180px_1fr_70px_1fr_90px_130px] bg-(--secondary) px-4 py-3 border-b border-(--border)">
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Code
+          </div>
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Libellé
+          </div>
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Type
+          </div>
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Structure rattachée
+          </div>
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Statut
+          </div>
+          <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
+            Validité
+          </div>
+        </div>
+
+        {loading && (
+          <div className="px-4 py-6 text-sm text-(--muted-foreground)">
+            Chargement…
+          </div>
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="px-4 py-6 text-sm text-(--muted-foreground)">
+            Aucun centre de responsabilité ne correspond aux filtres.
+          </div>
+        )}
+        {!loading &&
+          filtered.map((cr) => (
+            <button
+              key={cr.id}
+              type="button"
+              onClick={() => setSelected(cr)}
+              data-testid={`cr-row-${cr.id}`}
+              className="w-full text-left grid grid-cols-[180px_1fr_70px_1fr_90px_130px] px-4 py-3 items-center border-b border-(--border) last:border-b-0 hover:bg-(--muted)/30 transition-colors cursor-pointer"
+            >
+              <div className="font-mono text-xs font-medium">{cr.codeCr}</div>
+              <div className="text-[13px]">
+                {cr.libelle}
+                {cr.libelleCourt && (
+                  <span className="text-(--muted-foreground) text-xs ml-2">
+                    ({cr.libelleCourt})
+                  </span>
+                )}
+              </div>
+              <div>
+                <TypeCRBadge type={cr.typeCr} />
+              </div>
+              <div className="text-[13px] text-(--muted-foreground) inline-flex items-center gap-1.5">
+                {cr.structureCourante?.libelle ?? '—'}
+                {cr.structureCourante && (
+                  <ExternalLink
+                    className="w-3 h-3 opacity-50"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              <div>
+                <StatutBadge actif={cr.estActif} />
+              </div>
+              <div className="text-xs text-(--muted-foreground)/70 tabular-nums">
+                depuis {formatDateFr(cr.dateDebutValidite)}
+              </div>
+            </button>
+          ))}
+      </div>
 
       <DetailDrawer<CentreResponsabilite, CentreResponsabilite>
         open={selected !== null}
@@ -381,7 +455,7 @@ export function CentresResponsabilitePage() {
                     )
                   }
                 >
-                  <LinkIcon className="h-3.5 w-3.5" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                   Voir la structure : {selected.structureCourante.codeStructure}
                 </button>
               )}
@@ -470,7 +544,7 @@ export function CentresResponsabilitePage() {
               <p className="mt-2">
                 Ce centre ne pourra plus être utilisé pour de nouvelles
                 saisies budgétaires. Les saisies déjà effectuées
-                restent rattachées à ce CR dans l'historique.
+                restent rattachées à ce CR dans l&apos;historique.
               </p>
               <p className="mt-2 text-xs text-(--muted-foreground)">
                 Si ce CR est référencé par des saisies budgétaires
@@ -484,5 +558,83 @@ export function CentresResponsabilitePage() {
         />
       )}
     </div>
+  );
+}
+
+// ─── Sous-composants ─────────────────────────────────────────────
+
+interface KpiCardProps {
+  label: string;
+  value: number;
+  /** Hex de couleur (charte v1) appliqué à la valeur. */
+  color: string;
+  testId: string;
+}
+
+function KpiCard({ label, value, color, testId }: KpiCardProps): JSX.Element {
+  return (
+    <div
+      className="bg-white border border-(--border) rounded-md p-3.5"
+      data-testid={testId}
+    >
+      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
+        {label}
+      </div>
+      <div
+        className="text-2xl font-medium tabular-nums"
+        style={{ color }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const TYPE_CR_COLORS: Record<TypeCr, { bg: string; text: string }> = {
+  cdc: { bg: '#BA75171A', text: '#BA7517' }, // ambre 10 %
+  cdp: { bg: '#0C447C1A', text: '#0C447C' }, // bleu nuit 10 %
+  cdr: { bg: '#5B4E911A', text: '#5B4E91' }, // violet 10 %
+  autre: { bg: '#5F6B7A1A', text: '#5F6B7A' }, // gris ardoise 10 %
+};
+
+export function TypeCRBadge({ type }: { type: TypeCr }): JSX.Element {
+  const cfg = TYPE_CR_COLORS[type];
+  return (
+    <span
+      data-testid={`type-cr-badge-${type}`}
+      style={{ backgroundColor: cfg.bg, color: cfg.text }}
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold"
+    >
+      {shortTypeCr(type)}
+    </span>
+  );
+}
+
+function StatutBadge({ actif }: { actif: boolean }): JSX.Element {
+  if (actif) {
+    return (
+      <span
+        data-testid="statut-cr-actif"
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-(--miznas-cat-validation)/10 text-(--miznas-cat-validation)"
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-(--miznas-cat-validation)"
+          aria-hidden="true"
+        />
+        Actif
+      </span>
+    );
+  }
+  return (
+    <span
+      data-testid="statut-cr-inactif"
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-(--muted) text-(--muted-foreground)"
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-(--muted-foreground)"
+        aria-hidden="true"
+      />
+      Inactif
+    </span>
   );
 }

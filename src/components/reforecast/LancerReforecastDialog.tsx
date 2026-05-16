@@ -1,13 +1,37 @@
 /**
- * Dialogue de lancement reforecast (Lot 5.3.B).
+ * Dialogue de lancement reforecast (Lot 5.3.B + refonte Lot 7.3
+ * V25.1 Charte v1).
  *
  * - Sélecteurs version/scénario/trimestre/année/méthode/libellé
  * - Pré-remplissage automatique du libellé selon trimestre+année
  * - Vérification existence d'un reforecast pour la même clé →
  *   avertissement OBSOLETE + checkbox de confirmation
  * - Sur succès : redirection vers /reforecast/:id
+ *
+ * Refonte V25.1 (fix footer non visible) :
+ *  - Pattern modale unifié V11→V19 : DialogContent !p-0 + flex
+ *    flex-col + max-h-[90vh] ; header gradient bleu nuit shrink-0 ;
+ *    body px-6 py-5 overflow-y-auto flex-1 ; footer border-t bg
+ *    --secondary shrink-0
+ *  - Trimestre rendu en 4 tiles façon Charte v1 (catégorie REALISE
+ *    violet) avec libellés mensuels (Jan-Mars / Avr-Juin / Juil-Sept
+ *    / Oct-Déc)
+ *  - Méthode rendue en RadioGroup vertical avec descriptions enrichies
+ *    (3 options réelles backend : MOYENNE_TRIMESTRE / BUDGET_INITIAL
+ *    / MANUELLE — note : le mandat parlait de MOYENNE_CONSOLIDEE et
+ *    SAISIE_MANUELLE, on s'aligne sur les enums backend)
+ *  - Bandeau warning OBSOLETE en ambre Charte v1 (border-l ambre +
+ *    bg ambre transparent)
+ *  - Tous les data-testid préservés strictement (rf-lancer-form /
+ *    rf-l-version / rf-l-scenario / rf-l-trim-${n} / rf-l-annee /
+ *    rf-l-methode / rf-l-methode-${m} / rf-l-libelle / rf-l-commentaire
+ *    / rf-l-warning-obsolete / rf-l-confirm-ecrasement / rf-l-erreurs
+ *    / rf-l-submit)
+ *  - Checkbox confirmation : input type="checkbox" natif (le test
+ *    `fireEvent.click(testId('rf-l-confirm-ecrasement'))` attend un
+ *    élément clickable qui flip son état)
  */
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RotateCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,11 +39,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +62,7 @@ import {
 import { listScenarios, type Scenario } from '@/lib/api/scenarios';
 import { listVersions, type Version } from '@/lib/api/versions';
 import { useReforecastStore } from '@/lib/stores/reforecast-store';
+import { cn } from '@/lib/utils';
 
 interface Props {
   isOpen: boolean;
@@ -53,11 +75,21 @@ const METHODES: MethodeExtrapolation[] = [
   'MANUELLE',
 ];
 
+const TRIMESTRE_MOIS_LABEL: Record<number, string> = {
+  1: 'Jan-Mars',
+  2: 'Avr-Juin',
+  3: 'Juil-Sept',
+  4: 'Oct-Déc',
+};
+
 function libelleAutomatique(trimestre: number, annee: number): string {
   return `Reforecast T${trimestre} ${annee}`;
 }
 
-export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element {
+export function LancerReforecastDialog({
+  isOpen,
+  onClose,
+}: Props): JSX.Element {
   const navigate = useNavigate();
   const lancer = useReforecastStore((s) => s.lancer);
 
@@ -91,7 +123,6 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
       listScenarios({ limit: 200 }),
     ])
       .then(([v, s]) => {
-        // Versions PUBLIE (statut=gele) éligibles comme source
         setVersions(v.items.filter((x) => x.statut === 'gele'));
         setScenarios(s.items);
         if (!fkVersionSource && v.items.length > 0) {
@@ -112,15 +143,12 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Pré-remplissage du libellé tant que l'utilisateur n'a pas édité
   useEffect(() => {
     if (!libelleEdited) {
       setLibelle(libelleAutomatique(trimestreConsolide, anneeConsolide));
     }
   }, [trimestreConsolide, anneeConsolide, libelleEdited]);
 
-  // Vérifie l'existence d'un reforecast pour la même clé (avec debounce
-  // implicite : on relance à chaque changement de paramètre).
   useEffect(() => {
     if (!fkVersionSource || !fkScenarioSource || !isOpen) {
       setExistant(null);
@@ -140,8 +168,6 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
         }
       })
       .catch(() => {
-        // En cas d'erreur, on ne bloque pas — l'avertissement sera
-        // remonté à la soumission si nécessaire.
         if (!cancelled) setExistant(null);
       });
     return () => {
@@ -161,7 +187,10 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
     if (!fkScenarioSource) e.push('Scénario source obligatoire.');
     if (trimestreConsolide < 1 || trimestreConsolide > 4)
       e.push('Trimestre invalide.');
-    if (anneeConsolide < 2020 || anneeConsolide > new Date().getFullYear() + 5)
+    if (
+      anneeConsolide < 2020 ||
+      anneeConsolide > new Date().getFullYear() + 5
+    )
       e.push('Année invalide.');
     if (!libelle.trim()) e.push('Libellé obligatoire.');
     return e;
@@ -202,41 +231,58 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
     }
   }
 
-  function trimestreLibelle(t: number, a: number): string {
-    const debut = (t - 1) * 3 + 1;
-    const fin = t * 3;
-    const noms = [
-      'Janvier',
-      'Février',
-      'Mars',
-      'Avril',
-      'Mai',
-      'Juin',
-      'Juillet',
-      'Août',
-      'Septembre',
-      'Octobre',
-      'Novembre',
-      'Décembre',
-    ];
-    return `T${t} = ${noms[debut - 1]}-${noms[fin - 1]} ${a}`;
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Lancer un reforecast trimestriel</DialogTitle>
-          <DialogDescription>
-            La nouvelle version sera créée en BROUILLON avec les lignes
-            extrapolées selon la méthode choisie.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3" data-testid="rf-lancer-form">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <Dialog open={isOpen} onOpenChange={(o) => !o && !submitting && onClose()}>
+      <DialogContent
+        className={
+          '!p-0 gap-0 overflow-hidden !max-w-2xl max-h-[90vh] ' +
+          'flex flex-col ' +
+          '[&>button]:text-white [&>button]:opacity-80 [&>button]:hover:opacity-100'
+        }
+      >
+        {/* ─── Header gradient bleu nuit ─────────────────────── */}
+        <div
+          className="px-6 py-5 text-white shrink-0"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--miznas-bleu-nuit-dark) 0%, var(--miznas-bleu-nuit-light) 100%)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-md flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+              aria-hidden="true"
+            >
+              <RotateCw className="w-5 h-5" />
+            </div>
             <div>
-              <Label htmlFor="rf-l-version">Version source (publiée)</Label>
+              <h3 className="text-[19px] font-semibold tracking-tight m-0">
+                Lancer un reforecast
+              </h3>
+              <p className="text-xs opacity-80 mt-0.5">
+                Reprévision périodique après consolidation d&apos;un
+                trimestre — la nouvelle version sera créée en BROUILLON.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Body scrollable ───────────────────────────────── */}
+        <div
+          className="px-6 py-5 overflow-y-auto flex-1 space-y-4"
+          data-testid="rf-lancer-form"
+        >
+          {/* Version source + Scénario source */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label
+                htmlFor="rf-l-version"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Version source (publiée){' '}
+                <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={fkVersionSource}
                 onValueChange={(v) => {
@@ -249,21 +295,35 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
                 <SelectTrigger
                   id="rf-l-version"
                   data-testid="rf-l-version"
+                  className="h-9"
                 >
                   <SelectValue placeholder="Choisir…" />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
-                      {v.codeVersion} — {v.libelle}
+                      <span className="font-mono text-xs">
+                        {v.codeVersion}
+                      </span>
+                      {' — '}
+                      <span>{v.libelle}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-(--muted-foreground)">
+                Seules les versions publiées (statut « gele ») sont
+                éligibles.
+              </p>
             </div>
 
-            <div>
-              <Label htmlFor="rf-l-scenario">Scénario source</Label>
+            <div className="space-y-1">
+              <Label
+                htmlFor="rf-l-scenario"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Scénario source <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={fkScenarioSource}
                 onValueChange={setFkScenarioSource}
@@ -272,13 +332,18 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
                 <SelectTrigger
                   id="rf-l-scenario"
                   data-testid="rf-l-scenario"
+                  className="h-9"
                 >
                   <SelectValue placeholder="Choisir…" />
                 </SelectTrigger>
                 <SelectContent>
                   {scenarios.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.codeScenario} — {s.libelle}
+                      <span className="font-mono text-xs">
+                        {s.codeScenario}
+                      </span>
+                      {' — '}
+                      <span>{s.libelle}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -286,37 +351,63 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Trimestre tiles + Année consolidée */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3">
             <div>
-              <Label>Trimestre consolidé</Label>
+              <Label className="text-sm font-medium text-(--foreground)">
+                Trimestre consolidé <span className="text-red-500">*</span>
+              </Label>
               <div
-                className="flex gap-1 mt-1"
+                className="grid grid-cols-4 gap-1.5 mt-2"
                 role="radiogroup"
                 data-testid="rf-l-trimestre"
               >
-                {[1, 2, 3, 4].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTrimestreConsolide(t)}
-                    className={`px-3 py-2 rounded text-sm border ${
-                      trimestreConsolide === t
-                        ? 'bg-(--primary) text-(--primary-foreground) border-(--primary)'
-                        : 'bg-(--background) border-(--border) hover:bg-(--accent)/30'
-                    }`}
-                    data-testid={`rf-l-trim-${t}`}
-                  >
-                    T{t}
-                  </button>
-                ))}
+                {[1, 2, 3, 4].map((t) => {
+                  const selected = trimestreConsolide === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTrimestreConsolide(t)}
+                      data-testid={`rf-l-trim-${t}`}
+                      aria-pressed={selected}
+                      className={cn(
+                        'border rounded-md py-2.5 px-2 text-center transition-all cursor-pointer',
+                        selected
+                          ? 'border-2 shadow-sm'
+                          : 'border-(--border) hover:border-(--muted-foreground)/40 bg-white',
+                      )}
+                      style={
+                        selected
+                          ? {
+                              borderColor: '#5B4E91',
+                              backgroundColor: '#5B4E910F',
+                            }
+                          : undefined
+                      }
+                    >
+                      <div
+                        className="font-mono text-[14px] font-semibold"
+                        style={selected ? { color: '#5B4E91' } : undefined}
+                      >
+                        T{t}
+                      </div>
+                      <div className="text-[10px] text-(--muted-foreground) mt-0.5">
+                        {TRIMESTRE_MOIS_LABEL[t]}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-xs text-(--muted-foreground) mt-1">
-                {trimestreLibelle(trimestreConsolide, anneeConsolide)}
-              </p>
             </div>
 
-            <div>
-              <Label htmlFor="rf-l-annee">Année consolidée</Label>
+            <div className="space-y-1">
+              <Label
+                htmlFor="rf-l-annee"
+                className="text-sm font-medium text-(--foreground)"
+              >
+                Année <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="rf-l-annee"
                 data-testid="rf-l-annee"
@@ -325,48 +416,78 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
                 max={String(new Date().getFullYear() + 5)}
                 value={anneeConsolide}
                 onChange={(e) => setAnneeConsolide(Number(e.target.value))}
+                className="h-9 tabular-nums"
               />
             </div>
           </div>
 
+          {/* Méthode d'extrapolation — radio vertical avec descriptions */}
           <div>
-            <Label>Méthode d'extrapolation</Label>
+            <Label className="text-sm font-medium text-(--foreground)">
+              Méthode d&apos;extrapolation{' '}
+              <span className="text-red-500">*</span>
+            </Label>
             <div
-              className="space-y-2 mt-1"
+              className="space-y-1.5 mt-2"
               role="radiogroup"
               data-testid="rf-l-methode"
             >
-              {METHODES.map((m) => (
-                <label
-                  key={m}
-                  className={`flex gap-2 p-2 rounded border cursor-pointer ${
-                    methode === m
-                      ? 'border-(--primary) bg-(--primary)/5'
-                      : 'border-(--border)'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="rf-methode"
-                    value={m}
-                    checked={methode === m}
-                    onChange={() => setMethode(m)}
-                    data-testid={`rf-l-methode-${m}`}
-                    className="mt-0.5"
-                  />
-                  <span className="text-sm">
-                    <strong>{METHODE_LABEL[m]}</strong>
-                    <span className="block text-xs text-(--muted-foreground)">
-                      {METHODE_DESCRIPTION[m]}
-                    </span>
-                  </span>
-                </label>
-              ))}
+              {METHODES.map((m) => {
+                const selected = methode === m;
+                return (
+                  <label
+                    key={m}
+                    className={cn(
+                      'flex items-start gap-3 border rounded-md p-3 cursor-pointer transition-colors',
+                      selected
+                        ? 'border-2'
+                        : 'border-(--border) hover:bg-(--muted)/30',
+                    )}
+                    style={
+                      selected
+                        ? {
+                            borderColor: '#0C447C',
+                            backgroundColor: '#0C447C0A',
+                          }
+                        : undefined
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="rf-methode"
+                      value={m}
+                      checked={selected}
+                      onChange={() => setMethode(m)}
+                      data-testid={`rf-l-methode-${m}`}
+                      className="mt-1 cursor-pointer accent-(--miznas-bleu-nuit-dark)"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className="text-[13px] font-semibold"
+                        style={
+                          selected ? { color: '#0C447C' } : undefined
+                        }
+                      >
+                        {METHODE_LABEL[m]}
+                      </div>
+                      <div className="text-xs text-(--muted-foreground) mt-0.5 leading-relaxed">
+                        {METHODE_DESCRIPTION[m]}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="rf-l-libelle">Libellé</Label>
+          {/* Libellé */}
+          <div className="space-y-1">
+            <Label
+              htmlFor="rf-l-libelle"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Libellé <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="rf-l-libelle"
               data-testid="rf-l-libelle"
@@ -375,59 +496,93 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
                 setLibelle(e.target.value);
                 setLibelleEdited(true);
               }}
+              className="h-9"
             />
+            <p className="text-xs text-(--muted-foreground)">
+              Pré-rempli selon trimestre + année. Modifiable.
+            </p>
           </div>
 
-          <div>
-            <Label htmlFor="rf-l-commentaire">Commentaire (optionnel)</Label>
+          {/* Commentaire */}
+          <div className="space-y-1">
+            <Label
+              htmlFor="rf-l-commentaire"
+              className="text-sm font-medium text-(--foreground)"
+            >
+              Commentaire (optionnel)
+            </Label>
             <textarea
               id="rf-l-commentaire"
               data-testid="rf-l-commentaire"
-              className="w-full rounded-md border border-(--border) bg-(--background) p-2 text-sm"
-              rows={2}
               value={commentaire}
               onChange={(e) => setCommentaire(e.target.value)}
+              rows={2}
+              className="flex w-full rounded-md border border-(--border) bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-(--ring) resize-y"
             />
           </div>
 
+          {/* Bandeau warning OBSOLETE (ambre Charte v1) */}
           {existant && (
             <div
-              className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+              className="rounded-sm px-4 py-3 flex items-start gap-3"
+              style={{
+                backgroundColor: '#BA75170F',
+                borderLeft: '3px solid #BA7517',
+              }}
               data-testid="rf-l-warning-obsolete"
             >
-              <div className="flex gap-2 items-start">
-                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">
-                    Un reforecast existe déjà pour ces paramètres.
-                  </p>
-                  <p className="mt-1">
-                    <strong>{existant.libelle}</strong> ({existant.codeVersion})
-                    — statut : {existant.statut}.
-                  </p>
-                  <p className="mt-1">
-                    Lancer un nouveau reforecast marquera l'ancien comme
-                    OBSOLETE. Cette action est tracée en audit.
-                  </p>
-                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={confirmationEcrasement}
-                      onChange={(e) =>
-                        setConfirmationEcrasement(e.target.checked)
-                      }
-                      data-testid="rf-l-confirm-ecrasement"
-                    />
-                    <span>Je comprends et confirme l'écrasement</span>
-                  </label>
+              <AlertTriangle
+                className="w-4 h-4 shrink-0 mt-0.5"
+                style={{ color: '#BA7517' }}
+                aria-hidden="true"
+              />
+              <div className="flex-1 min-w-0">
+                <div
+                  className="text-[13px] font-semibold mb-1"
+                  style={{ color: '#BA7517' }}
+                >
+                  Un reforecast existe déjà pour ces paramètres
                 </div>
+                <div className="text-xs text-(--foreground) mb-2 leading-relaxed">
+                  <span className="font-semibold">{existant.libelle}</span>
+                  {' ('}
+                  <span className="font-mono text-[11px]">
+                    {existant.codeVersion}
+                  </span>
+                  {') — statut : '}
+                  <span className="font-medium">{existant.statut}</span>.
+                </div>
+                <div className="text-xs text-(--muted-foreground) mb-3 leading-relaxed">
+                  Lancer un nouveau reforecast marquera l&apos;ancien
+                  comme <strong>OBSOLETE</strong>. Cette action est tracée
+                  en audit.
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmationEcrasement}
+                    onChange={(e) =>
+                      setConfirmationEcrasement(e.target.checked)
+                    }
+                    data-testid="rf-l-confirm-ecrasement"
+                    className="h-4 w-4 rounded border border-(--border) accent-(--miznas-ambre) cursor-pointer"
+                  />
+                  <span className="text-[13px] font-medium">
+                    Je comprends et confirme l&apos;écrasement
+                  </span>
+                </label>
               </div>
             </div>
           )}
 
           {erreurs.length > 0 && (
             <ul
-              className="text-xs text-red-500 list-disc list-inside"
+              className="rounded-md border p-3 text-xs list-disc list-inside space-y-0.5"
+              style={{
+                borderColor: '#DC262640',
+                backgroundColor: '#DC26260D',
+                color: '#DC2626',
+              }}
               data-testid="rf-l-erreurs"
             >
               {erreurs.map((e) => (
@@ -437,18 +592,25 @@ export function LancerReforecastDialog({ isOpen, onClose }: Props): JSX.Element 
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
-            Annuler
-          </Button>
+        {/* ─── Footer sticky ─────────────────────────────────── */}
+        <div className="border-t border-(--border) px-6 py-3.5 flex justify-end gap-2.5 bg-(--secondary) shrink-0">
+          <DialogClose asChild>
+            <Button variant="outline" disabled={submitting}>
+              Annuler
+            </Button>
+          </DialogClose>
           <Button
             onClick={() => void handleSubmit()}
             disabled={!peutSubmitter}
             data-testid="rf-l-submit"
+            className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
           >
+            <RotateCw
+              className={cn('w-3.5 h-3.5', submitting && 'animate-spin')}
+            />
             {submitting ? 'Génération en cours…' : 'Lancer le reforecast'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

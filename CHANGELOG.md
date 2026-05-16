@@ -2,6 +2,111 @@
 
 Au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [Lot 7.3] - 2026-05-14
+
+### Modernisation /login + PublicLayout + tokens Charte v1
+
+Troisième sous-lot du Lot 7 (modernisation UI). Refonte visuelle de
+la page de connexion avec split layout 50/50 (identité MIZNAS à
+gauche, formulaire à droite) selon la Charte v1, introduction des
+tokens CSS de marque, et création d'un layout partagé prêt à
+recevoir les autres pages publiques au Lot 7.4.
+
+#### Nouveautés
+
+- **feat(styles)** — introduction des tokens CSS Charte v1
+  (`--miznas-bleu-nuit`, `--miznas-ambre`, `--miznas-creme`) dans
+  `src/index.css`. Source de vérité unique pour les couleurs de
+  marque, exposées Tailwind v4 via `@theme inline` (utilisables
+  comme `bg-(--miznas-creme)`, `text-(--miznas-bleu-nuit)`, etc.).
+- **feat(branding)** — constantes `BANK_NAME` / `BANK_SIGLE` /
+  `BANK_YEAR` / `APP_VERSION` isolées dans
+  `src/lib/branding/bank.ts`. Préparation paramétrage multi-banques
+  au Lot 7.5 (lecture future depuis `import.meta.env.VITE_BANK_*`).
+- **feat(branding)** — composant atomique `MiznasWordmark`
+  (`src/components/branding/MiznasWordmark.tsx`) avec 4 tailles
+  (sm/md/lg/xl), prêt à être réutilisé sur toutes les surfaces où
+  la marque doit apparaître.
+- **feat(layout)** — composant `PublicLayout` partagé pour les
+  pages d'authentification publiques, basé sur un split 50/50
+  (stacked vertical en mobile <768 px). Zone identité gauche en
+  fond crème charte v1, zone formulaire droite en fond standard.
+- **feat(login)** — refonte visuelle complète de `LoginPage` selon
+  la Charte v1 : passage par `<PublicLayout>`, bouton submit en
+  bleu nuit MIZNAS, lien forgot en ambre, hiérarchie typographique
+  simplifiée (h1 "Connexion" + sous-titre court).
+- **feat(login)** — erreurs auth critiques (401 / INVALID_CREDENTIALS
+  / ACCOUNT_LOCKED) affichées dans un **bandeau inline persistant**
+  (`role="alert"`, fond `--destructive`/10, border-left
+  `--destructive`) au lieu d'un toast Sonner volatile. Le bandeau
+  reste tant que l'utilisateur n'a pas re-soumis. Les erreurs
+  réseau/serveur inattendues continuent à passer par toast.error
+  (volatile, suffisant pour ces cas non auth).
+- **feat(login)** — attributs `aria-invalid` et `aria-describedby`
+  ajoutés sur les erreurs de validation Zod (conformité WCAG 2.1).
+  `<form noValidate>` pour laisser Zod prendre la main sans
+  double-affichage HTML5.
+
+#### Composants ajoutés
+
+| Fichier | Rôle |
+|---|---|
+| `src/components/branding/MiznasWordmark.tsx` | Wordmark identitaire atomique réutilisable |
+| `src/components/layout/PublicLayout.tsx`     | Wrapper split 50/50 pour pages publiques  |
+| `src/lib/branding/bank.ts`                   | Constantes de marque banque cliente       |
+
+#### Tests
+
+- `LoginPage.test.tsx` créé (9 tests — couverture initiale comblant
+  l'unique trou identifié au diagnostic Lot 7.3) : rendu PublicLayout,
+  validation Zod + a11y, submit succès, bandeau inline 401, toast
+  réseau, état isLoading, pattern `<Navigate />` déclaratif.
+- `PublicLayout.test.tsx` créé (7 tests) : zone identité, footer
+  version+sigle+année, wordmark, tagline + mention BCEAO, children,
+  responsive grid, fond crème.
+- `MiznasWordmark.test.tsx` créé (8 tests) : texte rendu, classes
+  charte v1, 4 variations de taille via `it.each`, propagation
+  `className`.
+
+#### Métriques
+
+- Vitest frontend : **600 → 624 verts** (+24 tests sur 3 nouveaux
+  fichiers de tests)
+- ESLint 0 problems, `tsc -b` strict 0 erreurs, `vite build` VERT
+  (Required CI préservé)
+
+#### Stratégie release — accumulation Lots 7.X
+
+Cette branche `lot-7.3/login-modernisation` est issue de `main`
+(non pas de `lot-7.2/...`) conformément à la stratégie d'accumulation
+des lots de modernisation : chaque Lot 7.X reste sur sa branche
+jusqu'au merge groupé final. Conséquence pour Lot 7.3 :
+- Les hardcodes Tailwind `[#0C447C]` / `[#BA7517]` introduits par
+  Lot 7.2 (et non mergés) ne sont **pas remplacés ici** — ils
+  vivent uniquement sur la branche `lot-7.2/...`.
+- Au moment du merge groupé final (Lot 7.2 + Lot 7.3 ensemble),
+  un commit d'alignement remplacera les 5 occurrences identifiées
+  (4 × `[#0C447C]`, 1 × `[#BA7517]`) dans `DashboardCard.tsx` et
+  `KpiBandeau.tsx` par les tokens `text-(--miznas-bleu-nuit)` /
+  `hover:border-l-(--miznas-ambre)`.
+
+#### À venir
+
+- **Lot 7.4** : migration de `ForgotPasswordPage`,
+  `ResetPasswordPage` et `ForceChangePasswordPage` vers
+  `PublicLayout` (mécanique, 1 commit par page).
+- **Lot 7.5** : paramétrage multi-banques via variables
+  d'environnement (`VITE_BANK_NAME`, `VITE_BANK_SIGLE`,
+  `VITE_BANK_YEAR`).
+- **Lot 7.X-security** : traitement complet ACCOUNT_LOCKED avec
+  compteur de tentatives UI, anti-énumération renforcée.
+
+#### Backend
+
+Aucune modification backend.
+
+---
+
 ## [Lot 7.1] - 2026-05-13
 
 ### Hygiène filtrage permission sidebar — fixes asymétrie + tests régression

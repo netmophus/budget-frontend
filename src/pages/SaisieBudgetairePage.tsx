@@ -14,7 +14,15 @@
  *  - permission BUDGET.SAISIR absente.
  */
 import { AxiosError } from 'axios';
-import { ChartBar, FileUp, Info, Lock, RotateCcw, Save } from 'lucide-react';
+import {
+  ChartBar,
+  FileUp,
+  Info,
+  Lock,
+  RotateCcw,
+  Save,
+  TableProperties,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -25,7 +33,6 @@ import { ImportBudgetDialog } from '@/components/budget/ImportBudgetDialog';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
 import { WorkflowActions } from '@/components/budget/WorkflowActions';
 import { BandeauDelegations } from '@/components/budget/BandeauDelegations';
-import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useHasPermission } from '@/lib/auth/permissions';
@@ -86,6 +93,27 @@ export function SaisieBudgetairePage() {
   const versionVerrouillee =
     grille !== null && grille.version.statut !== 'ouvert';
   const readOnly = !canSaisir || versionVerrouillee;
+
+  // Lot 7.3 V20 — bandeau verrouillage unique. Discriminant entre
+  // version figée (statut !== 'ouvert') et permission manquante. On
+  // n'utilise PAS libelleStatutVersion pour le badge (collision
+  // possible avec le badge statut affiché juste en dessous).
+  const lockReason: string | null = useMemo(() => {
+    if (!grille) return null;
+    if (versionVerrouillee) return 'Figé';
+    if (!canSaisir) return 'Consultation';
+    return null;
+  }, [grille, versionVerrouillee, canSaisir]);
+  const lockMessage: string | null = useMemo(() => {
+    if (!grille) return null;
+    if (versionVerrouillee) {
+      return 'Version officielle figée — saisie impossible. Conservation 10 ans (BCEAO).';
+    }
+    if (!canSaisir) {
+      return "Vous n'avez pas la permission BUDGET.SAISIR sur cette version. Contactez votre administrateur.";
+    }
+    return null;
+  }, [grille, versionVerrouillee, canSaisir]);
 
   // Lot 3.5 — version complète chargée pour exposer WorkflowActions
   // (la GrilleVersionRef portée par la grille est volontairement
@@ -170,19 +198,33 @@ export function SaisieBudgetairePage() {
 
   return (
     <div className="pb-24">
-      <PageHeader
-        title="Saisie budgétaire"
-        description={
-          grille
-            ? `${grille.version.codeVersion} — ${grille.scenario.codeScenario} — ${grille.cr.codeCr}`
-            : 'Sélectionnez un contexte pour commencer.'
-        }
-      />
+      {/* ─── Header custom ──────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-5">
+        <div
+          style={{ backgroundColor: '#0C447C1A' }}
+          className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
+          aria-hidden="true"
+        >
+          <TableProperties
+            className="w-5 h-5"
+            style={{ color: '#0C447C' }}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            Saisie budgétaire
+          </h3>
+          <p className="text-xs text-(--muted-foreground) mt-0.5 font-mono truncate">
+            {grille
+              ? `${grille.version.codeVersion} — ${grille.scenario.codeScenario} — ${grille.cr.codeCr}`
+              : 'Sélectionnez un contexte pour commencer.'}
+          </p>
+        </div>
+      </div>
+
       <BandeauDelegations />
 
-      {/* Lot 6.7.3 — bandeau informatif quand la version éditée est un
-          reforecast (typeVersion='reforecast'). Permet à l'utilisateur
-          qui arrive depuis ReforecastDetailPage de savoir où il est. */}
+      {/* Lot 6.7.3 — bandeau informatif reforecast */}
       {versionComplete?.typeVersion === 'reforecast' && (
         <div
           className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900"
@@ -201,19 +243,63 @@ export function SaisieBudgetairePage() {
         </div>
       )}
 
+      {/* ─── Bandeau verrouillage UNIQUE (Lot 7.3 V20) ──────── */}
+      {grille && lockReason && lockMessage && (
+        <div
+          className="rounded-sm px-4 py-3 flex items-start gap-3 mb-4"
+          style={{
+            backgroundColor: '#0F6E560F',
+            borderLeft: '3px solid #0F6E56',
+          }}
+          role="status"
+          data-testid="bandeau-verrouillage"
+        >
+          <div
+            className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0"
+            style={{ backgroundColor: '#0F6E5626' }}
+            aria-hidden="true"
+          >
+            <Lock className="w-[15px] h-[15px]" style={{ color: '#0F6E56' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <span
+                className="text-[13px] font-semibold"
+                style={{ color: '#0F6E56' }}
+              >
+                Cette version est verrouillée
+              </span>
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded-sm text-[10px] font-semibold"
+                style={{
+                  backgroundColor: '#0F6E5626',
+                  color: '#0F6E56',
+                }}
+              >
+                <Lock className="w-2.5 h-2.5" />
+                {lockReason}
+              </span>
+            </div>
+            <div className="text-xs text-(--muted-foreground) leading-relaxed">
+              {lockMessage}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Badge statut + modifs en attente + WorkflowActions */}
       {grille && (
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <Badge className={badgeClassStatutVersion(grille.version.statut as never)}>
+          <Badge
+            className={badgeClassStatutVersion(grille.version.statut as never)}
+          >
             {libelleStatutVersion(grille.version.statut as never)}
           </Badge>
-          {versionVerrouillee && (
-            <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
-              <Lock className="h-3 w-3" />
-              Cette version est verrouillée — saisie impossible.
-            </span>
-          )}
           {hasModifications && (
-            <span className="inline-flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300">
+            <span
+              className="inline-flex items-center gap-1 text-xs"
+              style={{ color: '#BA7517' }}
+            >
               ● {modifications.size} modification
               {modifications.size > 1 ? 's' : ''} en attente
             </span>
@@ -265,53 +351,60 @@ export function SaisieBudgetairePage() {
         )}
       </div>
 
-      {/* Footer fixe */}
+      {/* ─── Footer fixe (Lot 7.3 V20 modernisé) ────────────── */}
       {grille && (
-        <div className="fixed bottom-0 left-[var(--sidebar-width,15rem)] right-0 border-t border-(--border) bg-(--background)/95 backdrop-blur p-3 z-30">
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setIndicateursOuvert(true)}
-            >
-              <ChartBar className="h-4 w-4 mr-2" />
-              Calculer indicateurs
-            </Button>
-            {/* Lot 3.7 — Import en masse. Désactivé si saisie KO,
-                version verrouillée, ou modifs non sauvegardées
-                (pour éviter de perdre des modifs locales). */}
-            <Button
-              variant="outline"
-              onClick={() => setImportOuvert(true)}
-              disabled={readOnly || hasModifications}
-              title={
-                hasModifications
-                  ? 'Enregistrez ou annulez vos modifications avant d\'importer'
-                  : readOnly
-                    ? 'Version verrouillée — import impossible'
-                    : 'Importer un fichier CSV ou XLSX'
-              }
-              data-testid="btn-import"
-            >
-              <FileUp className="h-4 w-4 mr-2" />
-              Import
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmAnnuler(true)}
-              disabled={!hasModifications}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Annuler les modifs
-            </Button>
-            <Button
-              onClick={handleSauvegarder}
-              disabled={
-                !hasModifications || readOnly || enCoursSauvegarde
-              }
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {enCoursSauvegarde ? 'Sauvegarde…' : 'Enregistrer'}
-            </Button>
+        <div className="fixed bottom-0 left-[var(--sidebar-width,15rem)] right-0 border-t border-(--border) bg-white/95 backdrop-blur px-4 py-3 z-30">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIndicateursOuvert(true)}
+                className="h-9 gap-1.5"
+              >
+                <ChartBar className="w-3.5 h-3.5" />
+                Calculer indicateurs
+              </Button>
+              {/* Lot 3.7 — Import en masse. Désactivé si saisie KO,
+                  version verrouillée, ou modifs non sauvegardées. */}
+              <Button
+                variant="outline"
+                onClick={() => setImportOuvert(true)}
+                disabled={readOnly || hasModifications}
+                title={
+                  hasModifications
+                    ? "Enregistrez ou annulez vos modifications avant d'importer"
+                    : readOnly
+                      ? 'Version verrouillée — import impossible'
+                      : 'Importer un fichier CSV ou XLSX'
+                }
+                data-testid="btn-import"
+                className="h-9 gap-1.5"
+              >
+                <FileUp className="w-3.5 h-3.5" />
+                Import
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmAnnuler(true)}
+                disabled={!hasModifications}
+                className="h-9 gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Annuler les modifs
+              </Button>
+              <Button
+                onClick={handleSauvegarder}
+                disabled={
+                  !hasModifications || readOnly || enCoursSauvegarde
+                }
+                className="h-9 gap-1.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {enCoursSauvegarde ? 'Sauvegarde…' : 'Enregistrer'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

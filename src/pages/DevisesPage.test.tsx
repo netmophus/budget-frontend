@@ -59,8 +59,10 @@ describe('DevisesPage', () => {
 
     render(<DevisesPage />);
 
+    // V13 : "XOF" apparaît à 2 endroits (KPI "Devise pivot" + ligne
+    // tableau), donc on utilise getAllByText pour éviter l'ambiguïté.
     await waitFor(() => {
-      expect(screen.getByText('XOF')).toBeInTheDocument();
+      expect(screen.getAllByText('XOF').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText('Euro')).toBeInTheDocument();
     expect(screen.getByText('PIVOT')).toBeInTheDocument();

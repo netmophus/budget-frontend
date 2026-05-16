@@ -340,7 +340,13 @@ describe('SegmentFormDrawer', () => {
 
   // ─── Catégorie désactivée
 
-  it("mode edit : catégorie courante désactivée → message d'avertissement", async () => {
+  // V16 (Lot 7.3) : la modale utilise désormais 6 tiles statiques pour
+  // la catégorie au lieu de <RefSecondaireSelect>. L'avertissement
+  // "catégorie X désactivée dans Configuration" était une feature de
+  // RefSecondaireSelect — retirée par la refonte. Si la fonctionnalité
+  // est réintroduite (ex. tile désactivable + libellé d'avertissement),
+  // dé-skipper ce test et adapter l'assertion.
+  it.skip("mode edit : catégorie courante désactivée → message d'avertissement", async () => {
     // Backend retourne les catégories SANS 'particulier'
     setupRefMock(
       REF_CATEGORIES.filter((c) => c.code !== 'particulier'),

@@ -248,6 +248,84 @@ describe('CreerDelegationDialog', () => {
     expect(screen.getByTestId('permission-label-PUBLICATION')).toBeInTheDocument();
   });
 
+  // ─── Lot 7.3 V9 — Refonte header gradient + bandeau ambre ──────
+
+  it('V9 : rend le header gradient et le bandeau ambre anti-chaînage', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('creer-delegation-header')).toBeInTheDocument(),
+    );
+    const bandeau = screen.getByTestId(
+      'creer-delegation-bandeau-anti-chainage',
+    );
+    expect(bandeau).toBeInTheDocument();
+    // Le bandeau porte le rappel métier anti-chaînage (texte exact
+    // recherché par les utilisateurs en revue : « Anti-chaînage »).
+    expect(bandeau.textContent).toMatch(/anti-chaînage/i);
+    expect(bandeau.textContent).toContain('re-délégables');
+  });
+
+  it('V9.1 : footer sticky rendu avec boutons Annuler + Créer', async () => {
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    const footer = await waitFor(() =>
+      screen.getByTestId('creer-delegation-footer'),
+    );
+    expect(footer).toBeInTheDocument();
+    // Le footer doit porter `shrink-0` (Tailwind class) pour rester
+    // ancré quand le body scrolle — anti-régression du fix V9.1.
+    expect(footer.className).toContain('shrink-0');
+    // 2 boutons d'action dans le footer (Annuler + Créer).
+    expect(footer.querySelectorAll('button').length).toBe(2);
+    expect(screen.getByTestId('btn-creer-delegation')).toBeInTheDocument();
+  });
+
+  it('V9 : état vide périmètres affiche icône FolderX + libellé', async () => {
+    // Override : utilisateur sans périmètre natif (que des origine=DELEGATION).
+    mockPerimetres.mockResolvedValue([
+      {
+        id: '99',
+        cibleType: 'CR',
+        cibleId: '101',
+        cibleCrIds: null,
+        origine: 'DELEGATION',
+        delegationId: '50',
+        dateDebut: '2025-01-01',
+        dateFin: null,
+        actif: true,
+        motif: null,
+      },
+    ]);
+    render(
+      <CreerDelegationDialog
+        isOpen={true}
+        onClose={() => {}}
+        currentUserId="10"
+        onCreated={() => {}}
+      />,
+    );
+    const emptyState = await waitFor(() =>
+      screen.getByTestId('perimetres-empty-state'),
+    );
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState).toHaveTextContent('Aucun périmètre natif délégable.');
+    // Icône FolderOff (Lucide SVG) dans l'état vide
+    expect(emptyState.querySelector('svg')).not.toBeNull();
+  });
+
   it('Z1 : tooltip contenu apparait au hover (smoke test PUBLICATION)', async () => {
     render(
       <CreerDelegationDialog

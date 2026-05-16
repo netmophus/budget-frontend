@@ -33,6 +33,7 @@ export function DashboardPage() {
             icon={FileEdit}
             title="Élaborer un budget"
             description="Saisir et soumettre vos prévisions budgétaires sur votre périmètre."
+            color="budget"
           />
         </Can>
 
@@ -42,6 +43,7 @@ export function DashboardPage() {
             icon={CheckCircle2}
             title="Valider / Publier"
             description="Valider les versions soumises ou publier les versions validées."
+            color="validation"
           />
         </Can>
 
@@ -51,6 +53,7 @@ export function DashboardPage() {
             icon={ClipboardCheck}
             title="Suivre le réalisé"
             description="Saisir ou importer le réalisé comptable mensuel et le valider."
+            color="realise"
           />
         </Can>
 
@@ -60,6 +63,7 @@ export function DashboardPage() {
             icon={BarChart3}
             title="Analyser les écarts"
             description="Visualiser les écarts budget vs réalisé avec 4 niveaux d'alerte."
+            color="reporting"
           />
         </Can>
 
@@ -69,6 +73,7 @@ export function DashboardPage() {
             icon={TrendingUp}
             title="Reprévoir (reforecast)"
             description="Lancer un atterrissage trimestriel à partir du réalisé consolidé."
+            color="reporting"
           />
         </Can>
 
@@ -78,6 +83,7 @@ export function DashboardPage() {
             icon={Handshake}
             title="Mes délégations"
             description="Recevoir ou émettre une délégation temporaire (anti-chaînage BCEAO)."
+            color="collaboration"
           />
         </Can>
 
@@ -87,6 +93,7 @@ export function DashboardPage() {
             icon={Database}
             title="Référentiels"
             description="Consulter et configurer les dimensions et référentiels secondaires."
+            color="config"
           />
         </Can>
 
@@ -96,6 +103,7 @@ export function DashboardPage() {
             icon={Settings}
             title="Administration"
             description="Gérer les utilisateurs, rôles, périmètres et notifications."
+            color="config"
           />
         </Can>
 
@@ -105,6 +113,7 @@ export function DashboardPage() {
             icon={History}
             title="Audit"
             description="Consulter l'historique horodaté des actions sensibles (10 ans BCEAO)."
+            color="config"
           />
         </Can>
       </div>

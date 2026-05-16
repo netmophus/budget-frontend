@@ -154,10 +154,13 @@ describe('ProduitsPage', () => {
     mockHistory.mockResolvedValue([SAMPLE[0]]);
 
     render(<ProduitsPage />);
+    // V15 : "Crédits" apparaît dans le KPI label ET dans la ligne
+    // tableau → on cible la ligne par son data-testid pour éviter
+    // l'ambiguïté.
     await waitFor(() => {
-      expect(screen.getByText('Crédits')).toBeInTheDocument();
+      expect(screen.getByTestId('prod-row-1')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('Crédits'));
+    fireEvent.click(screen.getByTestId('prod-row-1'));
 
     const histBtn = await screen.findByRole('button', {
       name: /historique scd2/i,
