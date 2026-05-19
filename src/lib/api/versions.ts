@@ -203,3 +203,39 @@ export async function publierVersion(
   );
   return data;
 }
+
+// ─── Lot 7.3 — Résumé d'une version (page "Versions à valider") ─────
+
+/**
+ * Réponse de `GET /api/v1/budget/versions/:id/resume`. Agrège
+ * `fait_budget` filtré par périmètre RBAC du user connecté.
+ */
+export interface ResumeVersion {
+  versionId: string;
+  montantTotalFcfa: number;
+  nombreComptes: number;
+  nombreLignes: number;
+}
+
+export async function getResumeVersion(id: string): Promise<ResumeVersion> {
+  const { data } = await apiClient.get<ResumeVersion>(
+    `/budget/versions/${id}/resume`,
+  );
+  return data;
+}
+
+// ─── Lot 7.3 — Périmètre du user connecté (pill "Mon périmètre") ────
+
+/**
+ * Réponse de `GET /api/v1/me/perimetre`. `isAdminGlobal=true` →
+ * l'UI affiche typiquement « Admin global » ; sinon « {N} CR ».
+ */
+export interface MonPerimetre {
+  nbCrAccessibles: number;
+  isAdminGlobal: boolean;
+}
+
+export async function getMonPerimetre(): Promise<MonPerimetre> {
+  const { data } = await apiClient.get<MonPerimetre>('/me/perimetre');
+  return data;
+}
