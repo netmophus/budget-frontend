@@ -88,6 +88,8 @@ const VERSION_OUVERT = {
   utilisateurModification: null,
 };
 const VERSION_GELE = { ...VERSION_OUVERT, id: '2', codeVersion: 'BUDGET_2026', exerciceFiscal: 2026, statut: 'gele' };
+const VERSION_SOUMIS = { ...VERSION_OUVERT, id: '3', codeVersion: 'BUDGET_2028_S', exerciceFiscal: 2028, statut: 'soumis' };
+const VERSION_VALIDE = { ...VERSION_OUVERT, id: '4', codeVersion: 'BUDGET_2028_V', exerciceFiscal: 2028, statut: 'valide' };
 
 const SCENARIO_MEDIAN = {
   id: '10',
@@ -232,7 +234,7 @@ describe('SaisieBudgetairePage', () => {
     expect(saveBtn.disabled).toBe(true);
   });
 
-  it("version statut='gele' : badge cadenas + grille en lecture seule", async () => {
+  it("version statut='gele' : bandeau 'Figé' + message BCEAO (Lot 7.2)", async () => {
     // Pré-régler le store avec la version gele directement (sinon
     // l'auto-sélection du SelecteurContexte cherche une 'ouvert' et
     // n'en trouve pas).
@@ -251,9 +253,70 @@ describe('SaisieBudgetairePage', () => {
     await waitFor(() => {
       expect(screen.getByText('Publié')).toBeInTheDocument();
     });
+    const bandeau = screen.getByTestId('bandeau-verrouillage');
+    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
+    expect(bandeau).toHaveTextContent('Figé');
+    expect(bandeau).toHaveTextContent(/10 ans/);
+    expect(bandeau).toHaveTextContent(/BCEAO/);
+  });
+
+  it("version statut='soumis' : bandeau 'Soumis' + message validation, pas BCEAO (Lot 7.2)", async () => {
+    useBudgetGrilleStore.getState().setVersionId('3');
+    useBudgetGrilleStore.getState().setScenarioId('10');
+    useBudgetGrilleStore.getState().setCrId('100');
+    useBudgetGrilleStore.getState().setLigneMetierId('20');
+    configureMocks({
+      versions: [VERSION_SOUMIS],
+      grille: {
+        ...GRILLE_OUVERT,
+        version: { ...GRILLE_OUVERT.version, statut: 'soumis' },
+      },
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('bandeau-verrouillage')).toBeInTheDocument();
+    });
+    const bandeau = screen.getByTestId('bandeau-verrouillage');
+    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
+    expect(bandeau).toHaveTextContent('Soumis');
+    expect(bandeau).toHaveTextContent(/soumise à validation/i);
+    expect(bandeau).not.toHaveTextContent(/10 ans/);
+    expect(bandeau).not.toHaveTextContent(/BCEAO/);
+  });
+
+  it("version statut='valide' : bandeau 'Validé' + message publication (Lot 7.2)", async () => {
+    useBudgetGrilleStore.getState().setVersionId('4');
+    useBudgetGrilleStore.getState().setScenarioId('10');
+    useBudgetGrilleStore.getState().setCrId('100');
+    useBudgetGrilleStore.getState().setLigneMetierId('20');
+    configureMocks({
+      versions: [VERSION_VALIDE],
+      grille: {
+        ...GRILLE_OUVERT,
+        version: { ...GRILLE_OUVERT.version, statut: 'valide' },
+      },
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('bandeau-verrouillage')).toBeInTheDocument();
+    });
+    const bandeau = screen.getByTestId('bandeau-verrouillage');
+    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
+    expect(bandeau).toHaveTextContent('Validé');
+    expect(bandeau).toHaveTextContent(/publication/i);
+    expect(bandeau).not.toHaveTextContent(/10 ans/);
+    expect(bandeau).not.toHaveTextContent(/BCEAO/);
+  });
+
+  it("version statut='ouvert' : pas de bandeau de verrouillage (Lot 7.2)", async () => {
+    configureMocks();
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('611100')).toBeInTheDocument();
+    });
     expect(
-      screen.getByText(/Cette version est verrouillée/i),
-    ).toBeInTheDocument();
+      screen.queryByTestId('bandeau-verrouillage'),
+    ).not.toBeInTheDocument();
   });
 
   it('aucune version disponible → message clair', async () => {
