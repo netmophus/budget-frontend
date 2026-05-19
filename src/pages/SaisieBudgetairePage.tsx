@@ -16,13 +16,16 @@
 import { AxiosError } from 'axios';
 import {
   ChartBar,
+  CheckCircle2,
   FileUp,
   Info,
   Lock,
   RotateCcw,
   Save,
+  Send,
   TableProperties,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -94,26 +97,59 @@ export function SaisieBudgetairePage() {
     grille !== null && grille.version.statut !== 'ouvert';
   const readOnly = !canSaisir || versionVerrouillee;
 
-  // Lot 7.3 V20 — bandeau verrouillage unique. Discriminant entre
-  // version figée (statut !== 'ouvert') et permission manquante. On
-  // n'utilise PAS libelleStatutVersion pour le badge (collision
-  // possible avec le badge statut affiché juste en dessous).
-  const lockReason: string | null = useMemo(() => {
+  // Lot 7.2 — bandeau verrouillage différencié par statut. Chaque
+  // statut non-`ouvert` a son propre vocabulaire (label/message), sa
+  // couleur (token MIZNAS) et son icône, pour ne pas faire croire à
+  // une publication officielle alors qu'on n'est qu'en soumission.
+  // Le label intra-bandeau peut différer du grand badge (libelleStatutVersion) :
+  // ici c'est l'état de verrouillage technique, pas le vocabulaire workflow user.
+  const bandeauInfo: {
+    label: string;
+    message: string;
+    Icon: LucideIcon;
+    color: string;
+  } | null = useMemo(() => {
     if (!grille) return null;
-    if (versionVerrouillee) return 'Figé';
-    if (!canSaisir) return 'Consultation';
-    return null;
-  }, [grille, versionVerrouillee, canSaisir]);
-  const lockMessage: string | null = useMemo(() => {
-    if (!grille) return null;
-    if (versionVerrouillee) {
-      return 'Version officielle figée — saisie impossible. Conservation 10 ans (BCEAO).';
-    }
     if (!canSaisir) {
-      return "Vous n'avez pas la permission BUDGET.SAISIR sur cette version. Contactez votre administrateur.";
+      return {
+        label: 'Consultation',
+        message:
+          "Vous n'avez pas la permission BUDGET.SAISIR sur cette version. Contactez votre administrateur.",
+        Icon: Lock,
+        color: '#0F6E56',
+      };
     }
-    return null;
-  }, [grille, versionVerrouillee, canSaisir]);
+    switch (grille.version.statut) {
+      case 'ouvert':
+        return null;
+      case 'soumis':
+        return {
+          label: 'Soumis',
+          message:
+            'Saisie soumise à validation — modifications impossibles. Le validateur peut accepter ou rejeter (saisie ré-ouvrable en cas de rejet).',
+          Icon: Send,
+          color: '#BA7517',
+        };
+      case 'valide':
+        return {
+          label: 'Validé',
+          message:
+            'Saisie validée — en attente de publication finale par la Direction Générale.',
+          Icon: CheckCircle2,
+          color: '#5B4E91',
+        };
+      case 'gele':
+        return {
+          label: 'Figé',
+          message:
+            'Version officielle figée — saisie impossible. Conservation 10 ans (BCEAO).',
+          Icon: Lock,
+          color: '#0F6E56',
+        };
+      default:
+        return null;
+    }
+  }, [grille, canSaisir]);
 
   // Lot 3.5 — version complète chargée pour exposer WorkflowActions
   // (la GrilleVersionRef portée par la grille est volontairement
@@ -243,45 +279,48 @@ export function SaisieBudgetairePage() {
         </div>
       )}
 
-      {/* ─── Bandeau verrouillage UNIQUE (Lot 7.3 V20) ──────── */}
-      {grille && lockReason && lockMessage && (
+      {/* ─── Bandeau verrouillage différencié par statut (Lot 7.2) ──── */}
+      {grille && bandeauInfo && (
         <div
           className="rounded-sm px-4 py-3 flex items-start gap-3 mb-4"
           style={{
-            backgroundColor: '#0F6E560F',
-            borderLeft: '3px solid #0F6E56',
+            backgroundColor: `${bandeauInfo.color}0F`,
+            borderLeft: `3px solid ${bandeauInfo.color}`,
           }}
           role="status"
           data-testid="bandeau-verrouillage"
         >
           <div
             className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0"
-            style={{ backgroundColor: '#0F6E5626' }}
+            style={{ backgroundColor: `${bandeauInfo.color}26` }}
             aria-hidden="true"
           >
-            <Lock className="w-[15px] h-[15px]" style={{ color: '#0F6E56' }} />
+            <bandeauInfo.Icon
+              className="w-[15px] h-[15px]"
+              style={{ color: bandeauInfo.color }}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span
                 className="text-[13px] font-semibold"
-                style={{ color: '#0F6E56' }}
+                style={{ color: bandeauInfo.color }}
               >
                 Cette version est verrouillée
               </span>
               <span
                 className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded-sm text-[10px] font-semibold"
                 style={{
-                  backgroundColor: '#0F6E5626',
-                  color: '#0F6E56',
+                  backgroundColor: `${bandeauInfo.color}26`,
+                  color: bandeauInfo.color,
                 }}
               >
-                <Lock className="w-2.5 h-2.5" />
-                {lockReason}
+                <bandeauInfo.Icon className="w-2.5 h-2.5" />
+                {bandeauInfo.label}
               </span>
             </div>
             <div className="text-xs text-(--muted-foreground) leading-relaxed">
-              {lockMessage}
+              {bandeauInfo.message}
             </div>
           </div>
         </div>
