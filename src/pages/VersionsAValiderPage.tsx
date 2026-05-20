@@ -1,39 +1,54 @@
 /**
- * VersionsAValiderPage (Lot 3.5 + refonte Lot 7.3 V21 Charte v1).
+ * VersionsAValiderPage (Lot 3.5, refonte Lot 7.3 — modernisation
+ * visuelle de la file de validation).
  *
- * File d'attente du contrôleur. Liste les versions au statut
- * 'soumis' (« Soumis » en UI). Pour chacune : code, type, exercice,
- * date de soumission, préparateur, commentaire de soumission, et
- * boutons Valider / Rejeter via le composant WorkflowActions.
+ * File d'attente du contrôleur — liste les versions au statut 'soumis'.
+ * Charte v1 + maquette validée Lot 7.3 :
+ *
+ *   - En-tête : icône bleu nuit dark + titre + pill "Mon périmètre (N CR)"
+ *   - 3 KPI cards (En attente / Anciennes >7j / Récentes <24h) :
+ *     dot coloré + label uppercase + chiffre 28px bleu nuit
+ *   - Barre de filtres unifiée (search + exercice + type sur une ligne)
+ *   - Carte version 3 zones :
+ *       Zone 1 (header) : badges + libellé + métadonnées (préparateur,
+ *         date, email) + Montant total à droite
+ *       Zone 2 (justification) : commentaireSoumission encadré gris
+ *       Zone 3 (footer) : <details> historique + 3 boutons
+ *         (Consulter la grille / Rejeter / Valider)
+ *     Bordure gauche ambre 4px = "à traiter".
+ *
+ * Les actions Valider/Rejeter délèguent à <WorkflowActionDialog>
+ * (extrait au Palier B.1) — la logique modale est partagée avec les
+ * autres pages consommatrices.
  *
  * Permission requise : BUDGET.VALIDER (cf. AppRoutes.tsx).
- *
- * Refonte V21 (pattern unifié V11–V20) :
- *  - Header custom : cercle ClipboardCheck catégorie VALIDATION
- *    (vert) + titre + sous-titre
- *  - 3 KPI cards (En attente / Anciennes >7j / Récentes <24h) avec
- *    pastille colorée
- *  - Barre de filtres dans cadre gris (Search + Exercice + Type) —
- *    filtre client (l'endpoint backend ne supporte que statut)
- *  - Tableau grid CSS modernisé OU état vide grand format Inbox vert
- *  - Lignes anciennes (>7j) en fond rouge subtil + AlertTriangle
- *  - Logique Valider/Rejeter 100 % déléguée à `WorkflowActions`
- *    existant (préserve modales et workflow Lot 3.5).
  */
 import {
-  AlertTriangle,
+  Check,
+  ChevronDown,
   ClipboardCheck,
+  Clock,
+  Eye,
+  Filter,
   Inbox,
+  Mail,
   Search,
+  Send,
+  User,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { WorkflowActions } from '@/components/budget/WorkflowActions';
+import {
+  WorkflowActionDialog,
+  type WorkflowAction,
+} from '@/components/budget/WorkflowActionDialog';
 import { WorkflowTimeline } from '@/components/budget/WorkflowTimeline';
 import { BandeauDelegations } from '@/components/budget/BandeauDelegations';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -41,28 +56,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listVersions, type Version } from '@/lib/api/versions';
 import {
-  formatDateFr,
-  TYPES_VERSION,
-} from '@/lib/labels/budget';
+  getMonPerimetre,
+  getResumeVersion,
+  listVersions,
+  type MonPerimetre,
+  type ResumeVersion,
+  type Version,
+} from '@/lib/api/versions';
+import { formatDateFr, TYPES_VERSION } from '@/lib/labels/budget';
+import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { TypeVersionBadge } from './VersionsPage';
-import { cn } from '@/lib/utils';
 
 const ALL = '__all__';
 
 function daysSince(dateIso: string | null): number {
   if (!dateIso) return 0;
-  const now = Date.now();
-  const then = new Date(dateIso).getTime();
-  return Math.floor((now - then) / (1000 * 60 * 60 * 24));
+  return Math.floor(
+    (Date.now() - new Date(dateIso).getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
 function hoursSince(dateIso: string | null): number {
   if (!dateIso) return 0;
-  const now = Date.now();
-  const then = new Date(dateIso).getTime();
-  return Math.floor((now - then) / (1000 * 60 * 60));
+  return Math.floor(
+    (Date.now() - new Date(dateIso).getTime()) / (1000 * 60 * 60),
+  );
 }
 
 function formatRelativeDate(dateIso: string | null): string {
@@ -79,21 +98,39 @@ function formatRelativeDate(dateIso: string | null): string {
   return `il y a ${months} mois`;
 }
 
-export function VersionsAValiderPage() {
+const numberFmt = new Intl.NumberFormat('fr-FR');
+
+export function VersionsAValiderPage(): JSX.Element {
+  const navigate = useNavigate();
+  const setVersionId = useBudgetGrilleStore((s) => s.setVersionId);
+
   const [items, setItems] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // null = erreur de fetch ou pas encore tenté ; undefined = en cours
+  const [resumes, setResumes] = useState<
+    Record<string, ResumeVersion | null>
+  >({});
+  const [perimetre, setPerimetre] = useState<MonPerimetre | null>(null);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [exerciceFilter, setExerciceFilter] = useState<string>(ALL);
   const [typeFilter, setTypeFilter] = useState<string>(ALL);
 
+  // Action workflow en cours (modale partagée — 1 instance pour toute la liste)
+  const [dialogState, setDialogState] = useState<{
+    version: Version;
+    action: WorkflowAction;
+  } | null>(null);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch versions soumises
   useEffect(() => {
     setLoading(true);
     listVersions({ statut: 'soumis', page: 1, limit: 100 })
@@ -102,7 +139,47 @@ export function VersionsAValiderPage() {
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
-  // Filtre client (l'endpoint backend ne supporte que statut).
+  // Fetch périmètre user (une seule fois)
+  useEffect(() => {
+    getMonPerimetre()
+      .then(setPerimetre)
+      .catch(() => {
+        // Non bloquant — la pill ne s'affichera juste pas.
+        setPerimetre(null);
+      });
+  }, []);
+
+  // Fetch résumés en batch dès qu'items change. Erreur par version =
+  // resumes[id]=null, on n'interrompt pas le batch.
+  useEffect(() => {
+    if (items.length === 0) {
+      setResumes({});
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      items.map((v) =>
+        getResumeVersion(v.id)
+          .then((r) => [v.id, r] as const)
+          .catch((err: unknown) => {
+            console.warn(
+              `[VersionsAValiderPage] résumé indisponible pour ${v.codeVersion} :`,
+              err,
+            );
+            return [v.id, null] as const;
+          }),
+      ),
+    ).then((pairs) => {
+      if (cancelled) return;
+      const map: Record<string, ResumeVersion | null> = {};
+      for (const [id, r] of pairs) map[id] = r;
+      setResumes(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
+
   const filtered = useMemo(() => {
     const term = debouncedSearch.trim().toLowerCase();
     return items.filter((v) => {
@@ -126,7 +203,6 @@ export function VersionsAValiderPage() {
     return Array.from(set).sort((a, b) => b - a);
   }, [items]);
 
-  // 3 KPI workflow.
   const kpi = useMemo(() => {
     const enAttente = items.length;
     const anciennes = items.filter(
@@ -138,81 +214,105 @@ export function VersionsAValiderPage() {
     return { enAttente, anciennes, recentes };
   }, [items]);
 
+  function handleConsulter(v: Version): void {
+    setVersionId(v.id);
+    navigate('/budget/saisie');
+  }
+
+  function handleRejeter(v: Version): void {
+    setDialogState({ version: v, action: 'rejeter' });
+  }
+
+  function handleValider(v: Version): void {
+    setDialogState({ version: v, action: 'valider' });
+  }
+
   return (
     <div>
-      {/* ─── Header custom ──────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div
-          style={{ backgroundColor: '#0F6E561A' }}
-          className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
-          aria-hidden="true"
-        >
-          <ClipboardCheck
-            className="w-5 h-5"
-            style={{ color: '#0F6E56' }}
-          />
+      {/* ─── En-tête + pill périmètre ─────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            style={{ backgroundColor: 'var(--miznas-bleu-nuit-dark)' }}
+            className="w-12 h-12 rounded-[10px] flex items-center justify-center shrink-0"
+            aria-hidden="true"
+          >
+            <ClipboardCheck className="w-6 h-6 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+              Versions à valider
+            </h3>
+            <p className="text-xs text-(--muted-foreground) mt-0.5">
+              File d&apos;attente des budgets soumis par les préparateurs
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[19px] font-semibold tracking-tight m-0">
-            Versions à valider
-          </h3>
-          <p className="text-xs text-(--muted-foreground) mt-0.5">
-            File d&apos;attente des versions soumises par les préparateurs
-          </p>
-        </div>
+        {perimetre && (
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-(--border) text-xs text-(--foreground) shrink-0"
+            data-testid="pill-perimetre"
+          >
+            <Filter className="w-3.5 h-3.5 text-(--muted-foreground)" />
+            Mon périmètre (
+            {perimetre.isAdminGlobal
+              ? 'Admin global'
+              : `${perimetre.nbCrAccessibles} CR`}
+            )
+          </span>
+        )}
       </div>
 
       <BandeauDelegations />
 
-      {/* ─── 3 KPI workflow ─────────────────────────────────── */}
+      {/* ─── 3 KPI ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
         <KpiQueueCard
           label="En attente"
           value={kpi.enAttente}
-          colorHex="#BA7517"
+          dotColor="#BA7517"
           testId="kpi-aval-en-attente"
         />
         <KpiQueueCard
           label="Anciennes (>7j)"
           value={kpi.anciennes}
-          colorHex="#DC2626"
+          dotColor="#E24B4A"
           testId="kpi-aval-anciennes"
         />
         <KpiQueueCard
           label="Récentes (<24h)"
           value={kpi.recentes}
-          colorHex="#0F6E56"
+          dotColor="#3B6D11"
           testId="kpi-aval-recentes"
         />
       </div>
 
-      {/* ─── Barre de filtres ──────────────────────────────── */}
-      <div className="bg-(--secondary) border border-(--border) rounded-md p-3 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-2.5">
-          <div>
-            <Label htmlFor="search-aval" className="text-xs mb-1 block">
-              Recherche libellé / code
-            </Label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
-                aria-hidden="true"
-              />
-              <Input
-                id="search-aval"
-                placeholder="ex. budget Q1"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 pl-9 bg-white"
-              />
-            </div>
+      {/* ─── Barre de filtres unifiée ──────────────────────────── */}
+      <div className="bg-white border border-(--border) rounded-md px-4 py-3 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-0 md:divide-x divide-(--border)">
+          <div className="relative md:pr-4 md:flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--muted-foreground) pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              id="search-aval"
+              placeholder="Recherche libellé ou code…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-9 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+              data-testid="search-input"
+            />
           </div>
-          <div>
-            <Label htmlFor="exercice-aval" className="text-xs mb-1 block">
-              Exercice
-            </Label>
+          <div className="md:px-4 flex items-center gap-2">
+            <span className="text-xs text-(--muted-foreground) shrink-0">
+              Exercice :
+            </span>
             <Select value={exerciceFilter} onValueChange={setExerciceFilter}>
-              <SelectTrigger id="exercice-aval" className="h-9 bg-white">
+              <SelectTrigger
+                id="exercice-aval"
+                className="h-9 border-0 shadow-none focus:ring-0 bg-transparent w-auto gap-1"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -229,12 +329,15 @@ export function VersionsAValiderPage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="type-aval" className="text-xs mb-1 block">
-              Type
-            </Label>
+          <div className="md:pl-4 flex items-center gap-2">
+            <span className="text-xs text-(--muted-foreground) shrink-0">
+              Type :
+            </span>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger id="type-aval" className="h-9 bg-white">
+              <SelectTrigger
+                id="type-aval"
+                className="h-9 border-0 shadow-none focus:ring-0 bg-transparent w-auto gap-1"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -283,91 +386,31 @@ export function VersionsAValiderPage() {
 
       {!loading && filtered.length > 0 && (
         <ul className="space-y-3" data-testid="liste-a-valider">
-          {filtered.map((v) => {
-            const days = daysSince(v.dateSoumission);
-            const isAncienne = days > 7;
-            return (
-              <li
-                key={v.id}
-                className={cn(
-                  'rounded-md border p-4 transition-colors',
-                  isAncienne
-                    ? 'border-(--border) bg-(--destructive)/[0.03] hover:bg-(--destructive)/[0.06]'
-                    : 'border-(--border) bg-white hover:bg-(--muted)/30',
-                )}
-                data-testid={`row-${v.codeVersion}`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className="font-mono font-bold text-[13px]"
-                        style={{ color: '#0C447C' }}
-                      >
-                        {v.codeVersion}
-                      </span>
-                      <TypeVersionBadge type={v.typeVersion} />
-                      <span className="text-sm font-medium">{v.libelle}</span>
-                      {isAncienne && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold"
-                          style={{ color: '#DC2626' }}
-                          aria-label={`Soumission ancienne, il y a ${days} jours`}
-                        >
-                          <AlertTriangle className="w-3 h-3" />
-                          Ancienne ({days}j)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-(--muted-foreground) tabular-nums">
-                      Exercice {v.exerciceFiscal}
-                      {v.dateSoumission && (
-                        <>
-                          {' · '}
-                          Soumise{' '}
-                          <span
-                            className={
-                              isAncienne
-                                ? 'font-semibold'
-                                : ''
-                            }
-                            style={
-                              isAncienne ? { color: '#DC2626' } : undefined
-                            }
-                          >
-                            {formatRelativeDate(v.dateSoumission)}
-                          </span>{' '}
-                          ({formatDateFr(v.dateSoumission)})
-                          {v.utilisateurSoumission && (
-                            <> par {v.utilisateurSoumission}</>
-                          )}
-                        </>
-                      )}
-                    </p>
-                    {v.commentaireSoumission && (
-                      <p className="mt-2 max-w-3xl whitespace-pre-wrap rounded bg-(--muted) px-3 py-2 text-xs">
-                        {v.commentaireSoumission}
-                      </p>
-                    )}
-                  </div>
-                  <WorkflowActions
-                    version={v}
-                    onTransitioned={() => setRefreshKey((k) => k + 1)}
-                  />
-                </div>
-
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-xs text-(--muted-foreground) hover:text-(--foreground)">
-                    Historique
-                  </summary>
-                  <div className="mt-2">
-                    <WorkflowTimeline version={v} />
-                  </div>
-                </details>
-              </li>
-            );
-          })}
+          {filtered.map((v) => (
+            <VersionCard
+              key={v.id}
+              version={v}
+              resume={resumes[v.id]}
+              onConsulter={() => handleConsulter(v)}
+              onRejeter={() => handleRejeter(v)}
+              onValider={() => handleValider(v)}
+            />
+          ))}
         </ul>
+      )}
+
+      {/* Modale unique partagée pour Valider / Rejeter — montée à la
+          demande pour ne pas avoir besoin d'un fallback version. */}
+      {dialogState && (
+        <WorkflowActionDialog
+          version={dialogState.version}
+          action={dialogState.action}
+          onClose={() => setDialogState(null)}
+          onTransitioned={() => {
+            setDialogState(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
       )}
     </div>
   );
@@ -378,37 +421,199 @@ export function VersionsAValiderPage() {
 interface KpiQueueCardProps {
   label: string;
   value: number;
-  colorHex: string;
+  dotColor: string;
   testId: string;
 }
 
 function KpiQueueCard({
   label,
   value,
-  colorHex,
+  dotColor,
   testId,
 }: KpiQueueCardProps): JSX.Element {
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      className="bg-white border border-(--border) rounded-md px-4 py-3.5"
       data-testid={testId}
     >
       <div className="flex items-center gap-1.5 mb-1">
         <span
-          className="w-[7px] h-[7px] rounded-full"
-          style={{ backgroundColor: colorHex }}
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: dotColor }}
           aria-hidden="true"
         />
-        <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider">
+        <div className="text-[11px] text-(--muted-foreground) uppercase tracking-wider">
           {label}
         </div>
       </div>
       <div
-        className="text-2xl font-medium tabular-nums"
-        style={{ color: colorHex }}
+        className="text-[28px] font-medium tabular-nums leading-tight"
+        style={{ color: 'var(--miznas-bleu-nuit)' }}
       >
         {value}
       </div>
     </div>
   );
 }
+
+interface VersionCardProps {
+  version: Version;
+  /** undefined = en cours de fetch ; null = erreur ; object = OK */
+  resume: ResumeVersion | null | undefined;
+  onConsulter: () => void;
+  onRejeter: () => void;
+  onValider: () => void;
+}
+
+function VersionCard({
+  version: v,
+  resume,
+  onConsulter,
+  onRejeter,
+  onValider,
+}: VersionCardProps): JSX.Element {
+  return (
+    <li
+      className="bg-white border border-(--border) rounded-md overflow-hidden"
+      style={{ borderLeft: '4px solid #BA7517' }}
+      data-testid={`row-${v.codeVersion}`}
+    >
+      {/* Zone 1 — Header */}
+      <div className="px-[22px] py-[18px] flex flex-wrap gap-4 justify-between items-start border-b border-(--border)">
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="inline-flex items-center font-mono text-[11px] px-2 py-[3px] rounded-[4px] text-white"
+              style={{ backgroundColor: 'var(--miznas-bleu-nuit-dark)' }}
+            >
+              {v.codeVersion}
+            </span>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-[3px] rounded-[4px] text-[11px] font-semibold"
+              style={{ backgroundColor: '#FAEEDA', color: '#854F0B' }}
+            >
+              <Send className="w-3 h-3" />
+              Soumis
+            </span>
+            <TypeVersionBadge type={v.typeVersion} />
+          </div>
+          <h4
+            className="text-[17px] font-medium leading-snug m-0"
+            style={{ color: 'var(--miznas-bleu-nuit)' }}
+          >
+            {v.libelle}
+          </h4>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-(--muted-foreground)">
+            {v.utilisateurSoumission && (
+              <span className="inline-flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                Soumise par{' '}
+                <span
+                  className="font-medium"
+                  style={{ color: 'var(--miznas-bleu-nuit)' }}
+                >
+                  {v.utilisateurSoumission}
+                </span>
+              </span>
+            )}
+            {v.dateSoumission && (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                {formatRelativeDate(v.dateSoumission)} (
+                {formatDateFr(v.dateSoumission)})
+              </span>
+            )}
+            {v.utilisateurSoumission && v.utilisateurSoumission.includes('@') && (
+              <span className="inline-flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" />
+                {v.utilisateurSoumission}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right min-w-[160px]">
+          <div className="text-[11px] text-(--muted-foreground)">
+            Montant total
+          </div>
+          <div
+            className="text-[22px] font-medium tabular-nums leading-tight"
+            style={{ color: 'var(--miznas-bleu-nuit)' }}
+            data-testid={`montant-${v.codeVersion}`}
+          >
+            {resume === undefined && '…'}
+            {resume === null && '—'}
+            {resume && numberFmt.format(Math.round(resume.montantTotalFcfa))}
+          </div>
+          <div className="text-[11px] text-(--muted-foreground)">
+            {resume
+              ? `FCFA · ${resume.nombreComptes} compte${resume.nombreComptes > 1 ? 's' : ''}`
+              : 'FCFA'}
+          </div>
+        </div>
+      </div>
+
+      {/* Zone 2 — Justification */}
+      <div
+        className="px-[22px] py-4 border-b border-(--border)"
+        style={{ backgroundColor: '#FAFBFC' }}
+      >
+        <div className="text-[11px] text-(--muted-foreground) uppercase tracking-wider mb-1">
+          Justification du préparateur
+        </div>
+        {v.commentaireSoumission ? (
+          <p className="text-[13px] leading-relaxed whitespace-pre-wrap m-0">
+            {v.commentaireSoumission}
+          </p>
+        ) : (
+          <p className="text-[13px] italic text-(--muted-foreground) m-0">
+            Aucune justification fournie.
+          </p>
+        )}
+      </div>
+
+      {/* Zone 3 — Footer actions */}
+      <div className="px-[22px] pt-3.5 pb-[18px] flex flex-wrap items-center justify-between gap-3">
+        <details className="text-xs" data-testid={`historique-${v.codeVersion}`}>
+          <summary className="cursor-pointer inline-flex items-center gap-1 text-(--muted-foreground) hover:text-(--foreground) select-none list-none">
+            <ChevronDown className="w-3.5 h-3.5" />
+            Voir l&apos;historique workflow
+          </summary>
+          <div className="mt-2">
+            <WorkflowTimeline version={v} />
+          </div>
+        </details>
+        <div className="flex flex-wrap gap-2.5">
+          <Button
+            variant="outline"
+            className="h-9 gap-1.5"
+            onClick={onConsulter}
+            data-testid={`btn-consulter-${v.codeVersion}`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            Consulter la grille
+          </Button>
+          <Button
+            variant="outline"
+            className="h-9 gap-1.5 bg-white"
+            style={{ borderColor: '#E24B4A', color: '#E24B4A' }}
+            onClick={onRejeter}
+            data-testid={`btn-rejeter-${v.codeVersion}`}
+          >
+            <X className="w-3.5 h-3.5" />
+            Rejeter
+          </Button>
+          <Button
+            className="h-9 gap-1.5 text-white"
+            style={{ backgroundColor: 'var(--miznas-bleu-nuit-dark)' }}
+            onClick={onValider}
+            data-testid={`btn-valider-${v.codeVersion}`}
+          >
+            <Check className="w-3.5 h-3.5" />
+            Valider
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
