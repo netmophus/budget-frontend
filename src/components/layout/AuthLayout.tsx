@@ -140,6 +140,13 @@ const NAV_BUDGET: NavItem[] = [
     icon: CheckSquare,
     permission: 'BUDGET.VALIDER',
   },
+  // Lot 7.5 — file de publication pour le directeur (PUBLICATEUR).
+  {
+    to: '/budget/a-publier',
+    label: 'À publier',
+    icon: Send,
+    permission: 'BUDGET.PUBLIER',
+  },
   // Lot 3.6 — tableau de bord indicateurs consolidés.
   {
     to: '/budget/tableau-de-bord',
