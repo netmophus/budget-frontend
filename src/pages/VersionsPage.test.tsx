@@ -17,8 +17,17 @@ vi.mock('react-router-dom', async () => {
 });
 
 const toastError = vi.fn();
+const toastSuccess = vi.fn();
 vi.mock('sonner', () => ({
-  toast: { error: (m: string) => toastError(m) },
+  toast: {
+    error: (m: string) => toastError(m),
+    success: (m: string) => toastSuccess(m),
+  },
+}));
+
+vi.mock('@/lib/api/reporting', () => ({
+  downloadR04Pdf: vi.fn(),
+  downloadR04Xlsx: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/permissions', () => ({
@@ -198,5 +207,23 @@ describe('VersionsPage', () => {
         expect.objectContaining({ page: 1, limit: 20 }),
       );
     });
+  });
+
+  // ─── Lot 7.6 — export R04 BCEAO ─────────────────────────────────
+
+  it('bouton "Exporter" R04 affiché uniquement sur version gelée', async () => {
+    mockList.mockResolvedValue({ items: SAMPLE, total: 2, page: 1, limit: 20 });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('RF1_2025')).toBeInTheDocument();
+    });
+    // RF1_2025 (statut gele) → bouton Exporter présent
+    expect(
+      screen.getByTestId('btn-export-r04-RF1_2025'),
+    ).toBeInTheDocument();
+    // BUDGET_INITIAL_2026 (statut ouvert) → pas de bouton Exporter
+    expect(
+      screen.queryByTestId('btn-export-r04-BUDGET_INITIAL_2026'),
+    ).not.toBeInTheDocument();
   });
 });

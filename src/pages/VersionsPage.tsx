@@ -26,7 +26,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleCheck,
+  Download,
   Eye,
+  FileSpreadsheet,
+  FileText,
   Layers,
   Lock,
   Pencil,
@@ -46,6 +49,12 @@ import { VersionFormDrawer } from '@/components/budget/VersionFormDrawer';
 import { WorkflowActions } from '@/components/budget/WorkflowActions';
 import { WorkflowTimeline } from '@/components/budget/WorkflowTimeline';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -55,6 +64,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  downloadR04Pdf,
+  downloadR04Xlsx,
+} from '@/lib/api/reporting';
 import {
   type CreateVersionResponse,
   deleteVersion,
@@ -733,6 +746,29 @@ function ActionVersionCell({
     );
   }
 
+  // Lot 7.6 — version publiée (gele) : Détails + dropdown Exporter R04
+  if (version.statut === 'gele') {
+    return (
+      <div className="inline-flex items-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onConsulter();
+          }}
+          className={cn(
+            'inline-flex items-center gap-1 text-xs',
+            'text-(--muted-foreground) hover:text-(--foreground) transition-colors',
+          )}
+        >
+          <Eye className="w-3 h-3" />
+          Détails
+        </button>
+        <ExportR04Dropdown version={version} />
+      </div>
+    );
+  }
+
   // Tout le reste : consulter (ouvre le drawer détail).
   return (
     <button
@@ -749,5 +785,82 @@ function ActionVersionCell({
       <Eye className="w-3 h-3" />
       Détails
     </button>
+  );
+}
+
+/**
+ * Lot 7.6 — bouton dropdown "Exporter" qui propose les 2 formats R04
+ * (PDF officiel 12 pages BSIC + XLSX exploitable 5 onglets). Visible
+ * uniquement sur les versions au statut `gele` (cf. ActionVersionCell).
+ */
+function ExportR04Dropdown({
+  version,
+}: {
+  version: Version;
+}): JSX.Element {
+  const [busy, setBusy] = useState<'pdf' | 'xlsx' | null>(null);
+
+  async function handleExport(format: 'pdf' | 'xlsx'): Promise<void> {
+    setBusy(format);
+    try {
+      if (format === 'pdf') {
+        await downloadR04Pdf(version.id, version.codeVersion);
+      } else {
+        await downloadR04Xlsx(version.id, version.codeVersion);
+      }
+      toast.success(
+        `Rapport R4 (${format.toUpperCase()}) téléchargé : ${version.codeVersion}`,
+      );
+    } catch (err) {
+      const msg =
+        err instanceof AxiosError
+          ? ((err.response?.data as { message?: string })?.message ?? err.message)
+          : err instanceof Error
+            ? err.message
+            : 'Erreur inconnue';
+      toast.error(`Échec téléchargement R4 (${format.toUpperCase()}) : ${msg}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          disabled={busy !== null}
+          className={cn(
+            'inline-flex items-center gap-1 text-xs',
+            'text-(--muted-foreground) hover:text-(--foreground) transition-colors',
+            'disabled:opacity-50',
+          )}
+          data-testid={`btn-export-r04-${version.codeVersion}`}
+        >
+          <Download className="w-3 h-3" />
+          {busy ? 'Export…' : 'Exporter'}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenuItem
+          onSelect={() => void handleExport('pdf')}
+          data-testid={`btn-export-r04-pdf-${version.codeVersion}`}
+        >
+          <FileText className="w-4 h-4" />
+          Rapport R4 BCEAO (PDF)
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => void handleExport('xlsx')}
+          data-testid={`btn-export-r04-xlsx-${version.codeVersion}`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          Rapport R4 BCEAO (Excel)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
