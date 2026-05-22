@@ -116,6 +116,18 @@ const ReforecastDetailPage = lazy(() =>
   })),
 );
 
+// Lazy-loaded — Lot 8.2.A : module documents officiels.
+const CampagnesPage = lazy(() =>
+  import('@/pages/CampagnesPage').then((m) => ({
+    default: m.CampagnesPage,
+  })),
+);
+const CampagneDetailPage = lazy(() =>
+  import('@/pages/CampagneDetailPage').then((m) => ({
+    default: m.CampagneDetailPage,
+  })),
+);
+
 // Lazy-loaded — Lot 4.3 : notifications email.
 const AdminEmailLogPage = lazy(() =>
   import('@/pages/AdminEmailLogPage').then((m) => ({
@@ -416,6 +428,31 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <ReforecastDetailPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 8.2.A — module documents officiels.
+            Routes gardées par DOCUMENT.LIRE (lecture liste/détail).
+            Les actions modifiantes (créer/lancer/ajouter membre) sont
+            gardées au niveau composant via useHasPermission(
+            'CAMPAGNE.GERER'). */}
+        <Route
+          path="/campagnes"
+          element={
+            <PermissionRoute permission="DOCUMENT.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <CampagnesPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/campagnes/:id"
+          element={
+            <PermissionRoute permission="DOCUMENT.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <CampagneDetailPage />
               </Suspense>
             </PermissionRoute>
           }
