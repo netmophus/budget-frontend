@@ -8,7 +8,9 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   Coins,
+  FileSignature,
   Grid2x2,
   Layers,
   LayoutDashboard,
@@ -181,6 +183,18 @@ const NAV_EXECUTION: NavItem[] = [
     label: 'Reforecasts',
     icon: RefreshCcw,
     permission: 'BUDGET.LIRE',
+  },
+];
+
+// Lot 8.2.A — module documents officiels (workflow visa/signature
+// BCEAO). Une seule entrée pour l'instant ; le Lot 8.2.B ajoutera
+// l'entrée « Documents ».
+const NAV_DOCUMENTS_OFFICIELS: NavItem[] = [
+  {
+    to: '/campagnes',
+    label: 'Campagnes',
+    icon: ClipboardList,
+    permission: 'DOCUMENT.LIRE',
   },
 ];
 
@@ -471,6 +485,21 @@ export function AuthLayout() {
             icon={ClipboardCheck}
             permission="REALISE.LIRE"
             items={NAV_EXECUTION}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
+
+          {/* Lot 8.2.A — Documents officiels (workflow visa/signature).
+              Pas de prop `permission` sur le groupe : le filtrage auto
+              via items[].permission masque la section si aucun item
+              n'est accessible (cf. logique anyItemPermAllowed dans
+              NavGroup). */}
+          <NavGroup
+            groupKey="documents-officiels"
+            label="Documents officiels"
+            icon={FileSignature}
+            items={NAV_DOCUMENTS_OFFICIELS}
             collapsed={collapsed}
             state={groupStates}
             onToggle={toggleGroup}
