@@ -23,7 +23,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { CreerDocumentModal } from '@/components/documents/CreerDocumentModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
+import { triggerBlobDownload } from '@/lib/blob-download';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -101,26 +103,6 @@ const ROLE_OPTIONS: Array<{
   { value: 'a-signer', label: 'À signer', api: 'signataire' },
 ];
 
-/**
- * Helper pour déclencher un download d'un Blob dans le navigateur.
- * Pattern axios `responseType: blob` + URL.createObjectURL + lien
- * invisible programmatique. Préfixe `URL.revokeObjectURL` pour
- * libérer la mémoire.
- *
- * Non exporté pour respecter `react-refresh/only-export-components`.
- * Sera promu dans `lib/blob-download.ts` si réutilisé au P2/P3.
- */
-function triggerBlobDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function formatDateFr(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR', {
@@ -154,6 +136,8 @@ export function DocumentsPage() {
   const [filterType, setFilterType] = useState<string>(ALL);
   const [filterCampagne, setFilterCampagne] = useState<string>(ALL);
   const [filterRole, setFilterRole] = useState<string>(ALL);
+
+  const [creerOpen, setCreerOpen] = useState(false);
 
   // Charge les campagnes une fois pour le dropdown filtre.
   useEffect(() => {
@@ -220,11 +204,7 @@ export function DocumentsPage() {
 
         {canCreer && (
           <Button
-            onClick={() =>
-              toast.info(
-                'Modale de création disponible au Palier 3 (Lot 8.2.B).',
-              )
-            }
+            onClick={() => setCreerOpen(true)}
             data-testid="btn-creer-document"
             className="h-9 px-3.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
           >
@@ -413,6 +393,11 @@ export function DocumentsPage() {
           </TableBody>
         </Table>
       </div>
+
+      <CreerDocumentModal
+        open={creerOpen}
+        onClose={() => setCreerOpen(false)}
+      />
     </div>
   );
 }

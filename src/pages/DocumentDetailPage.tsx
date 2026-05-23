@@ -48,7 +48,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { EditerDocumentModal } from '@/components/documents/EditerDocumentModal';
+import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
+import { triggerBlobDownload } from '@/lib/blob-download';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -215,17 +218,6 @@ function useDocumentActions(
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function triggerBlobDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function formatDateFr(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR', {
@@ -258,6 +250,9 @@ export function DocumentDetailPage() {
 
   const [doc, setDoc] = useState<DocumentOfficiel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [editerOpen, setEditerOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -266,7 +261,7 @@ export function DocumentDetailPage() {
       .then(setDoc)
       .catch(() => toast.error('Impossible de charger le document'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, refreshKey]);
 
   const actions = useDocumentActions(doc, user?.id ?? null);
 
@@ -313,7 +308,24 @@ export function DocumentDetailPage() {
           </div>
         </div>
 
-        <ActionBar doc={doc} actions={actions} />
+        <ActionBar
+          doc={doc}
+          actions={actions}
+          handlers={{
+            onEditer: () => setEditerOpen(true),
+            onUploadFichier: () => setUploadOpen(true),
+            onSoumettre: () =>
+              toast.info(
+                'Action "Soumettre" arrive au Palier 4 (Lot 8.2.B).',
+              ),
+            onApporterVisa: () =>
+              toast.info(
+                'Modale "Apporter visa" arrive au Palier 4 (Lot 8.2.B).',
+              ),
+            onSigner: () =>
+              toast.info('Modale "Signer" arrive au Palier 4 (Lot 8.2.B).'),
+          }}
+        />
       </div>
 
       {/* Cartouche infos */}
@@ -386,11 +398,27 @@ export function DocumentDetailPage() {
                 doc={doc}
                 canUpload={actions.canUploadFichier}
                 canDownload={actions.canTelechargerFichier}
+                onUploadClick={() => setUploadOpen(true)}
               />
             ),
           },
         ]}
         defaultValue="contenu"
+      />
+
+      <EditerDocumentModal
+        open={editerOpen}
+        onClose={() => setEditerOpen(false)}
+        doc={doc}
+        onUpdated={(updated) => setDoc(updated)}
+      />
+
+      <UploaderFichierModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        documentId={doc.id}
+        fichierJointNom={doc.fichierJointNom}
+        onUploaded={() => setRefreshKey((k) => k + 1)}
       />
     </div>
   );
@@ -398,12 +426,22 @@ export function DocumentDetailPage() {
 
 // ─── Bandeau d'actions contextuel ────────────────────────────────────
 
+interface ActionBarHandlers {
+  onEditer: () => void;
+  onUploadFichier: () => void;
+  onSoumettre: () => void;
+  onApporterVisa: () => void;
+  onSigner: () => void;
+}
+
 function ActionBar({
   doc,
   actions,
+  handlers,
 }: {
   doc: DocumentOfficiel;
   actions: DocumentActions;
+  handlers: ActionBarHandlers;
 }) {
   // BROUILLON + émetteur → Éditer / Upload / Soumettre
   if (doc.statut === 'BROUILLON' && actions.isEmetteur) {
@@ -414,18 +452,14 @@ function ActionBar({
           icon={Pencil}
           label="Éditer"
           testId="btn-editer-document"
-          onClick={() =>
-            toast.info('Modale "Éditer" arrive au Palier 3 (Lot 8.2.B).')
-          }
+          onClick={handlers.onEditer}
         />
         <ActionButton
           state={actions.canUploadFichier}
           icon={Upload}
           label="Uploader PDF"
           testId="btn-upload-fichier"
-          onClick={() =>
-            toast.info('Modale "Upload PDF" arrive au Palier 3 (Lot 8.2.B).')
-          }
+          onClick={handlers.onUploadFichier}
         />
         <ActionButton
           state={actions.canSoumettre}
@@ -433,11 +467,7 @@ function ActionBar({
           label="Soumettre au visa"
           testId="btn-soumettre-document"
           primary
-          onClick={() =>
-            toast.info(
-              'Action "Soumettre" arrive au Palier 4 (Lot 8.2.B).',
-            )
-          }
+          onClick={handlers.onSoumettre}
         />
       </div>
     );
@@ -455,9 +485,7 @@ function ActionBar({
         label="Apporter mon visa"
         testId="btn-apporter-visa"
         primary
-        onClick={() =>
-          toast.info('Modale "Apporter visa" arrive au Palier 4 (Lot 8.2.B).')
-        }
+        onClick={handlers.onApporterVisa}
       />
     );
   }
@@ -471,9 +499,7 @@ function ActionBar({
         label="Signer le document"
         testId="btn-signer-document"
         primary
-        onClick={() =>
-          toast.info('Modale "Signer" arrive au Palier 4 (Lot 8.2.B).')
-        }
+        onClick={handlers.onSigner}
       />
     );
   }
@@ -802,10 +828,12 @@ function OngletFichier({
   doc,
   canUpload,
   canDownload,
+  onUploadClick,
 }: {
   doc: DocumentOfficiel;
   canUpload: ActionState;
   canDownload: ActionState;
+  onUploadClick: () => void;
 }) {
   async function handleDownload() {
     if (!doc.fichierJointNom) return;
@@ -852,11 +880,7 @@ function OngletFichier({
           </Button>
           {canUpload.ok && (
             <Button
-              onClick={() =>
-                toast.info(
-                  'Modale "Remplacer PDF" arrive au Palier 3 (Lot 8.2.B).',
-                )
-              }
+              onClick={onUploadClick}
               data-testid="btn-replace-fichier"
               variant="outline"
               className="h-9 gap-1.5"
@@ -881,11 +905,7 @@ function OngletFichier({
       </p>
       {canUpload.ok && (
         <Button
-          onClick={() =>
-            toast.info(
-              'Modale "Upload PDF" arrive au Palier 3 (Lot 8.2.B).',
-            )
-          }
+          onClick={onUploadClick}
           data-testid="btn-upload-fichier-tab"
           className="h-9 gap-1.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white"
         >
