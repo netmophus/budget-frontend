@@ -330,12 +330,17 @@ export function DocumentDetailPage() {
 
       {/* Cartouche infos */}
       <div className="bg-(--secondary) border border-(--border) rounded-md p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        {/* Lot 8.1.E Palier 2 : `emetteur`/`signataire` désormais
+            enrichis par le backend (mapping UserResume). Le fallback
+            précédent "user.id=<id>" devient inutile en cas nominal —
+            on conserve juste un "—" défensif au cas où le backend
+            renverrait null (edge case audit). */}
         <InfoCell
           label="Émetteur"
           value={
             doc.emetteur
               ? `${doc.emetteur.prenom} ${doc.emetteur.nom}`
-              : `user.id=${doc.fkUserEmetteur}`
+              : '—'
           }
         />
         <InfoCell
@@ -343,7 +348,7 @@ export function DocumentDetailPage() {
           value={
             doc.signataire
               ? `${doc.signataire.prenom} ${doc.signataire.nom}`
-              : `user.id=${doc.fkUserSignataire}`
+              : '—'
           }
         />
         <InfoCell

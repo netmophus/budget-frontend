@@ -11,9 +11,7 @@ import type {
   ActionVisa,
   DocumentHistoriqueEvenement,
   DocumentOfficiel,
-  DocumentSignatureResume,
   DocumentVerificationIntegrite,
-  DocumentVisaResume,
   StatutDocument,
   TypeDocument,
 } from '@/types/document';
@@ -49,7 +47,6 @@ export interface ApporterVisaDto {
 
 export interface SignerDocumentDto {
   motDePasse: string;
-  confirmationConsciente: boolean;
 }
 
 export interface UploadFichierResult {
@@ -71,29 +68,15 @@ export async function listerDocuments(
 /**
  * Détail enrichi d'un document.
  *
- * ⚠️ Adaptation Lot 8.2.B P2 : le backend
- * `DocumentWorkflowService.detailDocument` retourne actuellement
- * `{ document, visas, signature }` (structure nestée) au lieu d'un
- * objet aplati `Document & { visas, signature }`. Pattern obsolète
- * identique au bug `campagne.service.detailCampagne` pré-hotfix
- * Lot 8.2.A. On aplatit ici au boundary pour que le composant utilise
- * le type strict `DocumentOfficiel` du contrat frontend.
- *
- * TODO Lot 8.x : hotfix backend symétrique au fix `campagne.service`
- * pour homogénéiser le contrat API (aplatissement + relations
- * emetteur/signataire enrichies via mapping `UserResume` sécurisé).
+ * Lot 8.1.E Palier 2 : le backend `DocumentWorkflowService.detailDocument`
+ * renvoie désormais l'objet APLATI `{ ...document, emetteur, signataire,
+ * visas, signature }` directement (symétrique au hotfix `detailCampagne`
+ * Lot 8.2.A). Le mapping de compensation côté client a été supprimé —
+ * on retourne `data` tel quel.
  */
 export async function detailDocument(id: string): Promise<DocumentOfficiel> {
-  const { data } = await apiClient.get<{
-    document: DocumentOfficiel;
-    visas: DocumentVisaResume[];
-    signature: DocumentSignatureResume | null;
-  }>(`/documents/${id}`);
-  return {
-    ...data.document,
-    visas: data.visas,
-    signature: data.signature ?? undefined,
-  };
+  const { data } = await apiClient.get<DocumentOfficiel>(`/documents/${id}`);
+  return data;
 }
 
 export async function creerDocument(
