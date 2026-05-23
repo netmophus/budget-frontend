@@ -11,7 +11,9 @@ import {
   ClipboardList,
   Coins,
   FileSignature,
+  FileText,
   Grid2x2,
+  Inbox,
   Layers,
   LayoutDashboard,
   Library,
@@ -186,14 +188,29 @@ const NAV_EXECUTION: NavItem[] = [
   },
 ];
 
-// Lot 8.2.A — module documents officiels (workflow visa/signature
-// BCEAO). Une seule entrée pour l'instant ; le Lot 8.2.B ajoutera
-// l'entrée « Documents ».
+// Lot 8.2.A + Lot 8.2.B — module documents officiels (workflow
+// visa/signature BCEAO).
+// "Mes tâches" : shortcut vers la liste filtrée sur les visas en
+// attente du user connecté. La query string `?monRole=viseur_en_attente`
+// est interprétée par DocumentsPage via `useSearchParams` au mount
+// (cf. Lot 8.2.B Palier 4).
 const NAV_DOCUMENTS_OFFICIELS: NavItem[] = [
   {
     to: '/campagnes',
     label: 'Campagnes',
     icon: ClipboardList,
+    permission: 'DOCUMENT.LIRE',
+  },
+  {
+    to: '/documents',
+    label: 'Documents',
+    icon: FileText,
+    permission: 'DOCUMENT.LIRE',
+  },
+  {
+    to: '/documents?monRole=viseur_en_attente',
+    label: 'Mes tâches',
+    icon: Inbox,
     permission: 'DOCUMENT.LIRE',
   },
 ];

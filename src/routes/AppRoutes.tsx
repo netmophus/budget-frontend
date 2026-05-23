@@ -116,7 +116,7 @@ const ReforecastDetailPage = lazy(() =>
   })),
 );
 
-// Lazy-loaded — Lot 8.2.A : module documents officiels.
+// Lazy-loaded — Lot 8.2.A : module campagnes budgétaires.
 const CampagnesPage = lazy(() =>
   import('@/pages/CampagnesPage').then((m) => ({
     default: m.CampagnesPage,
@@ -125,6 +125,18 @@ const CampagnesPage = lazy(() =>
 const CampagneDetailPage = lazy(() =>
   import('@/pages/CampagneDetailPage').then((m) => ({
     default: m.CampagneDetailPage,
+  })),
+);
+
+// Lazy-loaded — Lot 8.2.B : module documents officiels.
+const DocumentsPage = lazy(() =>
+  import('@/pages/DocumentsPage').then((m) => ({
+    default: m.DocumentsPage,
+  })),
+);
+const DocumentDetailPage = lazy(() =>
+  import('@/pages/DocumentDetailPage').then((m) => ({
+    default: m.DocumentDetailPage,
   })),
 );
 
@@ -453,6 +465,32 @@ export function AppRoutes() {
             <PermissionRoute permission="DOCUMENT.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <CampagneDetailPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Lot 8.2.B — module documents officiels.
+            Routes gardées par DOCUMENT.LIRE. Les actions modifiantes
+            (créer/éditer/upload/soumettre/viser/signer) sont gardées
+            au niveau composant via useHasPermission(DOCUMENT.CREER /
+            DOCUMENT.VISER / DOCUMENT.SIGNER) ou check métier
+            émetteur/viseur/signataire. */}
+        <Route
+          path="/documents"
+          element={
+            <PermissionRoute permission="DOCUMENT.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <DocumentsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/documents/:id"
+          element={
+            <PermissionRoute permission="DOCUMENT.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <DocumentDetailPage />
               </Suspense>
             </PermissionRoute>
           }
