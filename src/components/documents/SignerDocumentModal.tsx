@@ -86,7 +86,6 @@ export function SignerDocumentModal({
     try {
       await signerDocument(documentId, {
         motDePasse,
-        confirmationConsciente: true,
       });
       toast.success(
         `Document ${codeDocument} signé. Hash enregistré pour audit BCEAO.`,

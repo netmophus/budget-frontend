@@ -325,6 +325,41 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     });
   });
 
+  it('9. Lot 8.1.E : cartouche affiche emetteur/signataire enrichis (UserResume backend)', async () => {
+    // Le backend renvoie désormais (Lot 8.1.E Palier 2) les relations
+    // emetteur/signataire mappées en UserResume directement dans la
+    // réponse de detailDocument. Le frontend (lib/api/documents.ts)
+    // n'a plus de mapping de compensation : `data` est consommé tel
+    // quel. Ce test valide que les noms apparaissent dans la cartouche.
+    mockDetail.mockResolvedValue(
+      makeDoc({
+        emetteur: {
+          id: '24',
+          email: 'ousmane@bsic.ne',
+          nom: 'MAMANE',
+          prenom: 'Ousmane',
+        },
+        signataire: {
+          id: '23',
+          email: 'dg@bsic.ne',
+          nom: 'BARRY',
+          prenom: 'Issoufou',
+        },
+      }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    // Cartouche affiche les noms enrichis
+    expect(screen.getByText('Ousmane MAMANE')).toBeInTheDocument();
+    expect(screen.getByText('Issoufou BARRY')).toBeInTheDocument();
+    // Aucune référence à "user.id=" dans le DOM (fallback supprimé en Lot 8.1.E)
+    expect(
+      screen.queryByText(/user\.id=/i),
+    ).not.toBeInTheDocument();
+  });
+
   it('8. Tab Fichier sans fichier : empty state + bouton upload (émetteur)', async () => {
     mockDetail.mockResolvedValue(
       makeDoc({ statut: 'BROUILLON', fichierJointNom: null }),
