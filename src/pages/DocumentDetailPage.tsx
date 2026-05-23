@@ -48,9 +48,12 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ApporterVisaModal } from '@/components/documents/ApporterVisaModal';
 import { EditerDocumentModal } from '@/components/documents/EditerDocumentModal';
+import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
 import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { triggerBlobDownload } from '@/lib/blob-download';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,6 +73,7 @@ import {
 import {
   detailDocument,
   historiqueDocument,
+  soumettreVisa,
   telechargerFichierDocument,
 } from '@/lib/api/documents';
 import { useAuthStore } from '@/lib/auth/auth-store';
@@ -253,6 +257,9 @@ export function DocumentDetailPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [editerOpen, setEditerOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [soumettreOpen, setSoumettreOpen] = useState(false);
+  const [visaOpen, setVisaOpen] = useState(false);
+  const [signerOpen, setSignerOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -314,16 +321,9 @@ export function DocumentDetailPage() {
           handlers={{
             onEditer: () => setEditerOpen(true),
             onUploadFichier: () => setUploadOpen(true),
-            onSoumettre: () =>
-              toast.info(
-                'Action "Soumettre" arrive au Palier 4 (Lot 8.2.B).',
-              ),
-            onApporterVisa: () =>
-              toast.info(
-                'Modale "Apporter visa" arrive au Palier 4 (Lot 8.2.B).',
-              ),
-            onSigner: () =>
-              toast.info('Modale "Signer" arrive au Palier 4 (Lot 8.2.B).'),
+            onSoumettre: () => setSoumettreOpen(true),
+            onApporterVisa: () => setVisaOpen(true),
+            onSigner: () => setSignerOpen(true),
           }}
         />
       </div>
@@ -419,6 +419,57 @@ export function DocumentDetailPage() {
         documentId={doc.id}
         fichierJointNom={doc.fichierJointNom}
         onUploaded={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ConfirmDialog
+        isOpen={soumettreOpen}
+        onClose={() => setSoumettreOpen(false)}
+        onConfirm={async () => {
+          try {
+            await soumettreVisa(doc.id);
+            toast.success(`${doc.codeDocument} soumis au visa.`);
+            setRefreshKey((k) => k + 1);
+          } catch (err) {
+            toast.error(
+              extractApiMessage(err) || 'Soumission refusée.',
+            );
+            throw err;
+          }
+        }}
+        title={`Soumettre ${doc.codeDocument} au visa ?`}
+        description={
+          <>
+            <p>
+              Le document passera en{' '}
+              <strong>SOUMIS_VISA</strong> et le Comité de la campagne
+              sera figé en snapshot (les visas porteront sur ces
+              membres précisément, même si le Comité évolue après).
+            </p>
+            <p className="mt-2">
+              Vous ne pourrez plus éditer le document tant que le
+              Comité n'aura pas terminé ses visas.
+            </p>
+          </>
+        }
+        confirmText="Soumettre au visa"
+        cancelText="Annuler"
+      />
+
+      <ApporterVisaModal
+        open={visaOpen}
+        onClose={() => setVisaOpen(false)}
+        documentId={doc.id}
+        codeDocument={doc.codeDocument}
+        onSubmitted={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <SignerDocumentModal
+        open={signerOpen}
+        onClose={() => setSignerOpen(false)}
+        documentId={doc.id}
+        codeDocument={doc.codeDocument}
+        titre={doc.titre}
+        onSigned={() => setRefreshKey((k) => k + 1)}
       />
     </div>
   );
