@@ -18,6 +18,7 @@ import { AxiosError } from 'axios';
 import {
   ClipboardList,
   FileSignature,
+  HelpCircle,
   Lock,
   Plus,
   Send,
@@ -77,21 +78,45 @@ const STATUT_CAMPAGNE_CONFIG: Record<
   ARCHIVEE: { hex: '#5F6B7A', bgHex: '#5F6B7A1A', Icon: Lock },
 };
 
+/**
+ * Hotfix Lot 8.2.A — fallback gracieux si `statut` n'est pas une
+ * valeur connue (StatutCampagne) au runtime. Cas observé sur le bug
+ * écran blanc : backend renvoyait `{ campagne, membres }` au lieu de
+ * `{ ...campagne, comiteMembres }` → `statut` était undefined →
+ * `STATUT_CAMPAGNE_CONFIG[undefined]` était undefined → crash sur
+ * `.Icon` → page entière blanche.
+ *
+ * Le badge accepte maintenant `unknown` au runtime (le typage strict
+ * `StatutCampagne` reste à l'API publique) et affiche un badge "?"
+ * neutre quand la valeur n'est pas reconnue. Fail-safe contre tout
+ * futur contrat API qui dériverait sans qu'on s'en aperçoive.
+ */
+const FALLBACK_BADGE_CONFIG = {
+  hex: '#5F6B7A',
+  bgHex: '#5F6B7A1A',
+  Icon: HelpCircle,
+};
+
 export function StatutCampagneBadge({
   statut,
 }: {
   statut: StatutCampagne;
 }) {
-  const cfg = STATUT_CAMPAGNE_CONFIG[statut];
+  const cfg =
+    STATUT_CAMPAGNE_CONFIG[statut] ?? FALLBACK_BADGE_CONFIG;
   const Icon = cfg.Icon;
+  const label = STATUT_CAMPAGNE_LABEL[statut] ?? '—';
+  const testId = statut
+    ? `statut-camp-badge-${statut}`
+    : 'statut-camp-badge-inconnu';
   return (
     <span
-      data-testid={`statut-camp-badge-${statut}`}
+      data-testid={testId}
       style={{ backgroundColor: cfg.bgHex, color: cfg.hex }}
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold w-fit"
     >
       <Icon className="w-3 h-3" aria-hidden="true" />
-      {STATUT_CAMPAGNE_LABEL[statut]}
+      {label}
     </span>
   );
 }
