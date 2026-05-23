@@ -11,7 +11,9 @@ import type {
   ActionVisa,
   DocumentHistoriqueEvenement,
   DocumentOfficiel,
+  DocumentSignatureResume,
   DocumentVerificationIntegrite,
+  DocumentVisaResume,
   StatutDocument,
   TypeDocument,
 } from '@/types/document';
@@ -66,9 +68,32 @@ export async function listerDocuments(
   return data;
 }
 
+/**
+ * Détail enrichi d'un document.
+ *
+ * ⚠️ Adaptation Lot 8.2.B P2 : le backend
+ * `DocumentWorkflowService.detailDocument` retourne actuellement
+ * `{ document, visas, signature }` (structure nestée) au lieu d'un
+ * objet aplati `Document & { visas, signature }`. Pattern obsolète
+ * identique au bug `campagne.service.detailCampagne` pré-hotfix
+ * Lot 8.2.A. On aplatit ici au boundary pour que le composant utilise
+ * le type strict `DocumentOfficiel` du contrat frontend.
+ *
+ * TODO Lot 8.x : hotfix backend symétrique au fix `campagne.service`
+ * pour homogénéiser le contrat API (aplatissement + relations
+ * emetteur/signataire enrichies via mapping `UserResume` sécurisé).
+ */
 export async function detailDocument(id: string): Promise<DocumentOfficiel> {
-  const { data } = await apiClient.get<DocumentOfficiel>(`/documents/${id}`);
-  return data;
+  const { data } = await apiClient.get<{
+    document: DocumentOfficiel;
+    visas: DocumentVisaResume[];
+    signature: DocumentSignatureResume | null;
+  }>(`/documents/${id}`);
+  return {
+    ...data.document,
+    visas: data.visas,
+    signature: data.signature ?? undefined,
+  };
 }
 
 export async function creerDocument(
