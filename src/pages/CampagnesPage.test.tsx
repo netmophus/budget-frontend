@@ -49,9 +49,9 @@ vi.mock('@/lib/auth/permissions', () => ({
 import { listerCampagnes } from '@/lib/api/campagnes';
 import { listUsers } from '@/lib/api/users';
 import { useHasPermission } from '@/lib/auth/permissions';
-import type { Campagne } from '@/types/campagne';
+import type { Campagne, StatutCampagne } from '@/types/campagne';
 
-import { CampagnesPage } from './CampagnesPage';
+import { CampagnesPage, StatutCampagneBadge } from './CampagnesPage';
 
 const mockList = listerCampagnes as unknown as ReturnType<typeof vi.fn>;
 const mockListUsers = listUsers as unknown as ReturnType<typeof vi.fn>;
@@ -190,5 +190,21 @@ describe('CampagnesPage (Lot 8.2.A)', () => {
         'Impossible de charger les campagnes',
       );
     });
+  });
+
+  // ─── Hotfix Lot 8.2.A — fallback gracieux StatutCampagneBadge ──
+
+  it('StatutCampagneBadge rend un fallback "?" si statut undefined (ne crash plus la page)', () => {
+    // Cast volontaire : on simule un contrat API cassé renvoyant
+    // un statut absent. Avant le hotfix, ce cas crashait le composant
+    // (lecture .Icon sur undefined) et provoquait l'écran blanc.
+    render(
+      <StatutCampagneBadge statut={undefined as unknown as StatutCampagne} />,
+    );
+    // Pas de throw + badge fallback rendu avec le testId neutre
+    expect(
+      screen.getByTestId('statut-camp-badge-inconnu'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
