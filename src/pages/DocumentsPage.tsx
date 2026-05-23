@@ -19,8 +19,8 @@ import {
   MoreHorizontal,
   Plus,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { CreerDocumentModal } from '@/components/documents/CreerDocumentModal';
@@ -127,6 +127,16 @@ function extractApiMessage(err: unknown): string {
 export function DocumentsPage() {
   const navigate = useNavigate();
   const canCreer = useHasPermission('DOCUMENT.CREER');
+  const [searchParams] = useSearchParams();
+
+  // `?monRole=viseur_en_attente` dans l'URL (sidebar "Mes tâches")
+  // pré-filtre le filtre Rôle au mount.
+  const initialFilterRole = useMemo(() => {
+    const monRoleParam = searchParams.get('monRole');
+    if (!monRoleParam) return ALL;
+    const opt = ROLE_OPTIONS.find((o) => o.api === monRoleParam);
+    return opt?.value ?? ALL;
+  }, [searchParams]);
 
   const [data, setData] = useState<DocumentOfficiel[]>([]);
   const [campagnes, setCampagnes] = useState<Campagne[]>([]);
@@ -135,7 +145,7 @@ export function DocumentsPage() {
   const [filterStatut, setFilterStatut] = useState<string>(ALL);
   const [filterType, setFilterType] = useState<string>(ALL);
   const [filterCampagne, setFilterCampagne] = useState<string>(ALL);
-  const [filterRole, setFilterRole] = useState<string>(ALL);
+  const [filterRole, setFilterRole] = useState<string>(initialFilterRole);
 
   const [creerOpen, setCreerOpen] = useState(false);
 
