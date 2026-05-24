@@ -10,6 +10,7 @@
  */
 
 import type { UserResume } from './campagne';
+import type { LettreCadrageDetail } from './lettre-cadrage';
 
 export type StatutDocument =
   | 'BROUILLON'
@@ -79,6 +80,14 @@ export interface DocumentOfficiel {
   signataire?: UserResume;
   visas?: DocumentVisaResume[];
   signature?: DocumentSignatureResume;
+  /**
+   * Lot 8.2.C — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D2_LETTRE_CADRAGE`. `null` si type ≠ D2 ou si
+   * le DG n'a pas encore renseigné le détail (BROUILLON fraîchement
+   * créé). Chargé conditionnellement par le backend
+   * `detailDocument` pour éviter un round-trip sur les autres types.
+   */
+  lettreCadrageDetail?: LettreCadrageDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {
