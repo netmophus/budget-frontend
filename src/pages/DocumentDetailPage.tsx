@@ -39,8 +39,10 @@ import {
   Layers,
   Pencil,
   PenTool,
+  ScrollText,
   Send,
   ShieldCheck,
+  Target,
   Upload,
   XCircle,
 } from 'lucide-react';
@@ -50,6 +52,8 @@ import { toast } from 'sonner';
 
 import { ApporterVisaModal } from '@/components/documents/ApporterVisaModal';
 import { EditerDocumentModal } from '@/components/documents/EditerDocumentModal';
+import { LettreCadrageApercu } from '@/components/documents/LettreCadrageApercu';
+import { LettreCadrageDetailsForm } from '@/components/documents/LettreCadrageDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
 import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
@@ -407,6 +411,45 @@ export function DocumentDetailPage() {
               />
             ),
           },
+          // Lot 8.2.C — 2 onglets spécifiques aux Lettres de cadrage.
+          // Seuls les documents de type D2_LETTRE_CADRAGE les affichent
+          // (les 6 autres types n'ont pas de détail métier structuré).
+          ...(doc.typeDocument === 'D2_LETTRE_CADRAGE'
+            ? [
+                {
+                  value: 'cadrage',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails cadrage
+                    </span>
+                  ),
+                  content: (
+                    <LettreCadrageDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.lettreCadrageDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu lettre
+                    </span>
+                  ),
+                  content: (
+                    <LettreCadrageApercu
+                      document={doc}
+                      detail={doc.lettreCadrageDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
         ]}
         defaultValue="contenu"
       />
