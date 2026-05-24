@@ -360,6 +360,33 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('10. Lot 8.2.C : doc type D2_LETTRE_CADRAGE → onglets "Détails cadrage" + "Aperçu lettre" visibles', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({
+        typeDocument: 'D2_LETTRE_CADRAGE',
+      }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    // Les 2 onglets spécifiques D2 sont rendus
+    expect(screen.getByTestId('tab-cadrage')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-apercu')).toBeInTheDocument();
+  });
+
+  it('11. Lot 8.2.C : doc type non-D2 → onglets cadrage/apercu MASQUÉS', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({ typeDocument: 'D3_NOTE_ORIENTATION' }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+  });
+
   it('8. Tab Fichier sans fichier : empty state + bouton upload (émetteur)', async () => {
     mockDetail.mockResolvedValue(
       makeDoc({ statut: 'BROUILLON', fichierJointNom: null }),

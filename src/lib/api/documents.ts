@@ -15,6 +15,10 @@ import type {
   StatutDocument,
   TypeDocument,
 } from '@/types/document';
+import type {
+  LettreCadrageDetail,
+  MettreAJourDetailCadrageDto,
+} from '@/types/lettre-cadrage';
 
 export interface CreerDocumentDto {
   codeDocument: string;
@@ -173,5 +177,37 @@ export async function telechargerFichierDocument(id: string): Promise<Blob> {
   const { data } = await apiClient.get<Blob>(`/documents/${id}/fichier`, {
     responseType: 'blob',
   });
+  return data;
+}
+
+// ─── Lot 8.2.C — détail métier Lettre de cadrage ────────────────────
+
+/**
+ * Lit le détail métier d'une Lettre de cadrage (objectifs PNB/RN,
+ * ratios BCEAO, calendrier, orientations). Retourne `null` si pas
+ * encore renseigné (BROUILLON fraîchement créé).
+ */
+export async function lireDetailCadrage(
+  documentId: string,
+): Promise<LettreCadrageDetail | null> {
+  const { data } = await apiClient.get<LettreCadrageDetail | null>(
+    `/documents/${documentId}/cadrage-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Le backend valide les
+ * pré-requis métier (type === D2, statut === BROUILLON, user ===
+ * émetteur).
+ */
+export async function mettreAJourDetailCadrage(
+  documentId: string,
+  dto: MettreAJourDetailCadrageDto,
+): Promise<LettreCadrageDetail> {
+  const { data } = await apiClient.put<LettreCadrageDetail>(
+    `/documents/${documentId}/cadrage-detail`,
+    dto,
+  );
   return data;
 }
