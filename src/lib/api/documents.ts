@@ -20,6 +20,10 @@ import type {
   MettreAJourDetailCadrageDto,
 } from '@/types/lettre-cadrage';
 import type {
+  LettreMobilisationDetail,
+  MettreAJourDetailLettreMobilisationDto,
+} from '@/types/lettre-mobilisation';
+import type {
   MettreAJourDetailNoteOrientationDto,
   NoteOrientationDetail,
 } from '@/types/note-orientation';
@@ -242,6 +246,37 @@ export async function mettreAJourDetailNoteOrientation(
 ): Promise<NoteOrientationDetail> {
   const { data } = await apiClient.put<NoteOrientationDetail>(
     `/documents/${documentId}/note-orientation-detail`,
+    dto,
+  );
+  return data;
+}
+
+// ─── Lot 8.3.B — détail métier Lettre de mobilisation ───────────────
+
+/**
+ * Lit le détail métier d'une Lettre de mobilisation (objectifs
+ * globaux, indicateurs mobilisation, échéances, message DG TipTap,
+ * engagement). Retourne `null` si pas encore renseigné.
+ */
+export async function lireDetailLettreMobilisation(
+  documentId: string,
+): Promise<LettreMobilisationDetail | null> {
+  const { data } = await apiClient.get<LettreMobilisationDetail | null>(
+    `/documents/${documentId}/lettre-mobilisation-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Backend valide pré-requis
+ * métier (type === D5, statut === BROUILLON, user === émetteur).
+ */
+export async function mettreAJourDetailLettreMobilisation(
+  documentId: string,
+  dto: MettreAJourDetailLettreMobilisationDto,
+): Promise<LettreMobilisationDetail> {
+  const { data } = await apiClient.put<LettreMobilisationDetail>(
+    `/documents/${documentId}/lettre-mobilisation-detail`,
     dto,
   );
   return data;

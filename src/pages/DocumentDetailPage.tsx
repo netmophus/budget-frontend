@@ -54,6 +54,8 @@ import { ApporterVisaModal } from '@/components/documents/ApporterVisaModal';
 import { EditerDocumentModal } from '@/components/documents/EditerDocumentModal';
 import { LettreCadrageApercu } from '@/components/documents/LettreCadrageApercu';
 import { LettreCadrageDetailsForm } from '@/components/documents/LettreCadrageDetailsForm';
+import { LettreMobilisationApercu } from '@/components/documents/LettreMobilisationApercu';
+import { LettreMobilisationDetailsForm } from '@/components/documents/LettreMobilisationDetailsForm';
 import { NoteOrientationApercu } from '@/components/documents/NoteOrientationApercu';
 import { NoteOrientationDetailsForm } from '@/components/documents/NoteOrientationDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
@@ -486,6 +488,47 @@ export function DocumentDetailPage() {
                     <NoteOrientationApercu
                       document={doc}
                       detail={doc.noteOrientationDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          // Lot 8.3.B — 2 onglets spécifiques aux Lettres de mobilisation
+          // (D5). Exclusion mutuelle stricte avec les onglets D2 et D3
+          // ci-dessus : un document est soit D2, soit D3, soit D5,
+          // jamais 2 à la fois.
+          ...(doc.typeDocument === 'D5_LETTRE_DG'
+            ? [
+                {
+                  value: 'mobilisation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails mobilisation
+                    </span>
+                  ),
+                  content: (
+                    <LettreMobilisationDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.lettreMobilisationDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu-mobilisation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu lettre
+                      mobilisation
+                    </span>
+                  ),
+                  content: (
+                    <LettreMobilisationApercu
+                      document={doc}
+                      detail={doc.lettreMobilisationDetail ?? null}
                     />
                   ),
                 },

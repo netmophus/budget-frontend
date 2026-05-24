@@ -11,6 +11,7 @@
 
 import type { UserResume } from './campagne';
 import type { LettreCadrageDetail } from './lettre-cadrage';
+import type { LettreMobilisationDetail } from './lettre-mobilisation';
 import type { NoteOrientationDetail } from './note-orientation';
 
 export type StatutDocument =
@@ -93,10 +94,20 @@ export interface DocumentOfficiel {
    * Lot 8.3.A — détail métier structuré, présent UNIQUEMENT pour les
    * documents de type `D3_NOTE_ORIENTATION` (note interne avec analyse
    * macro + axes stratégiques + description riche HTML TipTap).
-   * Exclusion mutuelle avec `lettreCadrageDetail` : au plus un des 2
-   * détails est non-null pour un document donné.
    */
   noteOrientationDetail?: NoteOrientationDetail | null;
+  /**
+   * Lot 8.3.B — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D5_LETTRE_MOBILISATION` (lettre motivationnelle
+   * DG → Directeurs avec objectifs globaux + indicateurs mobilisation
+   * + échéances + message DG TipTap).
+   *
+   * **Exclusion mutuelle stricte** entre `lettreCadrageDetail`,
+   * `noteOrientationDetail` et `lettreMobilisationDetail` :
+   * au plus UN des 3 est non-null pour un document donné
+   * (déterminé par `typeDocument`).
+   */
+  lettreMobilisationDetail?: LettreMobilisationDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {
@@ -135,7 +146,7 @@ export const STATUT_DOCUMENT_LABEL: Record<StatutDocument, string> = {
 export const TYPE_DOCUMENT_LABEL: Record<TypeDocument, string> = {
   D2_LETTRE_CADRAGE: 'Lettre de cadrage',
   D3_NOTE_ORIENTATION: "Note d'orientation",
-  D5_LETTRE_DG: 'Lettre DG',
+  D5_LETTRE_DG: 'Lettre de mobilisation',
   R3_BORDEREAU_VALIDATION: 'Bordereau validation',
   R5_BORDEREAU_REJET: 'Bordereau rejet',
   D11_PV_APPROBATION: "PV d'approbation",

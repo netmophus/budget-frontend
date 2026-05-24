@@ -403,6 +403,24 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
   });
 
+  it('13. Lot 8.3.B : doc type D5_LETTRE_DG → onglets "Détails mobilisation" + "Aperçu lettre mobilisation" visibles', async () => {
+    mockDetail.mockResolvedValue(makeDoc({ typeDocument: 'D5_LETTRE_DG' }));
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    // Les 2 onglets spécifiques D5 sont rendus
+    expect(screen.getByTestId('tab-mobilisation')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('tab-apercu-mobilisation'),
+    ).toBeInTheDocument();
+    // Exclusion mutuelle stricte : onglets D2 et D3 absents
+    expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
+  });
+
   it('8. Tab Fichier sans fichier : empty state + bouton upload (émetteur)', async () => {
     mockDetail.mockResolvedValue(
       makeDoc({ statut: 'BROUILLON', fichierJointNom: null }),
