@@ -377,12 +377,28 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
 
   it('11. Lot 8.2.C : doc type non-D2 → onglets cadrage/apercu MASQUÉS', async () => {
     mockDetail.mockResolvedValue(
+      makeDoc({ typeDocument: 'D11_PV_APPROBATION' }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+  });
+
+  it('12. Lot 8.3.A : doc type D3_NOTE_ORIENTATION → onglets "Détails orientation" + "Aperçu note" visibles', async () => {
+    mockDetail.mockResolvedValue(
       makeDoc({ typeDocument: 'D3_NOTE_ORIENTATION' }),
     );
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
     });
+    // Les 2 onglets spécifiques D3 sont rendus
+    expect(screen.getByTestId('tab-orientation')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-apercu-note')).toBeInTheDocument();
+    // Exclusion mutuelle : les onglets D2 ne sont PAS rendus
     expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
   });

@@ -11,6 +11,7 @@
 
 import type { UserResume } from './campagne';
 import type { LettreCadrageDetail } from './lettre-cadrage';
+import type { NoteOrientationDetail } from './note-orientation';
 
 export type StatutDocument =
   | 'BROUILLON'
@@ -88,6 +89,14 @@ export interface DocumentOfficiel {
    * `detailDocument` pour éviter un round-trip sur les autres types.
    */
   lettreCadrageDetail?: LettreCadrageDetail | null;
+  /**
+   * Lot 8.3.A — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D3_NOTE_ORIENTATION` (note interne avec analyse
+   * macro + axes stratégiques + description riche HTML TipTap).
+   * Exclusion mutuelle avec `lettreCadrageDetail` : au plus un des 2
+   * détails est non-null pour un document donné.
+   */
+  noteOrientationDetail?: NoteOrientationDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {

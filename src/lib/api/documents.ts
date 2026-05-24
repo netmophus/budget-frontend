@@ -19,6 +19,10 @@ import type {
   LettreCadrageDetail,
   MettreAJourDetailCadrageDto,
 } from '@/types/lettre-cadrage';
+import type {
+  MettreAJourDetailNoteOrientationDto,
+  NoteOrientationDetail,
+} from '@/types/note-orientation';
 
 export interface CreerDocumentDto {
   codeDocument: string;
@@ -207,6 +211,37 @@ export async function mettreAJourDetailCadrage(
 ): Promise<LettreCadrageDetail> {
   const { data } = await apiClient.put<LettreCadrageDetail>(
     `/documents/${documentId}/cadrage-detail`,
+    dto,
+  );
+  return data;
+}
+
+// ─── Lot 8.3.A — détail métier Note d'orientation ───────────────────
+
+/**
+ * Lit le détail métier d'une Note d'orientation (hypothèses macro,
+ * positionnement marché, axes stratégiques, description riche
+ * TipTap, recommandations). Retourne `null` si pas encore renseigné.
+ */
+export async function lireDetailNoteOrientation(
+  documentId: string,
+): Promise<NoteOrientationDetail | null> {
+  const { data } = await apiClient.get<NoteOrientationDetail | null>(
+    `/documents/${documentId}/note-orientation-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Backend valide pré-requis
+ * métier (type === D3, statut === BROUILLON, user === émetteur).
+ */
+export async function mettreAJourDetailNoteOrientation(
+  documentId: string,
+  dto: MettreAJourDetailNoteOrientationDto,
+): Promise<NoteOrientationDetail> {
+  const { data } = await apiClient.put<NoteOrientationDetail>(
+    `/documents/${documentId}/note-orientation-detail`,
     dto,
   );
   return data;

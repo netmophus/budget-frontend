@@ -54,6 +54,8 @@ import { ApporterVisaModal } from '@/components/documents/ApporterVisaModal';
 import { EditerDocumentModal } from '@/components/documents/EditerDocumentModal';
 import { LettreCadrageApercu } from '@/components/documents/LettreCadrageApercu';
 import { LettreCadrageDetailsForm } from '@/components/documents/LettreCadrageDetailsForm';
+import { NoteOrientationApercu } from '@/components/documents/NoteOrientationApercu';
+import { NoteOrientationDetailsForm } from '@/components/documents/NoteOrientationDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
 import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
@@ -445,6 +447,45 @@ export function DocumentDetailPage() {
                     <LettreCadrageApercu
                       document={doc}
                       detail={doc.lettreCadrageDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          // Lot 8.3.A — 2 onglets spécifiques aux Notes d'orientation
+          // (D3). Exclusion mutuelle avec les onglets D2 ci-dessus :
+          // un document est soit D2 soit D3, jamais les deux.
+          ...(doc.typeDocument === 'D3_NOTE_ORIENTATION'
+            ? [
+                {
+                  value: 'orientation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails d'orientation
+                    </span>
+                  ),
+                  content: (
+                    <NoteOrientationDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.noteOrientationDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu-note',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu note
+                    </span>
+                  ),
+                  content: (
+                    <NoteOrientationApercu
+                      document={doc}
+                      detail={doc.noteOrientationDetail ?? null}
                     />
                   ),
                 },
