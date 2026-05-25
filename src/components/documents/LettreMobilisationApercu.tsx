@@ -235,9 +235,14 @@ export function LettreMobilisationApercu({
             convention typographique des lettres officielles (cohérent
             D12 LettreOfficialisationApercu). L'italique reste actif
             car appliqué sur le même container.
+
+            Hotfix 8.3.G : `max-w-none!` (Tailwind v4 important suffix)
+            force l'annulation du `max-width: 65ch` injecté par défaut
+            par `.prose` — sans `!`, le texte restait limité à ~65
+            caractères. Cf. doc LettreOfficialisationApercu.
           */}
           <div
-            className="mb-6 prose prose-sm max-w-none border-l-4 border-slate-300 pl-4 italic text-justify hyphens-auto"
+            className="mb-6 prose prose-sm max-w-none! border-l-4 border-slate-300 pl-4 italic text-justify hyphens-auto"
             data-testid="apercu-message-dg-html"
             dangerouslySetInnerHTML={{ __html: detail.messageDgHtml }}
           />

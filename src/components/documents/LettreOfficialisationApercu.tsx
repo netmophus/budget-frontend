@@ -129,9 +129,17 @@ export function LettreOfficialisationApercu({
             convention typographique des lettres officielles (texte
             justifié des deux côtés + césure auto). D1/D3/D11 restent
             en alignement gauche (notes internes + PV procédural).
+
+            Hotfix 8.3.G : `max-w-none!` (Tailwind v4 important suffix)
+            force l'annulation du `max-width: 65ch` injecté par défaut
+            par `.prose`. Sans `!`, en Tailwind v4 l'ordre d'injection
+            plugin vs utilities n'est pas garanti — le texte restait
+            limité à ~65 caractères de large malgré `max-w-none`. Le
+            wrapper externe (max-w-4xl = 56rem) suffit à borner la
+            largeur globale comme une page A4.
           */}
           <div
-            className="mb-8 prose prose-sm max-w-none text-justify hyphens-auto"
+            className="mb-8 prose prose-sm max-w-none! text-justify hyphens-auto"
             data-testid="apercu-lod-corps"
             dangerouslySetInnerHTML={{ __html: detail.corpsHtml }}
           />
