@@ -60,6 +60,8 @@ import { NoteOrientationApercu } from '@/components/documents/NoteOrientationApe
 import { NoteOrientationDetailsForm } from '@/components/documents/NoteOrientationDetailsForm';
 import { NotePreparatoireApercu } from '@/components/documents/NotePreparatoireApercu';
 import { NotePreparatoireDetailsForm } from '@/components/documents/NotePreparatoireDetailsForm';
+import { LettreOfficialisationApercu } from '@/components/documents/LettreOfficialisationApercu';
+import { LettreOfficialisationDetailsForm } from '@/components/documents/LettreOfficialisationDetailsForm';
 import { PvApprobationApercu } from '@/components/documents/PvApprobationApercu';
 import { PvApprobationDetailsForm } from '@/components/documents/PvApprobationDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
@@ -576,10 +578,6 @@ export function DocumentDetailPage() {
               ]
             : []),
           // Lot 8.3.D — 2 onglets spécifiques aux PV d'approbation CA (D11).
-          // **Exclusion mutuelle stricte entre les 5 types métier
-          // riches** : un document est soit D1, soit D2, soit D3,
-          // soit D5, soit D11, jamais 2 à la fois. Les 3 autres types
-          // (R3, R5, D12) n'ont aucun onglet métier dédié.
           ...(doc.typeDocument === 'D11_PV_APPROBATION'
             ? [
                 {
@@ -613,6 +611,50 @@ export function DocumentDetailPage() {
                     <PvApprobationApercu
                       document={doc}
                       detail={doc.pvApprobationDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          // Lot 8.3.E — 2 onglets spécifiques aux Lettres d'officialisation
+          // (D12). **Exclusion mutuelle stricte entre les 6 types métier
+          // riches** : un document est soit D1, D2, D3, D5, D11 ou D12,
+          // jamais 2 à la fois. Les 2 autres types (R3, R5) n'ont
+          // aucun onglet métier dédié — ils relèvent de la phase 8.4
+          // (bordereaux workflow). Phase 8.3 close après ce Lot.
+          ...(doc.typeDocument === 'D12_LETTRE_OFFICIALISATION'
+            ? [
+                {
+                  value: 'lettre-officialisation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails lettre
+                      officialisation
+                    </span>
+                  ),
+                  content: (
+                    <LettreOfficialisationDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.lettreOfficialisationDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu-lettre-officialisation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu lettre
+                      officialisation
+                    </span>
+                  ),
+                  content: (
+                    <LettreOfficialisationApercu
+                      document={doc}
+                      detail={doc.lettreOfficialisationDetail ?? null}
                     />
                   ),
                 },

@@ -12,6 +12,7 @@
 import type { UserResume } from './campagne';
 import type { LettreCadrageDetail } from './lettre-cadrage';
 import type { LettreMobilisationDetail } from './lettre-mobilisation';
+import type { LettreOfficialisationDetail } from './lettre-officialisation';
 import type { NoteOrientationDetail } from './note-orientation';
 import type { NotePreparatoireDetail } from './note-preparatoire';
 import type { PvApprobationDetail } from './pv-approbation';
@@ -117,14 +118,23 @@ export interface DocumentOfficiel {
    * documents de type `D11_PV_APPROBATION` (PV d'approbation du
    * Conseil d'Administration, émis APRÈS la signature de D2 — acte
    * officiel d'approbation budgétaire).
-   *
-   * **Exclusion mutuelle stricte** entre les 5 détails métier
-   * (`lettreCadrageDetail` / `noteOrientationDetail` /
-   * `lettreMobilisationDetail` / `notePreparatoireDetail` /
-   * `pvApprobationDetail`) : au plus UN des 5 est non-null pour un
-   * document donné (déterminé par `typeDocument`).
    */
   pvApprobationDetail?: PvApprobationDetail | null;
+  /**
+   * Lot 8.3.E — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D12_LETTRE_OFFICIALISATION` (Lettre BSIC émise
+   * APRÈS la signature du PV CA pour notifier l'approbation du
+   * budget aux parties prenantes : équipe direction, filiales,
+   * BCEAO, CREPMF, holding).
+   *
+   * **Exclusion mutuelle stricte** entre les 6 détails métier
+   * (`lettreCadrageDetail` / `noteOrientationDetail` /
+   * `lettreMobilisationDetail` / `notePreparatoireDetail` /
+   * `pvApprobationDetail` / `lettreOfficialisationDetail`) : au
+   * plus UN des 6 est non-null pour un document donné (déterminé
+   * par `typeDocument`).
+   */
+  lettreOfficialisationDetail?: LettreOfficialisationDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {
