@@ -100,14 +100,9 @@ export interface DocumentOfficiel {
   noteOrientationDetail?: NoteOrientationDetail | null;
   /**
    * Lot 8.3.B — détail métier structuré, présent UNIQUEMENT pour les
-   * documents de type `D5_LETTRE_MOBILISATION` (lettre motivationnelle
-   * DG → Directeurs avec objectifs globaux + indicateurs mobilisation
-   * + échéances + message DG TipTap).
-   *
-   * **Exclusion mutuelle stricte** entre `lettreCadrageDetail`,
-   * `noteOrientationDetail` et `lettreMobilisationDetail` :
-   * au plus UN des 3 est non-null pour un document donné
-   * (déterminé par `typeDocument`).
+   * documents de type `D5_LETTRE_DG` (lettre motivationnelle DG →
+   * Directeurs avec objectifs globaux + indicateurs mobilisation +
+   * échéances + message DG TipTap, libellée "Lettre de mobilisation").
    */
   lettreMobilisationDetail?: LettreMobilisationDetail | null;
   /**
