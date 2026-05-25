@@ -13,8 +13,11 @@
  *  - Objet en gras souligné centré sous les destinataires
  *  - Référence : affichée distinctement (lien sémantique vers PV CA)
  *  - Corps de la lettre via `dangerouslySetInnerHTML` (TipTap)
- *  - Bloc signature : "Le signataire" + **badge "🔖 Cachet apposé"**
- *    SI cachet_appose === true (badge ambre distinctif)
+ *  - Bloc signature unique : nom du signataire en gras à droite +
+ *    **badge "🔖 Cachet apposé"** SI cachet_appose === true (badge
+ *    ambre distinctif). Le préfixe "Le [signataire]," (formulation
+ *    classique des lettres) relève du corps de la lettre, pas du
+ *    bloc signature — hotfix 8.3.E suppression du doublon.
  *  - Pied de page : pièces jointes listées + date entrée vigueur
  *
  * **Sécurité XSS** : `corpsHtml` rendu via `dangerouslySetInnerHTML` —
@@ -90,12 +93,22 @@ export function LettreOfficialisationApercu({
         Objet : {detail?.objet ?? document.titre}
       </p>
 
-      {/* Référence PV CA si renseignée */}
+      {/* Référence PV CA si renseignée — mise en valeur visuelle (encadré
+          léger gris) pour ne pas se confondre avec le texte ambiant
+          (hotfix bug 3 Lot 8.3.E). Pattern aligné encadré identification
+          PvApprobationApercu. */}
       {detail?.referencePvCa && (
-        <p className="text-sm mb-6 ml-4">
-          <strong>Référence :</strong>{' '}
-          <span className="font-mono">{detail.referencePvCa}</span>
-        </p>
+        <div className="mb-6">
+          <span
+            className="inline-flex items-center gap-2 bg-slate-50 border border-slate-300 rounded px-3 py-1.5 text-sm"
+            data-testid="apercu-lod-reference-pv-ca"
+          >
+            <strong>Référence :</strong>
+            <span className="font-mono font-semibold text-slate-800">
+              {detail.referencePvCa}
+            </span>
+          </span>
+        </div>
       )}
 
       {/* Corps de la lettre (HTML TipTap rendu) */}
@@ -106,9 +119,19 @@ export function LettreOfficialisationApercu({
             du HTML sécurisé par défaut (whitelist StarterKit, pas de
             <script>, pas d'attributs on*). Si import HTML externe
             ajouté plus tard, intégrer DOMPurify ici.
+
+            Hotfix bug 2 Lot 8.3.E : `@tailwindcss/typography` n'étant
+            PAS installé dans le projet, la classe `prose` ne stylait
+            ni les <strong> ni les <ul>/<li>/<ol> émis par TipTap.
+            Les 5 autres aperçus maquillaient le problème via décors
+            visuels (border-l-4 + bg-slate-50 + italic). Ici on style
+            manuellement les balises HTML brutes via Tailwind arbitrary
+            variants `[&_X]:...` — fix local, aucune dépendance ajoutée,
+            les 5 autres aperçus restent intacts (à terme : envisager
+            d'installer @tailwindcss/typography pour fix global).
           */}
           <div
-            className="mb-8 prose prose-sm max-w-none"
+            className="mb-8 text-sm leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-3 [&_code]:font-mono [&_code]:text-xs [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded"
             data-testid="apercu-lod-corps"
             dangerouslySetInnerHTML={{ __html: detail.corpsHtml }}
           />
@@ -119,10 +142,14 @@ export function LettreOfficialisationApercu({
         </p>
       )}
 
-      {/* Bloc signature */}
-      <div className="mt-12 text-right text-sm">
-        <p>{detail?.signataire ? `Le ${detail.signataire},` : '—'}</p>
-        <p className="mt-16 font-bold">{detail?.signataire ?? '—'}</p>
+      {/* Bloc signature unique (hotfix bug 1 Lot 8.3.E : suppression
+          du préfixe "Le [signataire]," qui dupliquait la mention —
+          la formulation "Le DG signe…" relève du corps de la lettre,
+          pas du bloc signature). Pattern lettre officielle : nom du
+          signataire en gras, aligné à droite, suivi du badge cachet
+          si applicable. */}
+      <div className="mt-16 text-right text-sm" data-testid="apercu-lod-signature">
+        <p className="font-bold">{detail?.signataire ?? '—'}</p>
         {detail?.cachetAppose === true && (
           <p
             className="inline-flex items-center gap-1 mt-3 px-3 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300"
