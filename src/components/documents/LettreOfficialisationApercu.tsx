@@ -120,18 +120,13 @@ export function LettreOfficialisationApercu({
             <script>, pas d'attributs on*). Si import HTML externe
             ajouté plus tard, intégrer DOMPurify ici.
 
-            Hotfix bug 2 Lot 8.3.E : `@tailwindcss/typography` n'étant
-            PAS installé dans le projet, la classe `prose` ne stylait
-            ni les <strong> ni les <ul>/<li>/<ol> émis par TipTap.
-            Les 5 autres aperçus maquillaient le problème via décors
-            visuels (border-l-4 + bg-slate-50 + italic). Ici on style
-            manuellement les balises HTML brutes via Tailwind arbitrary
-            variants `[&_X]:...` — fix local, aucune dépendance ajoutée,
-            les 5 autres aperçus restent intacts (à terme : envisager
-            d'installer @tailwindcss/typography pour fix global).
+            Lot 8.3.G volet 2 : retour au `prose` standard maintenant
+            que `@tailwindcss/typography` est installé globalement.
+            Les arbitrary variants `[&_X]:...` du hotfix 8.3.E sont
+            supprimées — pattern cohérent avec les 5 autres aperçus.
           */}
           <div
-            className="mb-8 text-sm leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-3 [&_code]:font-mono [&_code]:text-xs [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded"
+            className="mb-8 prose prose-sm max-w-none"
             data-testid="apercu-lod-corps"
             dangerouslySetInnerHTML={{ __html: detail.corpsHtml }}
           />
