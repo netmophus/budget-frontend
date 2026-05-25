@@ -58,6 +58,8 @@ import { LettreMobilisationApercu } from '@/components/documents/LettreMobilisat
 import { LettreMobilisationDetailsForm } from '@/components/documents/LettreMobilisationDetailsForm';
 import { NoteOrientationApercu } from '@/components/documents/NoteOrientationApercu';
 import { NoteOrientationDetailsForm } from '@/components/documents/NoteOrientationDetailsForm';
+import { NotePreparatoireApercu } from '@/components/documents/NotePreparatoireApercu';
+import { NotePreparatoireDetailsForm } from '@/components/documents/NotePreparatoireDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
 import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
@@ -494,9 +496,7 @@ export function DocumentDetailPage() {
               ]
             : []),
           // Lot 8.3.B — 2 onglets spécifiques aux Lettres de mobilisation
-          // (D5). Exclusion mutuelle stricte avec les onglets D2 et D3
-          // ci-dessus : un document est soit D2, soit D3, soit D5,
-          // jamais 2 à la fois.
+          // (D5).
           ...(doc.typeDocument === 'D5_LETTRE_DG'
             ? [
                 {
@@ -529,6 +529,49 @@ export function DocumentDetailPage() {
                     <LettreMobilisationApercu
                       document={doc}
                       detail={doc.lettreMobilisationDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          // Lot 8.3.C — 2 onglets spécifiques aux Notes préparatoires
+          // DG (D1). **Exclusion mutuelle stricte entre les 4 types
+          // métier riches** : un document est soit D1, soit D2, soit
+          // D3, soit D5, jamais 2 à la fois. Les 4 autres types (R3,
+          // R5, D11, D12) n'ont aucun onglet métier dédié.
+          ...(doc.typeDocument === 'D1_NOTE_PREPARATOIRE'
+            ? [
+                {
+                  value: 'preparatoire',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails note
+                      préparatoire
+                    </span>
+                  ),
+                  content: (
+                    <NotePreparatoireDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.notePreparatoireDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu-preparatoire',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu note
+                      préparatoire
+                    </span>
+                  ),
+                  content: (
+                    <NotePreparatoireApercu
+                      document={doc}
+                      detail={doc.notePreparatoireDetail ?? null}
                     />
                   ),
                 },

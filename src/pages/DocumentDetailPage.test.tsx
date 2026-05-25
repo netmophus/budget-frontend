@@ -421,6 +421,30 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
   });
 
+  it('14. Lot 8.3.C : doc type D1_NOTE_PREPARATOIRE → onglets "Détails note préparatoire" + "Aperçu note préparatoire" visibles', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({ typeDocument: 'D1_NOTE_PREPARATOIRE' }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    // Les 2 onglets spécifiques D1 sont rendus
+    expect(screen.getByTestId('tab-preparatoire')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('tab-apercu-preparatoire'),
+    ).toBeInTheDocument();
+    // Exclusion mutuelle stricte 4 types : onglets D2/D3/D5 absents
+    expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-mobilisation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-mobilisation'),
+    ).not.toBeInTheDocument();
+  });
+
   it('8. Tab Fichier sans fichier : empty state + bouton upload (émetteur)', async () => {
     mockDetail.mockResolvedValue(
       makeDoc({ statut: 'BROUILLON', fichierJointNom: null }),
