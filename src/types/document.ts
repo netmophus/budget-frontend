@@ -13,6 +13,7 @@ import type { UserResume } from './campagne';
 import type { LettreCadrageDetail } from './lettre-cadrage';
 import type { LettreMobilisationDetail } from './lettre-mobilisation';
 import type { NoteOrientationDetail } from './note-orientation';
+import type { NotePreparatoireDetail } from './note-preparatoire';
 
 export type StatutDocument =
   | 'BROUILLON'
@@ -22,6 +23,7 @@ export type StatutDocument =
   | 'ARCHIVE';
 
 export type TypeDocument =
+  | 'D1_NOTE_PREPARATOIRE'
   | 'D2_LETTRE_CADRAGE'
   | 'D3_NOTE_ORIENTATION'
   | 'D5_LETTRE_DG'
@@ -98,16 +100,26 @@ export interface DocumentOfficiel {
   noteOrientationDetail?: NoteOrientationDetail | null;
   /**
    * Lot 8.3.B — détail métier structuré, présent UNIQUEMENT pour les
-   * documents de type `D5_LETTRE_MOBILISATION` (lettre motivationnelle
-   * DG → Directeurs avec objectifs globaux + indicateurs mobilisation
-   * + échéances + message DG TipTap).
-   *
-   * **Exclusion mutuelle stricte** entre `lettreCadrageDetail`,
-   * `noteOrientationDetail` et `lettreMobilisationDetail` :
-   * au plus UN des 3 est non-null pour un document donné
-   * (déterminé par `typeDocument`).
+   * documents de type `D5_LETTRE_DG` (lettre motivationnelle DG →
+   * Directeurs avec objectifs globaux + indicateurs mobilisation +
+   * échéances + message DG TipTap, libellée "Lettre de mobilisation").
    */
   lettreMobilisationDetail?: LettreMobilisationDetail | null;
+  /**
+   * Lot 8.3.C — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D1_NOTE_PREPARATOIRE` (note préparatoire DG
+   * émise AVANT la réunion du Comité en début de cycle budgétaire,
+   * avec en-tête + convocation + participants + exercice + ordre du
+   * jour TipTap + documents pré-lus + points clés + décisions
+   * attendues).
+   *
+   * **Exclusion mutuelle stricte** entre les 4 détails métier
+   * (`lettreCadrageDetail` / `noteOrientationDetail` /
+   * `lettreMobilisationDetail` / `notePreparatoireDetail`) : au plus
+   * UN des 4 est non-null pour un document donné (déterminé par
+   * `typeDocument`).
+   */
+  notePreparatoireDetail?: NotePreparatoireDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {
@@ -144,6 +156,7 @@ export const STATUT_DOCUMENT_LABEL: Record<StatutDocument, string> = {
 };
 
 export const TYPE_DOCUMENT_LABEL: Record<TypeDocument, string> = {
+  D1_NOTE_PREPARATOIRE: 'Note préparatoire DG',
   D2_LETTRE_CADRAGE: 'Lettre de cadrage',
   D3_NOTE_ORIENTATION: "Note d'orientation",
   D5_LETTRE_DG: 'Lettre de mobilisation',

@@ -27,6 +27,10 @@ import type {
   MettreAJourDetailNoteOrientationDto,
   NoteOrientationDetail,
 } from '@/types/note-orientation';
+import type {
+  MettreAJourDetailNotePreparatoireDto,
+  NotePreparatoireDetail,
+} from '@/types/note-preparatoire';
 
 export interface CreerDocumentDto {
   codeDocument: string;
@@ -277,6 +281,38 @@ export async function mettreAJourDetailLettreMobilisation(
 ): Promise<LettreMobilisationDetail> {
   const { data } = await apiClient.put<LettreMobilisationDetail>(
     `/documents/${documentId}/lettre-mobilisation-detail`,
+    dto,
+  );
+  return data;
+}
+
+// ─── Lot 8.3.C — détail métier Note préparatoire DG ─────────────────
+
+/**
+ * Lit le détail métier d'une Note préparatoire DG (en-tête,
+ * convocation Comité, participants, exercice, ordre du jour TipTap,
+ * documents pré-lus, points clés, décisions). Retourne `null` si
+ * pas encore renseigné.
+ */
+export async function lireDetailNotePreparatoire(
+  documentId: string,
+): Promise<NotePreparatoireDetail | null> {
+  const { data } = await apiClient.get<NotePreparatoireDetail | null>(
+    `/documents/${documentId}/note-preparatoire-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Backend valide pré-requis
+ * métier (type === D1, statut === BROUILLON, user === émetteur).
+ */
+export async function mettreAJourDetailNotePreparatoire(
+  documentId: string,
+  dto: MettreAJourDetailNotePreparatoireDto,
+): Promise<NotePreparatoireDetail> {
+  const { data } = await apiClient.put<NotePreparatoireDetail>(
+    `/documents/${documentId}/note-preparatoire-detail`,
     dto,
   );
   return data;

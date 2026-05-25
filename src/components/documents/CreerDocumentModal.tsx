@@ -48,6 +48,7 @@ import type { Campagne } from '@/types/campagne';
 import { type TypeDocument, TYPE_DOCUMENT_LABEL } from '@/types/document';
 
 const TYPES: TypeDocument[] = [
+  'D1_NOTE_PREPARATOIRE',
   'D2_LETTRE_CADRAGE',
   'D3_NOTE_ORIENTATION',
   'D5_LETTRE_DG',
@@ -67,6 +68,7 @@ const schema = z.object({
       'Lettres majuscules, chiffres et underscore uniquement',
     ),
   typeDocument: z.enum([
+    'D1_NOTE_PREPARATOIRE',
     'D2_LETTRE_CADRAGE',
     'D3_NOTE_ORIENTATION',
     'D5_LETTRE_DG',
