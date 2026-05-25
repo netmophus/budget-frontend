@@ -60,6 +60,8 @@ import { NoteOrientationApercu } from '@/components/documents/NoteOrientationApe
 import { NoteOrientationDetailsForm } from '@/components/documents/NoteOrientationDetailsForm';
 import { NotePreparatoireApercu } from '@/components/documents/NotePreparatoireApercu';
 import { NotePreparatoireDetailsForm } from '@/components/documents/NotePreparatoireDetailsForm';
+import { PvApprobationApercu } from '@/components/documents/PvApprobationApercu';
+import { PvApprobationDetailsForm } from '@/components/documents/PvApprobationDetailsForm';
 import { SignerDocumentModal } from '@/components/documents/SignerDocumentModal';
 import { UploaderFichierModal } from '@/components/documents/UploaderFichierModal';
 import { StatutDocumentBadge } from '@/components/StatutDocumentBadge';
@@ -534,11 +536,7 @@ export function DocumentDetailPage() {
                 },
               ]
             : []),
-          // Lot 8.3.C — 2 onglets spécifiques aux Notes préparatoires
-          // DG (D1). **Exclusion mutuelle stricte entre les 4 types
-          // métier riches** : un document est soit D1, soit D2, soit
-          // D3, soit D5, jamais 2 à la fois. Les 4 autres types (R3,
-          // R5, D11, D12) n'ont aucun onglet métier dédié.
+          // Lot 8.3.C — 2 onglets spécifiques aux Notes préparatoires DG (D1).
           ...(doc.typeDocument === 'D1_NOTE_PREPARATOIRE'
             ? [
                 {
@@ -572,6 +570,49 @@ export function DocumentDetailPage() {
                     <NotePreparatoireApercu
                       document={doc}
                       detail={doc.notePreparatoireDetail ?? null}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          // Lot 8.3.D — 2 onglets spécifiques aux PV d'approbation CA (D11).
+          // **Exclusion mutuelle stricte entre les 5 types métier
+          // riches** : un document est soit D1, soit D2, soit D3,
+          // soit D5, soit D11, jamais 2 à la fois. Les 3 autres types
+          // (R3, R5, D12) n'ont aucun onglet métier dédié.
+          ...(doc.typeDocument === 'D11_PV_APPROBATION'
+            ? [
+                {
+                  value: 'pv-approbation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Détails PV
+                      d'approbation
+                    </span>
+                  ),
+                  content: (
+                    <PvApprobationDetailsForm
+                      documentId={doc.id}
+                      canEditer={
+                        actions.isEmetteur && doc.statut === 'BROUILLON'
+                      }
+                      detail={doc.pvApprobationDetail ?? null}
+                      onSaved={() => setRefreshKey((k) => k + 1)}
+                    />
+                  ),
+                },
+                {
+                  value: 'apercu-pv-approbation',
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <ScrollText className="w-3.5 h-3.5" /> Aperçu PV
+                      d'approbation
+                    </span>
+                  ),
+                  content: (
+                    <PvApprobationApercu
+                      document={doc}
+                      detail={doc.pvApprobationDetail ?? null}
                     />
                   ),
                 },

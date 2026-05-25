@@ -14,6 +14,7 @@ import type { LettreCadrageDetail } from './lettre-cadrage';
 import type { LettreMobilisationDetail } from './lettre-mobilisation';
 import type { NoteOrientationDetail } from './note-orientation';
 import type { NotePreparatoireDetail } from './note-preparatoire';
+import type { PvApprobationDetail } from './pv-approbation';
 
 export type StatutDocument =
   | 'BROUILLON'
@@ -108,18 +109,22 @@ export interface DocumentOfficiel {
   /**
    * Lot 8.3.C — détail métier structuré, présent UNIQUEMENT pour les
    * documents de type `D1_NOTE_PREPARATOIRE` (note préparatoire DG
-   * émise AVANT la réunion du Comité en début de cycle budgétaire,
-   * avec en-tête + convocation + participants + exercice + ordre du
-   * jour TipTap + documents pré-lus + points clés + décisions
-   * attendues).
-   *
-   * **Exclusion mutuelle stricte** entre les 4 détails métier
-   * (`lettreCadrageDetail` / `noteOrientationDetail` /
-   * `lettreMobilisationDetail` / `notePreparatoireDetail`) : au plus
-   * UN des 4 est non-null pour un document donné (déterminé par
-   * `typeDocument`).
+   * émise AVANT la réunion du Comité en début de cycle budgétaire).
    */
   notePreparatoireDetail?: NotePreparatoireDetail | null;
+  /**
+   * Lot 8.3.D — détail métier structuré, présent UNIQUEMENT pour les
+   * documents de type `D11_PV_APPROBATION` (PV d'approbation du
+   * Conseil d'Administration, émis APRÈS la signature de D2 — acte
+   * officiel d'approbation budgétaire).
+   *
+   * **Exclusion mutuelle stricte** entre les 5 détails métier
+   * (`lettreCadrageDetail` / `noteOrientationDetail` /
+   * `lettreMobilisationDetail` / `notePreparatoireDetail` /
+   * `pvApprobationDetail`) : au plus UN des 5 est non-null pour un
+   * document donné (déterminé par `typeDocument`).
+   */
+  pvApprobationDetail?: PvApprobationDetail | null;
 }
 
 export interface DocumentHistoriqueEvenement {

@@ -375,9 +375,12 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(screen.getByTestId('tab-apercu')).toBeInTheDocument();
   });
 
-  it('11. Lot 8.2.C : doc type non-D2 → onglets cadrage/apercu MASQUÉS', async () => {
+  it('11. Lot 8.2.C : doc type sans détail métier riche (D12) → AUCUN onglet métier rendu', async () => {
+    // Note : avant Lot 8.3.D ce test utilisait D11_PV_APPROBATION comme
+    // "type sans détail". Depuis le Lot 8.3.D, D11 a son propre détail
+    // métier riche. Bascule sur D12 qui reste sans détail à ce jour.
     mockDetail.mockResolvedValue(
-      makeDoc({ typeDocument: 'D11_PV_APPROBATION' }),
+      makeDoc({ typeDocument: 'D12_LETTRE_OFFICIALISATION' }),
     );
     renderPage();
     await waitFor(() => {
@@ -385,6 +388,22 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     });
     expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-mobilisation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-mobilisation'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-preparatoire')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-preparatoire'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-pv-approbation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-pv-approbation'),
+    ).not.toBeInTheDocument();
   });
 
   it('12. Lot 8.3.A : doc type D3_NOTE_ORIENTATION → onglets "Détails orientation" + "Aperçu note" visibles', async () => {
@@ -398,9 +417,23 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     // Les 2 onglets spécifiques D3 sont rendus
     expect(screen.getByTestId('tab-orientation')).toBeInTheDocument();
     expect(screen.getByTestId('tab-apercu-note')).toBeInTheDocument();
-    // Exclusion mutuelle : les onglets D2 ne sont PAS rendus
+    // Exclusion mutuelle 5 types : onglets D2/D5/D1/D11 absents
     expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-mobilisation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-mobilisation'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-preparatoire')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-preparatoire'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-pv-approbation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-pv-approbation'),
+    ).not.toBeInTheDocument();
   });
 
   it('13. Lot 8.3.B : doc type D5_LETTRE_DG → onglets "Détails mobilisation" + "Aperçu lettre mobilisation" visibles', async () => {
@@ -414,11 +447,21 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(
       screen.getByTestId('tab-apercu-mobilisation'),
     ).toBeInTheDocument();
-    // Exclusion mutuelle stricte : onglets D2 et D3 absents
+    // Exclusion mutuelle 5 types : onglets D2/D3/D1/D11 absents
     expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-preparatoire')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-preparatoire'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-pv-approbation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-pv-approbation'),
+    ).not.toBeInTheDocument();
   });
 
   it('14. Lot 8.3.C : doc type D1_NOTE_PREPARATOIRE → onglets "Détails note préparatoire" + "Aperçu note préparatoire" visibles', async () => {
@@ -434,7 +477,7 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(
       screen.getByTestId('tab-apercu-preparatoire'),
     ).toBeInTheDocument();
-    // Exclusion mutuelle stricte 4 types : onglets D2/D3/D5 absents
+    // Exclusion mutuelle 5 types : onglets D2/D3/D5/D11 absents
     expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
@@ -442,6 +485,40 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(screen.queryByTestId('tab-mobilisation')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('tab-apercu-mobilisation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-pv-approbation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-pv-approbation'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('15. Lot 8.3.D : doc type D11_PV_APPROBATION → onglets "Détails PV d\'approbation" + "Aperçu PV d\'approbation" visibles', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({ typeDocument: 'D11_PV_APPROBATION' }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    // Les 2 onglets spécifiques D11 sont rendus
+    expect(screen.getByTestId('tab-pv-approbation')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('tab-apercu-pv-approbation'),
+    ).toBeInTheDocument();
+    // Exclusion mutuelle 5 types : onglets D2/D3/D5/D1 absents
+    expect(screen.queryByTestId('tab-cadrage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-orientation')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-apercu-note')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-mobilisation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-mobilisation'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-preparatoire')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-apercu-preparatoire'),
     ).not.toBeInTheDocument();
   });
 
