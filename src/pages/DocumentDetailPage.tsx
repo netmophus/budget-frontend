@@ -88,6 +88,8 @@ import {
   detailDocument,
   historiqueDocument,
   soumettreVisa,
+  telechargerBordereauRejet,
+  telechargerBordereauValidation,
   telechargerFichierDocument,
 } from '@/lib/api/documents';
 import { useAuthStore } from '@/lib/auth/auth-store';
@@ -341,6 +343,9 @@ export function DocumentDetailPage() {
           }}
         />
       </div>
+
+      {/* Lot 8.4 — Bordereaux R3/R5 (génération PDF à la volée) */}
+      <BordereauBar doc={doc} />
 
       {/* Cartouche infos */}
       <div className="bg-(--secondary) border border-(--border) rounded-md p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
@@ -729,6 +734,82 @@ export function DocumentDetailPage() {
         titre={doc.titre}
         onSigned={() => setRefreshKey((k) => k + 1)}
       />
+    </div>
+  );
+}
+
+// ─── Bandeau bordereaux R3/R5 — Lot 8.4 ──────────────────────────────
+
+/**
+ * BordereauBar (Lot 8.4) — affiche les boutons de téléchargement des
+ * bordereaux R3 (validation) et R5 (rejet) générés à la volée par le
+ * backend.
+ *
+ * Visibilité conditionnelle :
+ *  - R3 visible si `statut ∈ {VISE, SIGNE}` (le document a recueilli
+ *    tous les visas requis ou est signé).
+ *  - R5 visible si au moins 1 visa du document est `REJETE` (peu
+ *    importe le statut du document — un BROUILLON après rejet peut
+ *    avoir un visa REJETE à archiver).
+ *
+ * Si aucun des 2 n'est applicable → null (pas de barre vide).
+ * Style R5 distinctif rouge pour signaler le rejet.
+ */
+function BordereauBar({ doc }: { doc: DocumentOfficiel }) {
+  const r3Available = doc.statut === 'VISE' || doc.statut === 'SIGNE';
+  const r5Available = (doc.visas ?? []).some((v) => v.statut === 'REJETE');
+  if (!r3Available && !r5Available) return null;
+
+  async function handleDownloadR3() {
+    try {
+      const blob = await telechargerBordereauValidation(doc.id);
+      triggerBlobDownload(
+        blob,
+        `R3-bordereau-validation-${doc.codeDocument}.pdf`,
+      );
+      toast.success(`Bordereau de validation R3 téléchargé.`);
+    } catch (err) {
+      toast.error(extractApiMessage(err) || 'Téléchargement R3 refusé.');
+    }
+  }
+
+  async function handleDownloadR5() {
+    try {
+      const blob = await telechargerBordereauRejet(doc.id);
+      triggerBlobDownload(blob, `R5-bordereau-rejet-${doc.codeDocument}.pdf`);
+      toast.success(`Bordereau de rejet R5 téléchargé.`);
+    } catch (err) {
+      toast.error(extractApiMessage(err) || 'Téléchargement R5 refusé.');
+    }
+  }
+
+  return (
+    <div
+      className="flex gap-2 mb-5 flex-wrap"
+      data-testid="bordereau-bar"
+    >
+      {r3Available && (
+        <Button
+          onClick={() => void handleDownloadR3()}
+          variant="outline"
+          className="h-9 gap-1.5"
+          data-testid="btn-telecharger-bordereau-validation"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Télécharger bordereau de validation (R3)
+        </Button>
+      )}
+      {r5Available && (
+        <Button
+          onClick={() => void handleDownloadR5()}
+          variant="outline"
+          className="h-9 gap-1.5 border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+          data-testid="btn-telecharger-bordereau-rejet"
+        >
+          <XCircle className="w-3.5 h-3.5" />
+          Télécharger bordereau de rejet (R5)
+        </Button>
+      )}
     </div>
   );
 }
