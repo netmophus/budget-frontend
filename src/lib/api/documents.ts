@@ -31,6 +31,10 @@ import type {
   MettreAJourDetailNotePreparatoireDto,
   NotePreparatoireDetail,
 } from '@/types/note-preparatoire';
+import type {
+  MettreAJourDetailPvApprobationDto,
+  PvApprobationDetail,
+} from '@/types/pv-approbation';
 
 export interface CreerDocumentDto {
   codeDocument: string;
@@ -313,6 +317,39 @@ export async function mettreAJourDetailNotePreparatoire(
 ): Promise<NotePreparatoireDetail> {
   const { data } = await apiClient.put<NotePreparatoireDetail>(
     `/documents/${documentId}/note-preparatoire-detail`,
+    dto,
+  );
+  return data;
+}
+
+// ─── Lot 8.3.D — détail métier PV d'approbation CA ──────────────────
+
+/**
+ * Lit le détail métier d'un PV d'approbation CA (identification +
+ * présidence + quorum + ordre du jour TipTap + décisions TipTap +
+ * vote + commentaire président). Retourne `null` si pas encore
+ * renseigné.
+ */
+export async function lireDetailPvApprobation(
+  documentId: string,
+): Promise<PvApprobationDetail | null> {
+  const { data } = await apiClient.get<PvApprobationDetail | null>(
+    `/documents/${documentId}/pv-approbation-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Backend valide pré-requis
+ * métier (type === D11_PV_APPROBATION, statut === BROUILLON,
+ * user === émetteur).
+ */
+export async function mettreAJourDetailPvApprobation(
+  documentId: string,
+  dto: MettreAJourDetailPvApprobationDto,
+): Promise<PvApprobationDetail> {
+  const { data } = await apiClient.put<PvApprobationDetail>(
+    `/documents/${documentId}/pv-approbation-detail`,
     dto,
   );
   return data;
