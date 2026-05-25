@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Plugin Tailwind v4 — Lot 8.3.G : active la classe `prose` utilisée
+ * par les 6 aperçus métier (D1/D2/D3/D5/D11/D12) pour styler le HTML
+ * brut émis par l'éditeur TipTap (gras, listes, titres, blockquote…).
+ * Avant ce Lot, `prose prose-sm max-w-none` ne générait aucun style
+ * — les 5 premiers aperçus maquillaient le bug via des décors (border,
+ * bg, italic), D12 sans décor exposait le défaut. Cf. hotfix 8.3.E. */
+@plugin "@tailwindcss/typography";
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);

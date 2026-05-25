@@ -120,18 +120,26 @@ export function LettreOfficialisationApercu({
             <script>, pas d'attributs on*). Si import HTML externe
             ajouté plus tard, intégrer DOMPurify ici.
 
-            Hotfix bug 2 Lot 8.3.E : `@tailwindcss/typography` n'étant
-            PAS installé dans le projet, la classe `prose` ne stylait
-            ni les <strong> ni les <ul>/<li>/<ol> émis par TipTap.
-            Les 5 autres aperçus maquillaient le problème via décors
-            visuels (border-l-4 + bg-slate-50 + italic). Ici on style
-            manuellement les balises HTML brutes via Tailwind arbitrary
-            variants `[&_X]:...` — fix local, aucune dépendance ajoutée,
-            les 5 autres aperçus restent intacts (à terme : envisager
-            d'installer @tailwindcss/typography pour fix global).
+            Lot 8.3.G volet 2 : retour au `prose` standard maintenant
+            que `@tailwindcss/typography` est installé globalement.
+            Les arbitrary variants `[&_X]:...` du hotfix 8.3.E sont
+            supprimées — pattern cohérent avec les 5 autres aperçus.
+
+            Lot 8.3.G volet 3 : `text-justify hyphens-auto` ajouté pour
+            convention typographique des lettres officielles (texte
+            justifié des deux côtés + césure auto). D1/D3/D11 restent
+            en alignement gauche (notes internes + PV procédural).
+
+            Hotfix 8.3.G : `max-w-none!` (Tailwind v4 important suffix)
+            force l'annulation du `max-width: 65ch` injecté par défaut
+            par `.prose`. Sans `!`, en Tailwind v4 l'ordre d'injection
+            plugin vs utilities n'est pas garanti — le texte restait
+            limité à ~65 caractères de large malgré `max-w-none`. Le
+            wrapper externe (max-w-4xl = 56rem) suffit à borner la
+            largeur globale comme une page A4.
           */}
           <div
-            className="mb-8 text-sm leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-1 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-3 [&_code]:font-mono [&_code]:text-xs [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:rounded"
+            className="mb-8 prose prose-sm max-w-none! text-justify hyphens-auto"
             data-testid="apercu-lod-corps"
             dangerouslySetInnerHTML={{ __html: detail.corpsHtml }}
           />
