@@ -32,6 +32,10 @@ import type {
   NotePreparatoireDetail,
 } from '@/types/note-preparatoire';
 import type {
+  MettreAJourDetailLettreOfficialisationDto,
+  LettreOfficialisationDetail,
+} from '@/types/lettre-officialisation';
+import type {
   MettreAJourDetailPvApprobationDto,
   PvApprobationDetail,
 } from '@/types/pv-approbation';
@@ -350,6 +354,38 @@ export async function mettreAJourDetailPvApprobation(
 ): Promise<PvApprobationDetail> {
   const { data } = await apiClient.put<PvApprobationDetail>(
     `/documents/${documentId}/pv-approbation-detail`,
+    dto,
+  );
+  return data;
+}
+
+// ─── Lot 8.3.E — détail métier Lettre d'officialisation ─────────────
+
+/**
+ * Lit le détail métier d'une Lettre d'officialisation (identification
+ * + destinataires + référence PV CA + corps TipTap + signature +
+ * cachet apposé). Retourne `null` si pas encore renseigné.
+ */
+export async function lireDetailLettreOfficialisation(
+  documentId: string,
+): Promise<LettreOfficialisationDetail | null> {
+  const { data } = await apiClient.get<LettreOfficialisationDetail | null>(
+    `/documents/${documentId}/lettre-officialisation-detail`,
+  );
+  return data;
+}
+
+/**
+ * UPSERT du détail métier (PUT idempotent). Backend valide pré-requis
+ * métier (type === D12_LETTRE_OFFICIALISATION, statut === BROUILLON,
+ * user === émetteur).
+ */
+export async function mettreAJourDetailLettreOfficialisation(
+  documentId: string,
+  dto: MettreAJourDetailLettreOfficialisationDto,
+): Promise<LettreOfficialisationDetail> {
+  const { data } = await apiClient.put<LettreOfficialisationDetail>(
+    `/documents/${documentId}/lettre-officialisation-detail`,
     dto,
   );
   return data;
