@@ -124,9 +124,14 @@ export function LettreOfficialisationApercu({
             que `@tailwindcss/typography` est installé globalement.
             Les arbitrary variants `[&_X]:...` du hotfix 8.3.E sont
             supprimées — pattern cohérent avec les 5 autres aperçus.
+
+            Lot 8.3.G volet 3 : `text-justify hyphens-auto` ajouté pour
+            convention typographique des lettres officielles (texte
+            justifié des deux côtés + césure auto). D1/D3/D11 restent
+            en alignement gauche (notes internes + PV procédural).
           */}
           <div
-            className="mb-8 prose prose-sm max-w-none"
+            className="mb-8 prose prose-sm max-w-none text-justify hyphens-auto"
             data-testid="apercu-lod-corps"
             dangerouslySetInnerHTML={{ __html: detail.corpsHtml }}
           />

@@ -230,9 +230,14 @@ export function LettreMobilisationApercu({
             émet du HTML sécurisé par défaut (whitelist StarterKit, pas
             de <script>, pas d'attributs on*). Si import HTML externe
             ajouté plus tard, intégrer DOMPurify ici.
+
+            Lot 8.3.G volet 3 : `text-justify hyphens-auto` ajouté pour
+            convention typographique des lettres officielles (cohérent
+            D12 LettreOfficialisationApercu). L'italique reste actif
+            car appliqué sur le même container.
           */}
           <div
-            className="mb-6 prose prose-sm max-w-none border-l-4 border-slate-300 pl-4 italic"
+            className="mb-6 prose prose-sm max-w-none border-l-4 border-slate-300 pl-4 italic text-justify hyphens-auto"
             data-testid="apercu-message-dg-html"
             dangerouslySetInnerHTML={{ __html: detail.messageDgHtml }}
           />
