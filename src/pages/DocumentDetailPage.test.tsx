@@ -36,6 +36,8 @@ vi.mock('@/lib/api/documents', () => ({
   detailDocument: vi.fn(),
   historiqueDocument: vi.fn(),
   telechargerFichierDocument: vi.fn(),
+  telechargerBordereauValidation: vi.fn(),
+  telechargerBordereauRejet: vi.fn(),
 }));
 
 const navigate = vi.fn();
@@ -602,5 +604,100 @@ describe('DocumentDetailPage (Lot 8.2.B P2)', () => {
     expect(
       screen.getByTestId('btn-upload-fichier-tab'),
     ).toBeInTheDocument();
+  });
+
+  // ─── Lot 8.4 — Bordereaux R3/R5 (boutons download conditionnels) ─
+
+  it('17. Lot 8.4 R3 : bouton bordereau-validation visible sur statut VISE', async () => {
+    mockDetail.mockResolvedValue(makeDoc({ statut: 'VISE' }));
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId('btn-telecharger-bordereau-validation'),
+    ).toBeInTheDocument();
+    // R5 caché : aucun visa REJETE
+    expect(
+      screen.queryByTestId('btn-telecharger-bordereau-rejet'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('18. Lot 8.4 R3 : bouton bordereau-validation CACHÉ sur statut BROUILLON', async () => {
+    mockDetail.mockResolvedValue(makeDoc({ statut: 'BROUILLON' }));
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId('btn-telecharger-bordereau-validation'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('btn-telecharger-bordereau-rejet'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('19. Lot 8.4 R5 : bouton bordereau-rejet visible si au moins 1 visa REJETE', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({
+        statut: 'BROUILLON',
+        visas: [
+          {
+            id: 'v-rejet-1',
+            fkUserViseur: '21',
+            ordreVisa: 1,
+            estObligatoire: true,
+            libelleFonction: 'DGA Opérations',
+            statut: 'REJETE',
+            dateAction: '2026-05-25T10:00:00Z',
+            commentaire: 'Données incomplètes',
+            user: {
+              id: '21',
+              email: 'dga.ops@bsic.ne',
+              nom: 'OUSMANE',
+              prenom: 'Halima',
+            },
+          },
+        ],
+      }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId('btn-telecharger-bordereau-rejet'),
+    ).toBeInTheDocument();
+    // R3 caché car statut BROUILLON
+    expect(
+      screen.queryByTestId('btn-telecharger-bordereau-validation'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('20. Lot 8.4 R5 : bouton bordereau-rejet CACHÉ si aucun visa REJETE', async () => {
+    mockDetail.mockResolvedValue(
+      makeDoc({
+        statut: 'SOUMIS_VISA',
+        visas: [
+          {
+            id: 'v-ok',
+            fkUserViseur: '21',
+            ordreVisa: 1,
+            estObligatoire: true,
+            libelleFonction: 'DGA Ops',
+            statut: 'EN_ATTENTE',
+            dateAction: null,
+            commentaire: null,
+          },
+        ],
+      }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('LETTRE_CADRAGE_2026')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId('btn-telecharger-bordereau-rejet'),
+    ).not.toBeInTheDocument();
   });
 });

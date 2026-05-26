@@ -200,6 +200,36 @@ export async function telechargerFichierDocument(id: string): Promise<Blob> {
   return data;
 }
 
+// ─── Lot 8.4 — bordereaux R3/R5 (génération PDF à la volée) ─────────
+
+/**
+ * Télécharge le bordereau de validation R3 d'un document métier
+ * (PDF officiel BSIC). Backend valide : 409 si statut document ≠
+ * VISE && ≠ SIGNE, 404 si inexistant.
+ */
+export async function telechargerBordereauValidation(
+  id: string,
+): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(
+    `/documents/${id}/bordereau-validation`,
+    { responseType: 'blob' },
+  );
+  return data;
+}
+
+/**
+ * Télécharge le bordereau de rejet R5 d'un document métier (PDF
+ * officiel BSIC). Backend valide : 409 si aucun visa REJETE sur le
+ * document, 404 si inexistant.
+ */
+export async function telechargerBordereauRejet(id: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(
+    `/documents/${id}/bordereau-rejet`,
+    { responseType: 'blob' },
+  );
+  return data;
+}
+
 // ─── Lot 8.2.C — détail métier Lettre de cadrage ────────────────────
 
 /**
