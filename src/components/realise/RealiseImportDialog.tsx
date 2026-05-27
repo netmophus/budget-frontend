@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/dialog';
 import {
   importerRealise,
+  telechargerTemplateXlsx,
+  triggerXlsxDownload,
   type RapportImportRealise,
 } from '@/lib/api/realise';
 
@@ -97,6 +99,7 @@ export function RealiseImportDialog({
   const [file, setFile] = useState<File | null>(null);
   const [erreurFichier, setErreurFichier] = useState<string | null>(null);
   const [rapport, setRapport] = useState<RapportImportRealise | null>(null);
+  const [telechargementEnCours, setTelechargementEnCours] = useState(false);
 
   function handleClose(): void {
     if (etape === 'progress') return; // pas de fermeture pendant l'import
@@ -121,6 +124,20 @@ export function RealiseImportDialog({
       return;
     }
     setFile(f);
+  }
+
+  async function handleTelechargerTemplate(): Promise<void> {
+    setTelechargementEnCours(true);
+    try {
+      const blob = await telechargerTemplateXlsx();
+      triggerXlsxDownload(blob, 'MIZNAS_Realise_Template.xlsx');
+      toast.success('Template téléchargé.');
+    } catch (err) {
+      const { msg } = parseError(err);
+      toast.error(`Échec du téléchargement : ${msg}`);
+    } finally {
+      setTelechargementEnCours(false);
+    }
   }
 
   async function handleLancerImport(): Promise<void> {
@@ -340,6 +357,18 @@ export function RealiseImportDialog({
         <DialogFooter>
           {etape === 'selection' && (
             <>
+              <Button
+                variant="outline"
+                onClick={() => void handleTelechargerTemplate()}
+                disabled={telechargementEnCours}
+                data-testid="btn-telecharger-template"
+                className="mr-auto"
+              >
+                <Download className="h-4 w-4" />
+                {telechargementEnCours
+                  ? 'Téléchargement…'
+                  : 'Télécharger template'}
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleClose}

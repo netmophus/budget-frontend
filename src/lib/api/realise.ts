@@ -11,6 +11,7 @@
  *  DELETE /realise/:id          suppression (statut=IMPORTE)
  *  POST   /realise/valider      validation en lot
  *  POST   /realise/import       upload multipart
+ *  GET    /realise/template-xlsx téléchargement template XLSX (Lot 8.5.D)
  */
 import { apiClient } from './client';
 
@@ -165,4 +166,33 @@ export async function importerRealise(
     { headers: { 'Content-Type': 'multipart/form-data' } },
   );
   return data;
+}
+
+/**
+ * Télécharge le template XLSX d'import réalisé (Lot 8.5.D). Le
+ * backend stream un workbook 2 onglets (Donnees + Notice) avec
+ * 3 lignes d'exemple plausibles BSIC. Renvoie un Blob exploitable
+ * par `triggerXlsxDownload`.
+ */
+export async function telechargerTemplateXlsx(): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>('/realise/template-xlsx', {
+    responseType: 'blob',
+  });
+  return data;
+}
+
+/**
+ * Déclenche le téléchargement navigateur d'un Blob XLSX. Helper
+ * isolé pour rester testable (les tests Vitest peuvent le mocker
+ * indépendamment de la couche API).
+ */
+export function triggerXlsxDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
