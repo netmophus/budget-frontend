@@ -12,15 +12,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/api/realise', () => ({
   importerRealise: vi.fn(),
+  telechargerTemplateXlsx: vi.fn(),
+  triggerXlsxDownload: vi.fn(),
 }));
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { importerRealise } from '@/lib/api/realise';
+import {
+  importerRealise,
+  telechargerTemplateXlsx,
+  triggerXlsxDownload,
+} from '@/lib/api/realise';
 import { RealiseImportDialog } from './RealiseImportDialog';
 
 const mockImporter = importerRealise as unknown as ReturnType<typeof vi.fn>;
+const mockTelechargerTemplate = telechargerTemplateXlsx as unknown as ReturnType<
+  typeof vi.fn
+>;
+const mockTriggerDownload = triggerXlsxDownload as unknown as ReturnType<
+  typeof vi.fn
+>;
 
 function makeFile(name: string, sizeBytes: number, content = 'header'): File {
   const blob = new Blob([content], { type: 'text/csv' });
@@ -105,6 +117,22 @@ describe('RealiseImportDialog', () => {
     expect(screen.getByTestId('rapport-maj')).toHaveTextContent('2');
     expect(screen.getByTestId('rapport-ignorees')).toHaveTextContent('1');
     expect(screen.getByTestId('rapport-erreurs')).toHaveTextContent('0');
+  });
+
+  it('clic "Télécharger template" (Lot 8.5.D) appelle l\'API puis trigger le download avec nom de fichier fixe', async () => {
+    const fakeBlob = new Blob(['fake xlsx'], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    mockTelechargerTemplate.mockResolvedValue(fakeBlob);
+    renderDialog();
+    fireEvent.click(screen.getByTestId('btn-telecharger-template'));
+    await waitFor(() => {
+      expect(mockTelechargerTemplate).toHaveBeenCalledTimes(1);
+      expect(mockTriggerDownload).toHaveBeenCalledWith(
+        fakeBlob,
+        'MIZNAS_Realise_Template.xlsx',
+      );
+    });
   });
 
   it("tableau erreurs affiché si nbErreurs > 0", async () => {
