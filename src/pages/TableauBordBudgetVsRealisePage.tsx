@@ -29,7 +29,10 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { EcartsBarChartMensuel } from '@/components/tableau-bord/EcartsBarChartMensuel';
+import { EcartsDonutNiveaux } from '@/components/tableau-bord/EcartsDonutNiveaux';
 import { EcartsTable } from '@/components/tableau-bord/EcartsTable';
+import { EcartsTop10Comptes } from '@/components/tableau-bord/EcartsTop10Comptes';
 import { FiltresEcartsForm } from '@/components/tableau-bord/FiltresEcartsForm';
 import { KpiCardsRow } from '@/components/tableau-bord/KpiCardsRow';
 import { Input } from '@/components/ui/input';
@@ -88,6 +91,19 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
       return true;
     });
   }, [ecarts, filtreRapide, rechercheTexte]);
+
+  // Lot 8.5.C — pour le donut, on applique uniquement la recherche
+  // (pas le filtre niveau). Sinon le donut deviendrait mono-couleur et
+  // perdrait son sens (cf. décision actée brief 8.5.C).
+  const lignesFiltreesSansNiveau = useMemo(() => {
+    if (!ecarts) return [];
+    const r = rechercheTexte.trim().toLowerCase();
+    if (!r) return ecarts.lignes;
+    return ecarts.lignes.filter((l) => {
+      const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
+      return target.includes(r);
+    });
+  }, [ecarts, rechercheTexte]);
 
   async function handleExporter(): Promise<void> {
     if (!versionId || !scenarioId) return;
@@ -186,6 +202,17 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
       {ecarts && !loading && (
         <>
           <KpiCardsRow kpi={ecarts.kpi} erreur={!!error} />
+
+          {/* ─── Lot 8.5.C — Graphiques (entre KPI et filtres rapides) ─── */}
+          {!error && (
+            <div className="mb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <EcartsBarChartMensuel lignes={lignesFiltrees} />
+                <EcartsDonutNiveaux lignes={lignesFiltreesSansNiveau} />
+              </div>
+              <EcartsTop10Comptes lignes={lignesFiltrees} />
+            </div>
+          )}
 
           {error ? (
             <p
