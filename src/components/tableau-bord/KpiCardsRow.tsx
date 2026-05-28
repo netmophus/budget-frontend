@@ -22,7 +22,16 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 import { type KpiEcarts } from '@/lib/api/tableau-bord';
+import { COULEURS_NIVEAU } from '@/lib/colors/niveaux-alerte';
 import { cn } from '@/lib/utils';
+
+// Lot 8.5.C — alias locaux pour préserver la lisibilité des couleurs
+// non-niveau (favorable/défavorable + accent bleu nuit) qui ne sont
+// pas dans COULEURS_NIVEAU. La couleur défavorable = couleur CRITIQUE,
+// la couleur favorable = couleur NORMAL (cohérence métier MIZNAS).
+const COULEUR_ACCENT = '#0C447C'; // --miznas-bleu-nuit, KPI valeur principale
+const COULEUR_DEFAVORABLE = COULEURS_NIVEAU.CRITIQUE;
+const COULEUR_FAVORABLE = COULEURS_NIVEAU.NORMAL;
 
 interface Props {
   kpi: KpiEcarts;
@@ -52,21 +61,21 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
     >
       <KpiAlertShell
         label="Lignes avec écart"
-        dotHex="#5F6B7A"
-        valueColorHex={erreur ? undefined : '#0C447C'}
+        dotHex={COULEURS_NIVEAU.MANQUANT}
+        valueColorHex={erreur ? undefined : COULEUR_ACCENT}
       >
         <span data-testid="kpi-total">{nbTotal}</span>
       </KpiAlertShell>
 
       <KpiAlertShell
         label="≥ Seuil critique"
-        dotHex="#DC2626"
+        dotHex={COULEURS_NIVEAU.CRITIQUE}
         valueColorHex={
           erreur
             ? undefined
             : kpi.nbEcartsCritique > 0
-              ? '#DC2626'
-              : '#0C447C'
+              ? COULEURS_NIVEAU.CRITIQUE
+              : COULEUR_ACCENT
         }
       >
         <span data-testid="kpi-critique">{nbCritique}</span>
@@ -74,13 +83,13 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
 
       <KpiAlertShell
         label="≥ Seuil attention"
-        dotHex="#BA7517"
+        dotHex={COULEURS_NIVEAU.ATTENTION}
         valueColorHex={
           erreur
             ? undefined
             : kpi.nbEcartsAttention > 0
-              ? '#BA7517'
-              : '#0C447C'
+              ? COULEURS_NIVEAU.ATTENTION
+              : COULEUR_ACCENT
         }
       >
         <span data-testid="kpi-attention">{nbAttention}</span>
@@ -96,7 +105,7 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
         <div className="flex items-center gap-1.5 mb-1">
           <span
             className="w-[7px] h-[7px] rounded-full"
-            style={{ backgroundColor: '#0C447C' }}
+            style={{ backgroundColor: COULEUR_ACCENT }}
             aria-hidden="true"
           />
           <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider">
@@ -106,7 +115,7 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
         <div className="flex items-baseline gap-1.5 mb-1.5">
           <span
             className="text-[22px] font-medium tabular-nums leading-none font-mono whitespace-nowrap"
-            style={{ color: erreur ? undefined : '#0C447C' }}
+            style={{ color: erreur ? undefined : COULEUR_ACCENT }}
             data-testid="kpi-total-abs"
           >
             {totalAbs}
@@ -117,11 +126,11 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
           <span className="inline-flex items-center gap-0.5">
             <ArrowDownRight
               className="w-2.5 h-2.5"
-              style={{ color: '#DC2626' }}
+              style={{ color: COULEUR_DEFAVORABLE }}
             />
             <span
               className="font-medium"
-              style={{ color: erreur ? undefined : '#DC2626' }}
+              style={{ color: erreur ? undefined : COULEUR_DEFAVORABLE }}
             >
               défavorable : {defav}
             </span>
@@ -129,11 +138,11 @@ export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
           <span className="inline-flex items-center gap-0.5">
             <ArrowUpRight
               className="w-2.5 h-2.5"
-              style={{ color: '#0F6E56' }}
+              style={{ color: COULEUR_FAVORABLE }}
             />
             <span
               className="font-medium"
-              style={{ color: erreur ? undefined : '#0F6E56' }}
+              style={{ color: erreur ? undefined : COULEUR_FAVORABLE }}
             >
               favorable : {fav}
             </span>
