@@ -35,6 +35,12 @@ import { EcartsTable } from '@/components/tableau-bord/EcartsTable';
 import { EcartsTop10Comptes } from '@/components/tableau-bord/EcartsTop10Comptes';
 import { FiltresEcartsForm } from '@/components/tableau-bord/FiltresEcartsForm';
 import { KpiCardsRow } from '@/components/tableau-bord/KpiCardsRow';
+import { MiznasAiAnalysePanel } from '@/components/tableau-bord/MiznasAiAnalysePanel';
+import {
+  AiAnalyseError,
+  demanderAnalyseAi,
+  type AnalyseAiResponse,
+} from '@/lib/api/ai-analyse';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -70,6 +76,11 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
   } = useTableauBordStore();
 
   const [exporting, setExporting] = useState(false);
+  // Lot 8.6.A — état du panneau MIZNAS AI (volatile, useState local,
+  // PAS dans le store Zustand car non persisté entre sessions).
+  const [analyseAi, setAnalyseAi] = useState<AnalyseAiResponse | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [errorAi, setErrorAi] = useState<string | null>(null);
 
   useEffect(() => {
     if (versionId && scenarioId && !ecarts) {
@@ -104,6 +115,39 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
       return target.includes(r);
     });
   }, [ecarts, rechercheTexte]);
+
+  async function lancerAnalyseAi(): Promise<void> {
+    if (!versionId || !scenarioId) return;
+    setLoadingAi(true);
+    setErrorAi(null);
+    try {
+      const res = await demanderAnalyseAi({
+        versionId,
+        scenarioId,
+        crIds: crIds.length > 0 ? crIds : undefined,
+        moisDebut,
+        moisFin,
+        seuilEcartPctAttention,
+        seuilEcartPctCritique,
+      });
+      setAnalyseAi(res);
+    } catch (err) {
+      const msg =
+        err instanceof AiAnalyseError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Erreur inconnue';
+      setErrorAi(msg);
+    } finally {
+      setLoadingAi(false);
+    }
+  }
+
+  function fermerAnalyseAi(): void {
+    setAnalyseAi(null);
+    setErrorAi(null);
+  }
 
   async function handleExporter(): Promise<void> {
     if (!versionId || !scenarioId) return;
@@ -157,6 +201,9 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
         onAnalyser={() => void analyser()}
         onExporter={() => void handleExporter()}
         loading={loading || exporting}
+        onAnalyseAiClick={() => void lancerAnalyseAi()}
+        loadingAi={loadingAi}
+        hasEcarts={!!ecarts}
       />
 
       {loading && (
@@ -212,6 +259,19 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
               </div>
               <EcartsTop10Comptes lignes={lignesFiltrees} />
             </div>
+          )}
+
+          {/* ─── Lot 8.6.A — Panneau MIZNAS AI (entre graphes et filtres
+              rapides). Affiché uniquement quand l'utilisateur a déclenché
+              une analyse (loading / error / success). ─── */}
+          {!error && (analyseAi !== null || loadingAi || errorAi !== null) && (
+            <MiznasAiAnalysePanel
+              analyse={analyseAi}
+              loading={loadingAi}
+              error={errorAi}
+              onFermer={fermerAnalyseAi}
+              onRetry={() => void lancerAnalyseAi()}
+            />
           )}
 
           {error ? (

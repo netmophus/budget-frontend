@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Play,
+  Sparkles,
   Target,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -47,12 +48,22 @@ interface Props {
   onAnalyser: () => void;
   onExporter: () => void;
   loading: boolean;
+  // Lot 8.6.A — bouton « ✨ Analyser avec MIZNAS AI ». Le caller
+  // fournit le handler + indique si une analyse est en cours +
+  // si des écarts existent déjà (le bouton n'a de sens que si
+  // l'utilisateur a déjà lancé une analyse classique).
+  onAnalyseAiClick: () => void;
+  loadingAi: boolean;
+  hasEcarts: boolean;
 }
 
 export function FiltresEcartsForm({
   onAnalyser,
   onExporter,
   loading,
+  onAnalyseAiClick,
+  loadingAi,
+  hasEcarts,
 }: Props): JSX.Element {
   const {
     versionId,
@@ -290,7 +301,7 @@ export function FiltresEcartsForm({
               className="h-9 bg-white text-base font-medium tabular-nums"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               onClick={onExporter}
@@ -309,6 +320,24 @@ export function FiltresEcartsForm({
             >
               <Play className="w-3.5 h-3.5" />
               Analyser
+            </Button>
+            {/* Lot 8.6.A — 3e bouton MIZNAS AI. Désactivé si aucun
+                écart chargé (l'utilisateur doit avoir cliqué
+                « Analyser » classique d'abord). Couleur violet
+                catégorie REALISE (--miznas-cat-realise #5B4E91). */}
+            <Button
+              onClick={onAnalyseAiClick}
+              disabled={loading || loadingAi || !hasEcarts}
+              data-testid="btn-analyser-ai"
+              title={
+                hasEcarts
+                  ? undefined
+                  : "Lancez d'abord une analyse classique pour activer MIZNAS AI."
+              }
+              className="h-9 px-4 bg-(--miznas-cat-realise) hover:bg-(--miznas-cat-realise)/90 text-white gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {loadingAi ? 'Analyse en cours…' : 'Analyser avec MIZNAS AI'}
             </Button>
           </div>
         </div>
