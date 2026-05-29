@@ -32,6 +32,7 @@ import {
   triggerXlsxDownload,
   type RapportImportRealise,
 } from '@/lib/api/realise';
+import { COULEURS_NIVEAU } from '@/lib/colors/niveaux-alerte';
 
 interface Props {
   isOpen: boolean;
@@ -252,7 +253,7 @@ export function RealiseImportDialog({
 
         {etape === 'rapport' && rapport && (
           <div className="space-y-3" data-testid="zone-rapport">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div
                 className="rounded-md bg-green-100 text-green-800 p-3 text-center"
                 data-testid="rapport-creees"
@@ -270,6 +271,23 @@ export function RealiseImportDialog({
                   {rapport.nbLignesMisesAJour}
                 </div>
                 <div className="text-xs">Mises à jour</div>
+              </div>
+              {/* Lot 8.5.G — 5e card amber : warning « sans budget ».
+                  Couleur MIZNAS Charte (COULEURS_NIVEAU.ATTENTION
+                  #BA7517) avec fond ambre clair (8% alpha) cohérent
+                  avec le pattern KpiCardsRow / EcartsDonutNiveaux. */}
+              <div
+                className="rounded-md p-3 text-center"
+                style={{
+                  backgroundColor: `${COULEURS_NIVEAU.ATTENTION}14`,
+                  color: COULEURS_NIVEAU.ATTENTION,
+                }}
+                data-testid="rapport-sans-budget"
+              >
+                <div className="text-2xl font-bold">
+                  {rapport.nbLignesSansBudget}
+                </div>
+                <div className="text-xs">Sans budget</div>
               </div>
               <div
                 className="rounded-md bg-amber-100 text-amber-800 p-3 text-center"
@@ -338,6 +356,51 @@ export function RealiseImportDialog({
                     </thead>
                     <tbody>
                       {rapport.lignesIgnorees.slice(0, 50).map((e, i) => (
+                        <tr
+                          key={i}
+                          className="border-b border-(--border)/50"
+                        >
+                          <td className="p-1">{e.ligne}</td>
+                          <td className="p-1">{e.raison}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Lot 8.5.G — tableau warnings « lignes sans budget ».
+                Style amber MIZNAS distinct du gris (ignorées) et du
+                rouge (erreurs) pour rappeler la couleur de la card. */}
+            {rapport.nbLignesSansBudget > 0 && (
+              <div data-testid="zone-sans-budget">
+                <h4
+                  className="text-sm font-semibold mt-3 mb-1"
+                  style={{ color: COULEURS_NIVEAU.ATTENTION }}
+                >
+                  Lignes sans budget correspondant ({rapport.nbLignesSansBudget})
+                </h4>
+                <div
+                  className="max-h-32 overflow-y-auto rounded-md text-xs border"
+                  style={{
+                    borderColor: `${COULEURS_NIVEAU.ATTENTION}33`,
+                  }}
+                >
+                  <table className="w-full">
+                    <thead
+                      className="text-(--muted-foreground)"
+                      style={{
+                        backgroundColor: `${COULEURS_NIVEAU.ATTENTION}0D`,
+                      }}
+                    >
+                      <tr>
+                        <th className="text-left p-1">N° ligne</th>
+                        <th className="text-left p-1">Raison</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rapport.lignesSansBudget.slice(0, 50).map((e, i) => (
                         <tr
                           key={i}
                           className="border-b border-(--border)/50"
