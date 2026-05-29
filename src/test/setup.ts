@@ -33,3 +33,21 @@ if (
 ) {
   HTMLElement.prototype.releasePointerCapture = (): void => {};
 }
+
+// jsdom n'implémente pas ResizeObserver. Sans ce polyfill, recharts 2.x
+// `<ResponsiveContainer>` plante à l'instanciation avec
+// `ReferenceError: ResizeObserver is not defined`
+// (cf. recharts/lib/component/ResponsiveContainer.js). Pattern documenté
+// par l'écosystème recharts + jsdom — hotfix Lot 8.5.C / fix-recharts-2x.
+if (
+  typeof globalThis !== 'undefined' &&
+  !(globalThis as { ResizeObserver?: unknown }).ResizeObserver
+) {
+  class ResizeObserverStub {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver =
+    ResizeObserverStub;
+}
