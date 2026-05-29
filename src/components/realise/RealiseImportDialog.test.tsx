@@ -95,7 +95,7 @@ describe('RealiseImportDialog', () => {
     expect(screen.getByTestId('btn-lancer-import')).not.toBeDisabled();
   });
 
-  it("rapport affiche les 4 compteurs après import", async () => {
+  it("rapport affiche les 5 compteurs après import (Créées/MAJ/Sans budget/Ignorées/Erreurs)", async () => {
     mockImporter.mockResolvedValue({
       nbLignesTraitees: 10,
       nbLignesCreees: 7,
@@ -104,6 +104,10 @@ describe('RealiseImportDialog', () => {
       nbErreurs: 0,
       erreurs: [],
       lignesIgnorees: [{ ligne: 5, raison: 'Hors périmètre' }],
+      // Lot 8.5.G — warning compteur 5e card (à 0 ici, card affichée
+      // quand même mais sans tableau warning).
+      nbLignesSansBudget: 0,
+      lignesSansBudget: [],
     });
     renderDialog();
     fireEvent.change(screen.getByTestId('input-file'), {
@@ -115,8 +119,11 @@ describe('RealiseImportDialog', () => {
     );
     expect(screen.getByTestId('rapport-creees')).toHaveTextContent('7');
     expect(screen.getByTestId('rapport-maj')).toHaveTextContent('2');
+    expect(screen.getByTestId('rapport-sans-budget')).toHaveTextContent('0');
     expect(screen.getByTestId('rapport-ignorees')).toHaveTextContent('1');
     expect(screen.getByTestId('rapport-erreurs')).toHaveTextContent('0');
+    // Pas de tableau warnings quand nbLignesSansBudget === 0
+    expect(screen.queryByTestId('zone-sans-budget')).not.toBeInTheDocument();
   });
 
   it('clic "Télécharger template" (Lot 8.5.D) appelle l\'API puis trigger le download avec nom de fichier fixe', async () => {
@@ -147,6 +154,8 @@ describe('RealiseImportDialog', () => {
         { ligne: 4, message: 'Mois mal formé' },
       ],
       lignesIgnorees: [],
+      nbLignesSansBudget: 0,
+      lignesSansBudget: [],
     });
     renderDialog();
     fireEvent.change(screen.getByTestId('input-file'), {
@@ -156,5 +165,49 @@ describe('RealiseImportDialog', () => {
     await waitFor(() => screen.getByTestId('zone-erreurs'));
     expect(screen.getByText('Code CR inconnu')).toBeInTheDocument();
     expect(screen.getByText('Mois mal formé')).toBeInTheDocument();
+  });
+
+  it("Lot 8.5.G — card amber 'Sans budget' + tableau warnings visibles si nbLignesSansBudget > 0", async () => {
+    mockImporter.mockResolvedValue({
+      nbLignesTraitees: 3,
+      nbLignesCreees: 3,
+      nbLignesMisesAJour: 0,
+      nbLignesIgnorees: 0,
+      nbErreurs: 0,
+      erreurs: [],
+      lignesIgnorees: [],
+      nbLignesSansBudget: 2,
+      lignesSansBudget: [
+        {
+          ligne: 2,
+          raison:
+            'Combinaison compte=641000 / CR=CR_DARH / ligne_metier=CHANGE / mois=2026-08 absente de fait_budget.',
+        },
+        {
+          ligne: 4,
+          raison:
+            'Combinaison compte=999999 / CR=CR_FINANCE / ligne_metier=CHANGE / mois=2026-08 absente de fait_budget.',
+        },
+      ],
+    });
+    renderDialog();
+    fireEvent.change(screen.getByTestId('input-file'), {
+      target: { files: [makeFile('realise.csv', 1024)] },
+    });
+    fireEvent.click(screen.getByTestId('btn-lancer-import'));
+    await waitFor(() => screen.getByTestId('zone-sans-budget'));
+
+    // Card 5e compteur affichée avec la valeur
+    expect(screen.getByTestId('rapport-sans-budget')).toHaveTextContent('2');
+    // Tableau warnings affiché avec les 2 lignes
+    expect(
+      screen.getByText(/Lignes sans budget correspondant/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/compte=641000.*absente de fait_budget/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/compte=999999.*absente de fait_budget/),
+    ).toBeInTheDocument();
   });
 });

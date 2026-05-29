@@ -75,6 +75,12 @@ export interface RapportImportRealise {
   nbErreurs: number;
   erreurs: Array<{ ligne: number; message: string }>;
   lignesIgnorees: Array<{ ligne: number; raison: string }>;
+  // Lot 8.5.G — warning « ligne réalisé sans budget correspondant »
+  // (combinaison compte/CR/ligne_metier/devise/mois absente de
+  // fait_budget). La ligne EST créée dans fait_realise (warning ≠
+  // erreur) — apparaîtra niveau MANQUANT au dashboard.
+  nbLignesSansBudget: number;
+  lignesSansBudget: Array<{ ligne: number; raison: string }>;
 }
 
 export const STATUT_LABEL: Record<StatutFaitRealise, string> = {
