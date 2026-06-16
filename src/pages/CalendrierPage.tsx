@@ -20,10 +20,19 @@
  * statut tripartite OUVRE / FERIE / WEEKEND est calculé côté UI à
  * partir du jour de la semaine (samedi/dimanche en UTC).
  */
-import { Calendar, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
+import {
+  Calendar,
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { EtendreCalendrierDialog } from '@/components/referentiels/EtendreCalendrierDialog';
+import { JourFormDrawer } from '@/components/referentiels/JourFormDrawer';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -32,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { listJoursTemps, type JourTemps } from '@/lib/api/referentiels';
+import { useHasPermission } from '@/lib/auth/permissions';
 import { cn } from '@/lib/utils';
 
 const JOURS_SEMAINE_FR = [
@@ -92,10 +102,17 @@ const ANNEE_MIN = ANNEES[0]!;
 const ANNEE_MAX = ANNEES[ANNEES.length - 1]!;
 
 export function CalendrierPage() {
+  const canEdit = useHasPermission('REFERENTIEL.GERER');
   const [annee, setAnnee] = useState<number>(ANNEE_COURANTE);
   const [mois, setMois] = useState<number>(new Date().getUTCMonth() + 1);
   const [data, setData] = useState<JourTemps[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Lot 8.7.A — édition / extension (ADMIN). refreshKey force le rechargement
+  // de la liste après une mutation (la page n'utilise pas react-query).
+  const [selectedJour, setSelectedJour] = useState<JourTemps | null>(null);
+  const [extendDialogOpen, setExtendDialogOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -107,7 +124,7 @@ export function CalendrierPage() {
         toast.error('Impossible de charger le calendrier');
       })
       .finally(() => setLoading(false));
-  }, [annee, mois]);
+  }, [annee, mois, refreshKey]);
 
   // Navigation mois (avec rollover année). On reste dans la fenêtre
   // [ANNEE_MIN, ANNEE_MAX] des 10 ans glissants exposés.
@@ -160,22 +177,35 @@ export function CalendrierPage() {
   return (
     <div className="space-y-0">
       {/* ─── Header custom ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <div
-          style={{ backgroundColor: '#5F6B7A1A' }}
-          className="w-10 h-10 rounded-md flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <Calendar className="w-5 h-5" style={{ color: '#5F6B7A' }} />
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div
+            style={{ backgroundColor: '#5F6B7A1A' }}
+            className="w-10 h-10 rounded-md flex items-center justify-center"
+            aria-hidden="true"
+          >
+            <Calendar className="w-5 h-5" style={{ color: '#5F6B7A' }} />
+          </div>
+          <div>
+            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+              Calendrier
+            </h3>
+            <p className="text-xs text-(--muted-foreground) mt-0.5">
+              Référentiel temporel régional UEMOA — 10 ans glissants
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-[19px] font-semibold tracking-tight m-0">
-            Calendrier
-          </h3>
-          <p className="text-xs text-(--muted-foreground) mt-0.5">
-            Référentiel temporel régional UEMOA — 10 ans glissants
-          </p>
-        </div>
+
+        {canEdit && (
+          <Button
+            onClick={() => setExtendDialogOpen(true)}
+            data-testid="calendrier-btn-etendre"
+            className="h-9 px-3.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
+          >
+            <CalendarPlus className="w-3.5 h-3.5" />
+            Étendre le calendrier
+          </Button>
+        )}
       </div>
 
       {/* ─── Barre de navigation mois ───────────────────────────── */}
@@ -320,17 +350,15 @@ export function CalendrierPage() {
             const statut = statutJour(row);
             const isFin =
               row.estFinDeMois || row.estFinDeTrimestre || row.estFinDAnnee;
-            return (
-              <div
-                key={row.id}
-                data-testid={`calendrier-row-${row.date}`}
-                className={cn(
-                  'grid grid-cols-[110px_130px_130px_130px_80px_80px] px-4 py-3 tabular-nums border-b border-(--border) last:border-b-0',
-                  isFin && 'bg-(--miznas-ambre)/5',
-                  statut === 'FERIE' && !isFin && 'bg-(--destructive)/[0.02]',
-                  statut === 'WEEKEND' && !isFin && 'bg-(--muted)/30',
-                )}
-              >
+            const rowClass = cn(
+              'grid grid-cols-[110px_130px_130px_130px_80px_80px] px-4 py-3 tabular-nums border-b border-(--border) last:border-b-0 items-center',
+              isFin && 'bg-(--miznas-ambre)/5',
+              statut === 'FERIE' && !isFin && 'bg-(--destructive)/[0.02]',
+              statut === 'WEEKEND' && !isFin && 'bg-(--muted)/30',
+              canEdit && 'cursor-pointer text-left w-full hover:bg-(--muted)/40',
+            );
+            const content = (
+              <>
                 <div className="text-[13px]">{formatDateFr(row.date)}</div>
                 <div className="text-[13px] text-(--muted-foreground)">
                   {jourSemaineFr(row.date)}
@@ -353,10 +381,48 @@ export function CalendrierPage() {
                 <div className="text-[13px] text-(--muted-foreground)">
                   {row.semaineIso ?? '—'}
                 </div>
+              </>
+            );
+            return canEdit ? (
+              <button
+                key={row.id}
+                type="button"
+                data-testid={`calendrier-row-${row.date}`}
+                onClick={() => setSelectedJour(row)}
+                className={rowClass}
+              >
+                {content}
+              </button>
+            ) : (
+              <div
+                key={row.id}
+                data-testid={`calendrier-row-${row.date}`}
+                className={rowClass}
+              >
+                {content}
               </div>
             );
           })}
       </div>
+
+      {/* ─── Lot 8.7.A — édition / extension (ADMIN) ─────────────── */}
+      <JourFormDrawer
+        jour={selectedJour}
+        onClose={() => setSelectedJour(null)}
+        onSaved={() => {
+          setSelectedJour(null);
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+      <EtendreCalendrierDialog
+        open={extendDialogOpen}
+        onClose={() => setExtendDialogOpen(false)}
+        onExtended={() => {
+          setExtendDialogOpen(false);
+          setRefreshKey((k) => k + 1);
+        }}
+        defaultAnneeDebut={ANNEE_MAX + 1}
+      />
     </div>
   );
 }
