@@ -1,8 +1,8 @@
 /**
  * ComptesPage (Lot 2.5E + Lot 7.3 V12 refonte Charte v1).
  *
- * Plan Comptable Bancaire UMOA — référentiel hiérarchique 4 niveaux
- * (SCD2 + classes 1 à 9).
+ * Plan Comptable Bancaire UMOA — référentiel hiérarchique conforme PCB
+ * UMOA Révisé BCEAO (jusqu'à 6 niveaux, SCD2 + classes 1 à 9).
  *
  * Refonte V12 :
  *  - Header custom : cercle Calculator catégorie config (gris ardoise)
@@ -65,7 +65,7 @@ import { cn } from '@/lib/utils';
 const ALL_NIVEAUX = '__all__';
 const DEFAULT_LIMIT = 50;
 const PAGE_SIZES = [20, 50, 100];
-const NIVEAUX = [1, 2, 3, 4];
+const NIVEAUX = [1, 2, 3, 4, 5, 6];
 
 function formatDateFr(iso: string): string {
   const [y, m, d] = iso.split('T')[0]!.split('-');
@@ -245,7 +245,7 @@ export function ComptesPage() {
             </h3>
             <p className="text-xs text-(--muted-foreground) mt-0.5">
               Plan Comptable Bancaire UMOA — référentiel hiérarchique
-              4 niveaux (SCD2)
+              conforme PCB UMOA Révisé BCEAO (jusqu'à 6 niveaux, SCD2)
             </p>
           </div>
         </div>
@@ -416,7 +416,7 @@ export function ComptesPage() {
               type="button"
               onClick={() => setSelected(compte)}
               data-testid={`compte-row-${compte.id}`}
-              style={{ paddingLeft: `${16 + (compte.niveau - 1) * 16}px` }}
+              style={{ paddingLeft: `${16 + (compte.niveau - 1) * 12}px` }}
               className="w-full text-left grid grid-cols-[80px_1fr_60px_50px_50px_60px_50px_110px_90px] pr-4 py-2.5 items-center border-b border-(--border) last:border-b-0 hover:bg-(--muted)/30 transition-colors tabular-nums"
             >
               <div
