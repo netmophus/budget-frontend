@@ -14,9 +14,19 @@ vi.mock('sonner', () => ({
 }));
 
 import { listJoursTemps, type JourTemps } from '@/lib/api/referentiels';
+import { useAuthStore } from '@/lib/auth/auth-store';
+import type { EffectivePermission } from '@/lib/api/types';
 import { CalendrierPage } from './CalendrierPage';
 
 const mockListJoursTemps = listJoursTemps as unknown as ReturnType<typeof vi.fn>;
+
+function setPermissions(codes: string[]): void {
+  useAuthStore.setState({
+    permissions: codes.map(
+      (c) => ({ code_permission: c }) as EffectivePermission,
+    ),
+  });
+}
 
 const SAMPLE: JourTemps[] = [
   {
@@ -33,6 +43,7 @@ const SAMPLE: JourTemps[] = [
     estFinDAnnee: false,
     exerciceFiscal: 2026,
     libelleMois: 'Mai 2026',
+    libelleJour: null,
   },
   {
     id: '2',
@@ -48,6 +59,7 @@ const SAMPLE: JourTemps[] = [
     estFinDAnnee: false,
     exerciceFiscal: 2026,
     libelleMois: 'Janv. 2026',
+    libelleJour: null,
   },
   {
     id: '3',
@@ -63,12 +75,15 @@ const SAMPLE: JourTemps[] = [
     estFinDAnnee: false,
     exerciceFiscal: 2026,
     libelleMois: 'Mai 2026',
+    libelleJour: null,
   },
 ];
 
 describe('CalendrierPage', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    // Réinitialise les permissions pour ne pas polluer les autres tests.
+    setPermissions([]);
   });
 
   it('mounts and renders the days returned by listJoursTemps', async () => {
@@ -179,5 +194,49 @@ describe('CalendrierPage', () => {
     expect(badge.textContent).toBe('Ouvré');
     // Dot SVG-less : un <span> avec rounded-full + bg
     expect(badge.querySelector('span')).not.toBeNull();
+  });
+
+  // ─── Lot 8.7.A — édition / extension (gating REFERENTIEL.GERER) ──
+
+  it('avec REFERENTIEL.GERER : bouton Étendre visible + clic ligne ouvre le drawer', async () => {
+    setPermissions(['REFERENTIEL.GERER']);
+    mockListJoursTemps.mockResolvedValue({
+      items: SAMPLE,
+      total: SAMPLE.length,
+      page: 1,
+      limit: 366,
+    });
+    render(<CalendrierPage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('calendrier-btn-etendre'),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId('calendrier-row-2026-05-01'));
+    await waitFor(() =>
+      expect(screen.getByTestId('jour-form-dialog')).toBeInTheDocument(),
+    );
+  });
+
+  it('sans permission : bouton Étendre absent et ligne non cliquable', async () => {
+    setPermissions([]);
+    mockListJoursTemps.mockResolvedValue({
+      items: SAMPLE,
+      total: SAMPLE.length,
+      page: 1,
+      limit: 366,
+    });
+    render(<CalendrierPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('01/05/2026')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('calendrier-btn-etendre')).toBeNull();
+
+    // La ligne est un <div> non interactif : un clic n'ouvre aucun drawer.
+    fireEvent.click(screen.getByTestId('calendrier-row-2026-05-01'));
+    expect(screen.queryByTestId('jour-form-dialog')).toBeNull();
   });
 });

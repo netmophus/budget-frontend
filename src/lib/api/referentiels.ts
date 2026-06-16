@@ -15,6 +15,17 @@ export interface JourTemps {
   estFinDAnnee: boolean;
   exerciceFiscal: number;
   libelleMois: string;
+  // Lot 8.7.A — libellé éditable d'un jour férié (nullable).
+  libelleJour: string | null;
+}
+
+/** Lot 8.7.A — champs éditables d'un jour (PATCH). Tous optionnels. */
+export interface JourTempsForm {
+  jourOuvre?: boolean;
+  estFinDeMois?: boolean;
+  estFinDeTrimestre?: boolean;
+  estFinDAnnee?: boolean;
+  libelleJour?: string | null;
 }
 
 export interface Devise {
@@ -55,6 +66,37 @@ export async function getJourByDate(date: string): Promise<JourTemps> {
   const { data } = await apiClient.get<JourTemps>(
     `/referentiels/temps/par-date/${date}`,
   );
+  return data;
+}
+
+/**
+ * Lot 8.7.A — édition d'un jour du calendrier (ADMIN, REFERENTIEL.GERER).
+ * 403 si permission insuffisante, 404 si jour introuvable.
+ */
+export async function updateJourTemps(
+  id: string,
+  payload: JourTempsForm,
+): Promise<JourTemps> {
+  const { data } = await apiClient.patch<JourTemps>(
+    `/referentiels/temps/${id}`,
+    payload,
+  );
+  return data;
+}
+
+/**
+ * Lot 8.7.A — extension du calendrier sur une plage d'années (idempotent).
+ * 400 si anneeFin < anneeDebut.
+ */
+export async function etendreCalendrier(payload: {
+  anneeDebut: number;
+  anneeFin: number;
+  exerciceFiscal?: number;
+}): Promise<{ nbJoursAjoutes: number; message: string }> {
+  const { data } = await apiClient.post<{
+    nbJoursAjoutes: number;
+    message: string;
+  }>('/referentiels/temps/etendre', payload);
   return data;
 }
 
