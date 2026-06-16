@@ -125,6 +125,30 @@ describe('ComptesPage', () => {
     expect(screen.getByText('Salaires bruts')).toBeInTheDocument();
   });
 
+  it('affiche un compte niveau 6 avec indentation conforme (Lot 8.8)', async () => {
+    const deep: Compte = {
+      ...SAMPLE[1]!,
+      id: '3',
+      codeCompte: '611110',
+      libelle: 'Compte niveau 6',
+      niveau: 6,
+    };
+    mockList.mockResolvedValue({
+      items: [SAMPLE[0]!, deep],
+      total: 2,
+      page: 1,
+      limit: 50,
+    });
+    render(<ComptesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Compte niveau 6')).toBeInTheDocument();
+    });
+    // Indentation Lot 8.8 : 16 + (niveau-1)*12 = 16 + 60 = 76px
+    const row = screen.getByTestId('compte-row-3');
+    expect(row.style.paddingLeft).toBe('76px');
+  });
+
   it('initial mount calls listComptes', async () => {
     mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 50 });
     render(<ComptesPage />);

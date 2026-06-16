@@ -61,7 +61,7 @@ import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
 import { cn } from '@/lib/utils';
 
 const NONE = '__none__';
-const NIVEAU_MAX = 4;
+const NIVEAU_MAX = 6;
 
 interface FormState extends Record<string, unknown> {
   codeCompte: string;
@@ -482,14 +482,14 @@ export function CompteFormDrawer({
                 Niveau <span className="text-(--destructive)">*</span>
               </Label>
               <div
-                className="grid grid-cols-4 gap-2 mt-1.5"
+                className="grid grid-cols-6 gap-2 mt-1.5"
                 role="radiogroup"
                 aria-label="Niveau"
               >
-                {[1, 2, 3, 4].map((n) => (
+                {[1, 2, 3, 4, 5, 6].map((n) => (
                   <NiveauTile
                     key={n}
-                    n={n as 1 | 2 | 3 | 4}
+                    n={n as 1 | 2 | 3 | 4 | 5 | 6}
                     selected={form.niveau === n}
                     onSelect={() => setForm({ ...form, niveau: n })}
                     disabled={submitting}
@@ -506,7 +506,8 @@ export function CompteFormDrawer({
                 />
               </div>
               <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
-                1 = racine de classe, 4 = feuille saisissable.
+                1 = racine de classe, 6 = compte feuille analytique le plus
+                détaillé selon PCB UMOA Révisé BCEAO.
               </p>
             </div>
           </div>
@@ -730,7 +731,7 @@ export function CompteFormDrawer({
 // ─── Sous-composants ─────────────────────────────────────────────
 
 interface NiveauTileProps {
-  n: 1 | 2 | 3 | 4;
+  n: 1 | 2 | 3 | 4 | 5 | 6;
   selected: boolean;
   onSelect: () => void;
   disabled?: boolean;
