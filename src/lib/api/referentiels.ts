@@ -512,7 +512,14 @@ export async function listComptes(
 ): Promise<PaginatedResponse<Compte>> {
   const { data } = await apiClient.get<PaginatedResponse<Compte>>(
     '/referentiels/comptes',
-    { params: query },
+    {
+      params: query,
+      // `classes: ['6']` doit être sérialisé `classes=6` (répété, sans
+      // crochets) — sinon axios produit `classes[]=6` que le
+      // ValidationPipe backend (forbidNonWhitelisted) rejette en 400.
+      // Même pattern que PARAMS_SERIALIZER de tableau-bord.ts (crIds).
+      paramsSerializer: { indexes: null },
+    },
   );
   return data;
 }
