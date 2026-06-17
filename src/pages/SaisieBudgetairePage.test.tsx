@@ -57,7 +57,11 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { getGrilleSaisie, saveGrilleSaisie } from '@/lib/api/budget-grille';
+import {
+  getGrilleSaisie,
+  saveGrilleSaisie,
+  type GrilleSaisie,
+} from '@/lib/api/budget-grille';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { SaisieBudgetairePage } from './SaisieBudgetairePage';
 
@@ -69,7 +73,7 @@ const MOIS = Array.from(
   (_, i) => `2027-${String(i + 1).padStart(2, '0')}-01`,
 );
 
-function grilleFixture() {
+function grilleFixture(): GrilleSaisie {
   return {
     version: { id: 'v1', codeVersion: 'BUDGET_2027', libelle: '', statut: 'ouvert' },
     scenario: { id: 's1', codeScenario: 'CENTRAL', libelle: '', typeScenario: 'central' },
@@ -103,6 +107,22 @@ function grilleFixture() {
     totauxMensuels: MOIS.map((m) => ({ mois: m, total: 0 })),
     totalAnneeCr: 0,
   };
+}
+
+/** Grille avec 1 ligne réellement saisie (601100, 100 / mois, total 1200). */
+function grilleAvecSaisie() {
+  const g = grilleFixture();
+  g.lignes[0]!.cellules = MOIS.map((m) => ({
+    mois: m,
+    montant: 100,
+    modeSaisie: 'MONTANT',
+    encoursMoyen: null,
+    tie: null,
+    commentaire: 'Hyp. 2026',
+    ligneId: `f-${m}`,
+  }));
+  g.lignes[0]!.totalAnnee = 1200;
+  return g;
 }
 
 describe('SaisieBudgetairePage', () => {
@@ -179,6 +199,58 @@ describe('SaisieBudgetairePage', () => {
     const cellules = mockSave.mock.calls[0][0].lignes[0].cellules;
     expect(
       cellules.every((c: { commentaire: string }) => c.commentaire === 'Base 2026 + 5%'),
+    ).toBe(true);
+  });
+
+  it('liste les lignes déjà saisies dans le tableau récap', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('lignes-saisies')).toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('ligne-saisie-row')).toHaveLength(1);
+    // Indicateur charges (classe 6) = 1200.
+    expect(screen.getByTestId('synthese-charges').textContent).toContain(
+      '200',
+    );
+  });
+
+  it('Modifier : ouvre le mode édition et pré-remplit le montant annuel', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ligne-saisie-modifier')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('ligne-saisie-modifier'));
+    await waitFor(() =>
+      expect(screen.getByTestId('hybride-edition-banner')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('hybride-form')).toBeInTheDocument();
+    // 12 × 100 = 1200 pré-rempli.
+    expect(
+      (screen.getByTestId('hybride-montant-annuel') as HTMLInputElement).value,
+    ).toBe('1200');
+    // Bouton principal en libellé « Mettre à jour ».
+    expect(screen.getByTestId('hybride-enregistrer').textContent).toContain(
+      'Mettre à jour',
+    );
+  });
+
+  it('Supprimer : confirme puis POST 12 cellules à 0', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ligne-saisie-supprimer')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('ligne-saisie-supprimer'));
+    // Modale de confirmation → bouton « Supprimer ».
+    const confirmer = await screen.findByRole('button', { name: 'Supprimer' });
+    fireEvent.click(confirmer);
+    await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+    const cellules = mockSave.mock.calls[0][0].lignes[0].cellules;
+    expect(cellules).toHaveLength(12);
+    expect(
+      cellules.every((c: { montant: number }) => c.montant === 0),
     ).toBe(true);
   });
 });
