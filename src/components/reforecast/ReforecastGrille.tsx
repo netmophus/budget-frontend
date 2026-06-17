@@ -4,7 +4,7 @@
  * Affichage en lecture seule des lignes fait_budget du reforecast
  * avec la colonne « Origine » (REALISE / EXTRAPOLATION / MANUEL).
  * Pour l'édition, l'utilisateur est redirigé vers la page
- * `/budget/saisie` qui réutilise `GrilleSaisie` (Lot 3.4) — le
+ * `/budget/saisie` (saisie focalisée compte par compte) — le
  * wrapper complet édité-en-place est laissé à un Lot ultérieur
  * (cf. dette §dette dans docs/lot-5/5.3-reforecast.md).
  */

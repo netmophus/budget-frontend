@@ -1,472 +1,184 @@
+/**
+ * Tests SaisieBudgetairePage (saisie focalisée compte par compte).
+ */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+
+// SelecteurContexte fait des fetch référentiels : on le neutralise.
+vi.mock('@/components/budget/grille/SelecteurContexte', () => ({
+  SelecteurContexte: () => null,
+}));
+
+// CompteCombobox → stub : un bouton sélectionne le compte 601100.
+vi.mock('@/components/budget/CompteCombobox', () => ({
+  CompteCombobox: ({
+    onChange,
+    onSelectCompte,
+  }: {
+    onChange: (c: string) => void;
+    onSelectCompte?: (c: {
+      id: string;
+      codeCompte: string;
+      libelle: string;
+      estCompteCollectif: boolean;
+    }) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="mock-compte-select"
+      onClick={() => {
+        onChange('601100');
+        onSelectCompte?.({
+          id: 'cpt-601100',
+          codeCompte: '601100',
+          libelle: 'Achats',
+          estCompteCollectif: false,
+        });
+      }}
+    >
+      select compte
+    </button>
+  ),
+}));
 
 vi.mock('@/lib/api/budget-grille', () => ({
   getGrilleSaisie: vi.fn(),
   saveGrilleSaisie: vi.fn(),
 }));
-vi.mock('@/lib/api/scenarios', () => ({
-  listScenarios: vi.fn(),
-}));
 vi.mock('@/lib/api/versions', () => ({
-  listVersions: vi.fn(),
-  // Lot 3.5 — SaisieBudgetairePage charge la version complète pour
-  // afficher WorkflowActions. Le test n'a pas besoin du résultat
-  // par défaut, mais Lot 6.7.3 permet de mocker explicitement
-  // (pour tester le bandeau reforecast).
-  getVersionById: vi.fn().mockRejectedValue(new Error('mock')),
+  getVersionById: vi
+    .fn()
+    .mockResolvedValue({ id: 'v1', exerciceFiscal: 2027, statut: 'ouvert' }),
 }));
-vi.mock('@/lib/api/referentiels', () => ({
-  listCrs: vi.fn(),
-  listLignesMetier: vi.fn(),
-}));
-
-const toastSuccess = vi.fn();
-const toastError = vi.fn();
-const toastInfo = vi.fn();
-vi.mock('sonner', () => ({
-  toast: {
-    success: (m: string) => toastSuccess(m),
-    error: (m: string, _o?: unknown) => toastError(m),
-    info: (m: string) => toastInfo(m),
-  },
-}));
-
 vi.mock('@/lib/auth/permissions', () => ({
   useHasPermission: vi.fn(() => true),
 }));
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
 
-import {
-  getGrilleSaisie,
-  type GrilleSaisie,
-} from '@/lib/api/budget-grille';
-import { listScenarios } from '@/lib/api/scenarios';
-import { listVersions, getVersionById } from '@/lib/api/versions';
-import { listCrs, listLignesMetier } from '@/lib/api/referentiels';
-import { useHasPermission } from '@/lib/auth/permissions';
+import { getGrilleSaisie, saveGrilleSaisie } from '@/lib/api/budget-grille';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { SaisieBudgetairePage } from './SaisieBudgetairePage';
 
-const mockGetGrille = getGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
-const mockListVersions = listVersions as unknown as ReturnType<typeof vi.fn>;
-const mockGetVersionById = getVersionById as unknown as ReturnType<typeof vi.fn>;
-const mockListScenarios = listScenarios as unknown as ReturnType<typeof vi.fn>;
-const mockListCrs = listCrs as unknown as ReturnType<typeof vi.fn>;
-const mockListLignesMetier = listLignesMetier as unknown as ReturnType<typeof vi.fn>;
+const mockGet = getGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
+const mockSave = saveGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
 
-const LIGNE_METIER_RETAIL = {
-  id: '20',
-  codeLigneMetier: 'RETAIL',
-  libelle: 'Banque de détail',
-  fkLigneMetierParent: null,
-  niveau: 1,
-  versionCourante: true,
-  dateDebutValidite: '2026-01-01',
-  dateFinValidite: null,
-  estActif: true,
-  dateCreation: '2026-01-01T00:00:00Z',
-  utilisateurCreation: 'system',
-  dateModification: null,
-  utilisateurModification: null,
-};
-const mockHasPermission = useHasPermission as unknown as ReturnType<typeof vi.fn>;
+const MOIS = Array.from(
+  { length: 12 },
+  (_, i) => `2027-${String(i + 1).padStart(2, '0')}-01`,
+);
 
-const VERSION_OUVERT = {
-  id: '1',
-  codeVersion: 'BUDGET_2027',
-  libelle: 'Budget 2027',
-  typeVersion: 'budget_initial',
-  exerciceFiscal: 2027,
-  statut: 'ouvert',
-  dateGel: null,
-  utilisateurGel: null,
-  commentaire: null,
-  dateCreation: '2027-01-01T00:00:00Z',
-  utilisateurCreation: 'system',
-  dateModification: null,
-  utilisateurModification: null,
-};
-const VERSION_GELE = { ...VERSION_OUVERT, id: '2', codeVersion: 'BUDGET_2026', exerciceFiscal: 2026, statut: 'gele' };
-const VERSION_SOUMIS = { ...VERSION_OUVERT, id: '3', codeVersion: 'BUDGET_2028_S', exerciceFiscal: 2028, statut: 'soumis' };
-const VERSION_VALIDE = { ...VERSION_OUVERT, id: '4', codeVersion: 'BUDGET_2028_V', exerciceFiscal: 2028, statut: 'valide' };
-
-const SCENARIO_MEDIAN = {
-  id: '10',
-  codeScenario: 'MEDIAN_2027',
-  libelle: 'Médian 2027',
-  typeScenario: 'central',
-  statut: 'actif',
-  commentaire: null,
-  exerciceFiscal: 2027,
-  dateCreation: '2027-01-01T00:00:00Z',
-  utilisateurCreation: 'system',
-  dateModification: null,
-  utilisateurModification: null,
-};
-
-const CR_AG = {
-  id: '100',
-  codeCr: 'CR_AG_ABJ_PLATEAU',
-  libelle: 'CR Agence Plateau',
-  libelleCourt: null,
-  typeCr: 'cdc',
-  fkStructure: '1',
-  versionCourante: true,
-  dateDebutValidite: '2026-01-01',
-  dateFinValidite: null,
-  estActif: true,
-  dateCreation: '2026-01-01T00:00:00Z',
-  utilisateurCreation: 'system',
-  dateModification: null,
-  utilisateurModification: null,
-};
-
-const GRILLE_OUVERT: GrilleSaisie = {
-  version: { id: '1', codeVersion: 'BUDGET_2027', libelle: 'Budget 2027', statut: 'ouvert' },
-  scenario: { id: '10', codeScenario: 'MEDIAN_2027', libelle: 'Médian', typeScenario: 'central' },
-  cr: {
-    id: '100',
-    codeCr: 'CR_AG_ABJ_PLATEAU',
-    libelle: 'CR Agence Plateau',
-    structureRattachee: { codeStructure: 'AG_ABJ', libelle: 'Agence Plateau' },
-  },
-  exerciceFiscal: 2027,
-  moisLabels: ['Janvier 2027'],
-  comptesFeuillesEligibles: [],
-  lignes: [
-    {
-      compte: {
-        id: '500',
-        codeCompte: '611100',
-        libelle: 'Salaires',
-        classe: '6',
-        sens: 'D',
-        estPorteurInterets: false,
-      },
-      ligneMetier: { id: '20', codeLigneMetier: 'RETAIL', libelle: 'Retail' },
-      cellules: [
-        {
-          mois: '2027-01-01',
-          montant: 10_000_000,
-          modeSaisie: 'MONTANT',
+function grilleFixture() {
+  return {
+    version: { id: 'v1', codeVersion: 'BUDGET_2027', libelle: '', statut: 'ouvert' },
+    scenario: { id: 's1', codeScenario: 'CENTRAL', libelle: '', typeScenario: 'central' },
+    cr: { id: 'cr1', codeCr: 'CR_SIEGE', libelle: 'Siège', structureRattachee: null },
+    exerciceFiscal: 2027,
+    moisLabels: MOIS.map((_, i) => `M${i + 1} 2027`),
+    comptesFeuillesEligibles: [],
+    lignes: [
+      {
+        compte: {
+          id: 'cpt-601100',
+          codeCompte: '601100',
+          libelle: 'Achats',
+          classe: '6',
+          sens: 'D',
+          estPorteurInterets: false,
+        },
+        ligneMetier: { id: 'lm1', codeLigneMetier: 'RETAIL', libelle: 'Retail' },
+        cellules: MOIS.map((m) => ({
+          mois: m,
+          montant: 0,
+          modeSaisie: null,
           encoursMoyen: null,
           tie: null,
           commentaire: null,
-          ligneId: 'L1',
-        },
-      ],
-      totalAnnee: 10_000_000,
-    },
-  ],
-  totauxMensuels: [{ mois: '2027-01-01', total: 10_000_000 }],
-  totalAnneeCr: 10_000_000,
-};
-
-function configureMocks(opts?: { versions?: typeof VERSION_OUVERT[]; grille?: GrilleSaisie }) {
-  mockListVersions.mockResolvedValue({
-    items: opts?.versions ?? [VERSION_OUVERT],
-    total: 1,
-    page: 1,
-    limit: 200,
-  });
-  mockListScenarios.mockResolvedValue({
-    items: [SCENARIO_MEDIAN],
-    total: 1,
-    page: 1,
-    limit: 200,
-  });
-  mockListCrs.mockResolvedValue({
-    items: [CR_AG],
-    total: 1,
-    page: 1,
-    limit: 200,
-  });
-  mockListLignesMetier.mockResolvedValue({
-    items: [LIGNE_METIER_RETAIL],
-    total: 1,
-    page: 1,
-    limit: 200,
-  });
-  mockGetGrille.mockResolvedValue(opts?.grille ?? GRILLE_OUVERT);
-}
-
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <SaisieBudgetairePage />
-    </MemoryRouter>,
-  );
+          ligneId: null,
+        })),
+        totalAnnee: 0,
+      },
+    ],
+    totauxMensuels: MOIS.map((m) => ({ mois: m, total: 0 })),
+    totalAnneeCr: 0,
+  };
 }
 
 describe('SaisieBudgetairePage', () => {
   beforeEach(() => {
-    useBudgetGrilleStore.getState().reset();
-    mockHasPermission.mockReturnValue(true);
+    useBudgetGrilleStore.setState({
+      versionId: 'v1',
+      scenarioId: 's1',
+      crId: 'cr1',
+      ligneMetierId: 'lm1',
+      codeClasse: '6',
+    });
+    mockGet.mockResolvedValue(grilleFixture());
+    mockSave.mockResolvedValue({
+      totalCellules: 12,
+      inserees: 12,
+      modifiees: 0,
+      supprimees: 0,
+      ignorees: 0,
+      erreurs: [],
+      dureeMs: 5,
+    });
+    localStorage.clear();
   });
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('charge le contexte par défaut + affiche la grille', async () => {
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      expect(mockGetGrille).toHaveBeenCalled();
-    });
-    await waitFor(() => {
-      expect(screen.getByText('611100')).toBeInTheDocument();
-    });
-    // Badge statut Brouillon affiché
-    expect(screen.getByText('Brouillon')).toBeInTheDocument();
+  it('affiche le message vide tant qu’aucun compte sélectionné', async () => {
+    render(<SaisieBudgetairePage />);
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    expect(screen.getByTestId('hybride-vide')).toBeInTheDocument();
   });
 
-  it('LECTEUR (BUDGET.SAISIR=false) : bouton Enregistrer désactivé', async () => {
-    mockHasPermission.mockImplementation((p: string) => p !== 'BUDGET.SAISIR');
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('611100')).toBeInTheDocument();
-    });
-    const saveBtn = screen.getByRole('button', {
-      name: /Enregistrer/i,
-    }) as HTMLButtonElement;
-    expect(saveBtn.disabled).toBe(true);
-  });
+  it('mode annuel : répartit /12 et enregistre 12 cellules identiques', async () => {
+    render(<SaisieBudgetairePage />);
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
 
-  it("version statut='gele' : bandeau 'Figé' + message BCEAO (Lot 7.2)", async () => {
-    // Pré-régler le store avec la version gele directement (sinon
-    // l'auto-sélection du SelecteurContexte cherche une 'ouvert' et
-    // n'en trouve pas).
-    useBudgetGrilleStore.getState().setVersionId('2');
-    useBudgetGrilleStore.getState().setScenarioId('10');
-    useBudgetGrilleStore.getState().setCrId('100');
-    useBudgetGrilleStore.getState().setLigneMetierId('20');
-    configureMocks({
-      versions: [VERSION_GELE],
-      grille: {
-        ...GRILLE_OUVERT,
-        version: { ...GRILLE_OUVERT.version, statut: 'gele' },
-      },
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Publié')).toBeInTheDocument();
-    });
-    const bandeau = screen.getByTestId('bandeau-verrouillage');
-    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
-    expect(bandeau).toHaveTextContent('Figé');
-    expect(bandeau).toHaveTextContent(/10 ans/);
-    expect(bandeau).toHaveTextContent(/BCEAO/);
-  });
-
-  it("version statut='soumis' : bandeau 'Soumis' + message validation, pas BCEAO (Lot 7.2)", async () => {
-    useBudgetGrilleStore.getState().setVersionId('3');
-    useBudgetGrilleStore.getState().setScenarioId('10');
-    useBudgetGrilleStore.getState().setCrId('100');
-    useBudgetGrilleStore.getState().setLigneMetierId('20');
-    configureMocks({
-      versions: [VERSION_SOUMIS],
-      grille: {
-        ...GRILLE_OUVERT,
-        version: { ...GRILLE_OUVERT.version, statut: 'soumis' },
-      },
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByTestId('bandeau-verrouillage')).toBeInTheDocument();
-    });
-    const bandeau = screen.getByTestId('bandeau-verrouillage');
-    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
-    expect(bandeau).toHaveTextContent('Soumis');
-    expect(bandeau).toHaveTextContent(/soumise à validation/i);
-    expect(bandeau).not.toHaveTextContent(/10 ans/);
-    expect(bandeau).not.toHaveTextContent(/BCEAO/);
-  });
-
-  it("version statut='valide' : bandeau 'Validé' + message publication (Lot 7.2)", async () => {
-    useBudgetGrilleStore.getState().setVersionId('4');
-    useBudgetGrilleStore.getState().setScenarioId('10');
-    useBudgetGrilleStore.getState().setCrId('100');
-    useBudgetGrilleStore.getState().setLigneMetierId('20');
-    configureMocks({
-      versions: [VERSION_VALIDE],
-      grille: {
-        ...GRILLE_OUVERT,
-        version: { ...GRILLE_OUVERT.version, statut: 'valide' },
-      },
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByTestId('bandeau-verrouillage')).toBeInTheDocument();
-    });
-    const bandeau = screen.getByTestId('bandeau-verrouillage');
-    expect(bandeau).toHaveTextContent(/Cette version est verrouillée/i);
-    expect(bandeau).toHaveTextContent('Validé');
-    expect(bandeau).toHaveTextContent(/publication/i);
-    expect(bandeau).not.toHaveTextContent(/10 ans/);
-    expect(bandeau).not.toHaveTextContent(/BCEAO/);
-  });
-
-  it("version statut='ouvert' : pas de bandeau de verrouillage (Lot 7.2)", async () => {
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('611100')).toBeInTheDocument();
-    });
-    expect(
-      screen.queryByTestId('bandeau-verrouillage'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('aucune version disponible → message clair', async () => {
-    configureMocks({ versions: [] });
-    renderPage();
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Aucune version disponible/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('aucun CR dans périmètre → message clair', async () => {
-    mockListVersions.mockResolvedValue({
-      items: [VERSION_OUVERT],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    mockListScenarios.mockResolvedValue({
-      items: [SCENARIO_MEDIAN],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    mockListCrs.mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      limit: 200,
-    });
-    mockListLignesMetier.mockResolvedValue({
-      items: [LIGNE_METIER_RETAIL],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Aucun centre de responsabilité dans votre périmètre/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('Bouton Calculer indicateurs ouvre le panneau', async () => {
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('611100')).toBeInTheDocument();
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: /Calculer indicateurs/i }),
-    );
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Indicateurs avancés/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  // ─── Lot 3.4-bis : from-scratch
-
-  it('aucune ligne_metier active → message clair dans le sélecteur', async () => {
-    mockListVersions.mockResolvedValue({
-      items: [VERSION_OUVERT],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    mockListScenarios.mockResolvedValue({
-      items: [SCENARIO_MEDIAN],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    mockListCrs.mockResolvedValue({
-      items: [CR_AG],
-      total: 1,
-      page: 1,
-      limit: 200,
-    });
-    mockListLignesMetier.mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      limit: 200,
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Aucune ligne métier active/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("auto-sélection ligne_metier au mount (Lot 3.4-bis)", async () => {
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      // Le store doit être hydraté avec la ligne_metier auto-sélectionnée
-      expect(useBudgetGrilleStore.getState().ligneMetierId).toBe('20');
-    });
-  });
-
-  it('Bouton Annuler les modifs initialement désactivé (pas de modifs)', async () => {
-    configureMocks();
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('611100')).toBeInTheDocument();
-    });
-    const annulerBtn = screen.getByRole('button', {
-      name: /Annuler les modifs/i,
-    }) as HTMLButtonElement;
-    expect(annulerBtn.disabled).toBe(true);
-  });
-
-  // ─── Lot 6.7.3 — bandeau contextuel reforecast ──────────────────
-
-  it('bandeau reforecast visible si versionComplete.typeVersion = reforecast', async () => {
-    configureMocks();
-    mockGetVersionById.mockResolvedValue({
-      ...VERSION_OUVERT,
-      typeVersion: 'reforecast',
-      trimestreConsolide: 2,
-      anneeConsolide: 2027,
-    });
-    renderPage();
+    // Sélection du compte via le stub combobox.
+    fireEvent.click(screen.getByTestId('mock-compte-select'));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('bandeau-saisie-reforecast'),
-      ).toBeInTheDocument(),
+      expect(screen.getByTestId('hybride-form')).toBeInTheDocument(),
     );
-    const bandeau = screen.getByTestId('bandeau-saisie-reforecast');
-    expect(bandeau).toHaveTextContent('reforecast T2 2027');
-    expect(bandeau).toHaveTextContent(
-      'Les modifications sont sauvegardées en place',
+
+    // Saisie annuelle 1 200 000 → 100 000 / mois.
+    fireEvent.change(screen.getByTestId('hybride-montant-annuel'), {
+      target: { value: '1200000' },
+    });
+    expect(screen.getByTestId('hybride-mois-ro-0').textContent).toContain(
+      '100',
     );
+
+    fireEvent.click(screen.getByTestId('hybride-enregistrer'));
+
+    await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+    const req = mockSave.mock.calls[0][0];
+    expect(req.lignes).toHaveLength(1);
+    expect(req.lignes[0].compteId).toBe('cpt-601100');
+    expect(req.lignes[0].cellules).toHaveLength(12);
+    expect(req.lignes[0].cellules.every((c: { montant: number }) => c.montant === 100000)).toBe(true);
   });
 
-  it("bandeau reforecast caché si versionComplete.typeVersion = budget_initial", async () => {
-    configureMocks();
-    mockGetVersionById.mockResolvedValue({
-      ...VERSION_OUVERT,
-      typeVersion: 'budget_initial',
+  it('justification répliquée sur les 12 cellules', async () => {
+    render(<SaisieBudgetairePage />);
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('mock-compte-select'));
+    await waitFor(() =>
+      expect(screen.getByTestId('hybride-form')).toBeInTheDocument(),
+    );
+    fireEvent.change(screen.getByTestId('hybride-justif'), {
+      target: { value: 'Base 2026 + 5%' },
     });
-    renderPage();
-    await waitFor(() => screen.getByText('611100'));
+    fireEvent.click(screen.getByTestId('hybride-enregistrer'));
+    await waitFor(() => expect(mockSave).toHaveBeenCalledTimes(1));
+    const cellules = mockSave.mock.calls[0][0].lignes[0].cellules;
     expect(
-      screen.queryByTestId('bandeau-saisie-reforecast'),
-    ).not.toBeInTheDocument();
+      cellules.every((c: { commentaire: string }) => c.commentaire === 'Base 2026 + 5%'),
+    ).toBe(true);
   });
 });

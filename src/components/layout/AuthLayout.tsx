@@ -12,7 +12,6 @@ import {
   Coins,
   FileSignature,
   FileText,
-  Grid2x2,
   Inbox,
   Layers,
   LayoutDashboard,
@@ -135,12 +134,6 @@ const NAV_BUDGET: NavItem[] = [
   {
     to: '/budget/saisie',
     label: 'Saisie budgétaire',
-    icon: Grid2x2,
-    permission: 'BUDGET.LIRE',
-  },
-  {
-    to: '/budget/saisie-hybride',
-    label: 'Saisie budgétaire (hybride)',
     icon: PencilLine,
     permission: 'BUDGET.LIRE',
   },
