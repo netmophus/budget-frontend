@@ -37,6 +37,16 @@ export interface CompteCombobxProps {
    * plus à la nouvelle liste.
    */
   classes?: string[];
+  /**
+   * Si `true`, n'applique PAS le filtre `estCompteCollectif=false` :
+   * tous les comptes (parents + feuilles) sont proposés. Défaut
+   * `false` (feuilles seules — comportement historique des écrans
+   * existants). Utilisé par la saisie hybride (politique BSIC :
+   * pas de restriction parents/feuilles).
+   */
+  inclureCollectifs?: boolean;
+  /** Callback optionnel recevant le compte complet sélectionné (id, etc.). */
+  onSelectCompte?: (compte: Compte) => void;
 }
 
 export function CompteCombobox({
@@ -46,6 +56,8 @@ export function CompteCombobox({
   disabled = false,
   placeholder = 'Tapez un code (ex. 611) ou un libellé…',
   classes = CLASSES_SAISISSABLES_DEFAULT,
+  inclureCollectifs = false,
+  onSelectCompte,
 }: CompteCombobxProps): JSX.Element {
   const [comptes, setComptes] = useState<Compte[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +77,9 @@ export function CompteCombobox({
     setErreur(null);
     listComptes({
       classes,
-      estCompteCollectif: false,
+      // Politique BSIC : si inclureCollectifs, pas de restriction
+      // parents/feuilles (filtre omis → tous les comptes).
+      ...(inclureCollectifs ? {} : { estCompteCollectif: false }),
       versionCouranteUniquement: true,
       limit: 200,
     })
@@ -129,6 +143,8 @@ export function CompteCombobox({
 
   function handleSelect(code: string): void {
     onChange(code);
+    const compte = comptes.find((c) => c.codeCompte === code);
+    if (compte) onSelectCompte?.(compte);
     setRecherche('');
     setOpen(false);
   }

@@ -66,6 +66,11 @@ const SaisieBudgetPage = lazy(() =>
     default: m.SaisieBudgetPage,
   })),
 );
+const SaisieBudgetHybridePage = lazy(() =>
+  import('@/pages/SaisieBudgetHybridePage').then((m) => ({
+    default: m.SaisieBudgetHybridePage,
+  })),
+);
 
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
@@ -333,6 +338,16 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <SaisieBudgetairePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/saisie-hybride"
+          element={
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <SaisieBudgetHybridePage />
               </Suspense>
             </PermissionRoute>
           }
