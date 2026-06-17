@@ -27,6 +27,10 @@ import { toast } from 'sonner';
 
 import { CompteCombobox } from '@/components/budget/CompteCombobox';
 import { ImportBudgetDialog } from '@/components/budget/ImportBudgetDialog';
+import {
+  LignesSaisiesTable,
+  type LigneSaisieKey,
+} from '@/components/budget/LignesSaisiesTable';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -35,6 +39,7 @@ import { Label } from '@/components/ui/label';
 import {
   getGrilleSaisie,
   saveGrilleSaisie,
+  type GrilleLigne,
   type GrilleSaisie,
 } from '@/lib/api/budget-grille';
 import { type Compte } from '@/lib/api/referentiels';
@@ -81,6 +86,16 @@ function chargerMode(): ModeSaisieUi {
   return v === 'mensuel' ? 'mensuel' : 'annuel';
 }
 
+/**
+ * Sous-ensemble du compte réellement utilisé par le formulaire — permet
+ * de réhydrater l'édition depuis une ligne de grille (qui n'expose pas
+ * tout le DimCompte) sans reconstruire un Compte complet.
+ */
+type CompteSaisi = Pick<
+  Compte,
+  'id' | 'codeCompte' | 'libelle' | 'estCompteCollectif'
+>;
+
 export function SaisieBudgetairePage(): JSX.Element {
   const canSaisir = useHasPermission('BUDGET.SAISIR');
   const { versionId, scenarioId, crId, ligneMetierId, codeClasse } =
@@ -91,7 +106,15 @@ export function SaisieBudgetairePage(): JSX.Element {
   const [statutVersion, setStatutVersion] = useState<string | null>(null);
   const [grille, setGrille] = useState<GrilleSaisie | null>(null);
 
-  const [selectedCompte, setSelectedCompte] = useState<Compte | null>(null);
+  // Édition d'une ligne existante (null = création d'une nouvelle ligne).
+  const [editingKey, setEditingKey] = useState<LigneSaisieKey | null>(null);
+  // Ligne en attente de confirmation de suppression.
+  const [confirmDelete, setConfirmDelete] = useState<GrilleLigne | null>(null);
+  // Pagination du tableau récapitulatif.
+  const [page, setPage] = useState(0);
+  const [limit, setLimit] = useState(20);
+
+  const [selectedCompte, setSelectedCompte] = useState<CompteSaisi | null>(null);
   const [mode, setMode] = useState<ModeSaisieUi>(chargerMode);
   const [montantAnnuel, setMontantAnnuel] = useState(0);
   const [montants, setMontants] = useState<number[]>(() => Array(12).fill(0));
@@ -292,6 +315,7 @@ export function SaisieBudgetairePage(): JSX.Element {
       );
       reloadGrille();
       reset();
+      setEditingKey(null);
       if (ajouterAutre) {
         compteInputRef.current
           ?.querySelector<HTMLInputElement>('input')
@@ -302,6 +326,103 @@ export function SaisieBudgetairePage(): JSX.Element {
       toast.error(`Échec de la sauvegarde : ${msg}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── Tableau récapitulatif : lignes réellement saisies ────────────
+  // On filtre la grille (qui contient TOUS les comptes éligibles) sur
+  // celles ayant au moins une cellule persistée (ligneId != null).
+  // Tri par code compte (l'ordre de création n'est pas exposé par
+  // l'endpoint agrégé GET /budget/grille).
+  const lignesSaisies = useMemo<GrilleLigne[]>(() => {
+    if (!grille) return [];
+    return grille.lignes
+      .filter((l) => l.cellules.some((c) => c.ligneId !== null))
+      .sort((a, b) => a.compte.codeCompte.localeCompare(b.compte.codeCompte));
+  }, [grille]);
+
+  // ─── Édition d'une ligne existante ────────────────────────────────
+  function modifierLigne(ligne: GrilleLigne): void {
+    setEditingKey({
+      compteId: ligne.compte.id,
+      ligneMetierId: ligne.ligneMetier.id,
+    });
+    setSelectedCompte({
+      id: ligne.compte.id,
+      codeCompte: ligne.compte.codeCompte,
+      libelle: ligne.compte.libelle,
+      estCompteCollectif: false,
+    });
+    // Déduit le mode pour afficher le bon onglet (le pré-remplissage des
+    // montants/justification est géré par l'effet sur selectedCompte).
+    const parMois = new Map(ligne.cellules.map((c) => [c.mois, c.montant]));
+    const vals = moisKeys.map((m) => parMois.get(m) ?? 0);
+    const uniforme =
+      vals.length === 12 && vals.slice(0, 11).every((v) => v === vals[0]);
+    setMode(uniforme ? 'annuel' : 'mensuel');
+    // Remonter au formulaire (no-op silencieux sous jsdom).
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      try {
+        window.scrollTo({ top: 0 });
+      } catch {
+        /* jsdom : scrollTo non implémenté */
+      }
+    }
+  }
+
+  function annulerEdition(): void {
+    setEditingKey(null);
+    reset();
+  }
+
+  // ─── Suppression d'une ligne (POST 12 cellules à 0 → suppression) ──
+  async function confirmerSuppression(): Promise<void> {
+    const ligne = confirmDelete;
+    if (
+      !ligne ||
+      !versionId ||
+      !scenarioId ||
+      !crId ||
+      moisKeys.length !== 12
+    ) {
+      setConfirmDelete(null);
+      return;
+    }
+    const cellules = moisKeys.map((mois) => ({
+      mois,
+      montant: 0,
+      modeSaisie: 'MONTANT' as const,
+      commentaire: null,
+    }));
+    try {
+      const res = await saveGrilleSaisie({
+        versionId,
+        scenarioId,
+        crId,
+        lignes: [
+          {
+            compteId: ligne.compte.id,
+            ligneMetierId: ligne.ligneMetier.id,
+            cellules,
+          },
+        ],
+      });
+      toast.success(
+        `Ligne ${ligne.compte.codeCompte} supprimée (${res.supprimees} cellule(s)).`,
+      );
+      if (
+        editingKey?.compteId === ligne.compte.id &&
+        editingKey?.ligneMetierId === ligne.ligneMetier.id
+      ) {
+        setEditingKey(null);
+        reset();
+      }
+      reloadGrille();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec de la suppression : ${msg}`);
+    } finally {
+      setConfirmDelete(null);
     }
   }
 
@@ -336,6 +457,30 @@ export function SaisieBudgetairePage(): JSX.Element {
           Importer Excel
         </Button>
       </div>
+
+      {/* ─── Bandeau mode édition ───────────────────────────────── */}
+      {editingKey && (
+        <div
+          className="mb-4 flex items-center justify-between gap-3 rounded-md border border-(--miznas-bleu-nuit-dark)/30 bg-(--miznas-bleu-nuit-dark)/5 px-3 py-2 text-sm"
+          role="status"
+          data-testid="hybride-edition-banner"
+        >
+          <span>
+            ✏️ <strong>Mode édition</strong> — ligne{' '}
+            <span className="font-mono">{selectedCompte?.codeCompte}</span>.
+            Modifiez les valeurs puis « Mettre à jour ».
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 shrink-0"
+            onClick={annulerEdition}
+            data-testid="hybride-annuler-edition"
+          >
+            Annuler l’édition
+          </Button>
+        </div>
+      )}
 
       <SelecteurContexte />
 
@@ -520,26 +665,55 @@ export function SaisieBudgetairePage(): JSX.Element {
                 data-testid="hybride-enregistrer"
                 className="bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white"
               >
-                {saving ? 'Enregistrement…' : 'Enregistrer'}
+                {saving
+                  ? editingKey
+                    ? 'Mise à jour…'
+                    : 'Enregistrement…'
+                  : editingKey
+                    ? 'Mettre à jour'
+                    : 'Enregistrer'}
               </Button>
+              {!editingKey && (
+                <Button
+                  variant="outline"
+                  onClick={() => void enregistrer(true)}
+                  disabled={saving}
+                  data-testid="hybride-enregistrer-autre"
+                >
+                  Enregistrer et ajouter une autre ligne
+                </Button>
+              )}
               <Button
                 variant="outline"
-                onClick={() => void enregistrer(true)}
-                disabled={saving}
-                data-testid="hybride-enregistrer-autre"
-              >
-                Enregistrer et ajouter une autre ligne
-              </Button>
-              <Button
-                variant="outline"
-                onClick={reset}
+                onClick={editingKey ? annulerEdition : reset}
                 disabled={saving}
                 data-testid="hybride-annuler"
               >
-                Annuler
+                {editingKey ? 'Annuler l’édition' : 'Annuler'}
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── Tableau récapitulatif des lignes saisies ─────────────── */}
+      {contexteComplet && (
+        <div className="mt-6">
+          <LignesSaisiesTable
+            lignes={lignesSaisies}
+            moisKeys={moisKeys}
+            page={page}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(0);
+            }}
+            onModifier={modifierLigne}
+            onSupprimer={(ligne) => setConfirmDelete(ligne)}
+            readOnly={readOnly}
+            editingKey={editingKey}
+          />
         </div>
       )}
 
@@ -560,6 +734,27 @@ export function SaisieBudgetairePage(): JSX.Element {
         }
         confirmText="Passer en annuel"
         cancelText="Garder le mensuel"
+        destructive
+      />
+
+      {/* Confirmation de suppression d'une ligne saisie */}
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={confirmerSuppression}
+        title="Supprimer cette ligne ?"
+        description={
+          <p>
+            La ligne{' '}
+            <strong className="font-mono">
+              {confirmDelete?.compte.codeCompte}
+            </strong>{' '}
+            — {confirmDelete?.compte.libelle} et ses 12 valeurs mensuelles
+            vont être supprimées. Cette action est irréversible.
+          </p>
+        }
+        confirmText="Supprimer"
+        cancelText="Annuler"
         destructive
       />
 
