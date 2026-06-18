@@ -55,6 +55,22 @@ vi.mock('@/lib/api/referentiels', () => ({
     .fn()
     .mockResolvedValue({ items: [{ id: 'lm1', estActif: true }] }),
 }));
+vi.mock('@/lib/api/cr-workflow', () => ({
+  getCrStatut: vi.fn().mockResolvedValue({
+    versionId: 'v1',
+    crId: 'cr1',
+    crCode: 'CR_SIEGE',
+    statut: 'EN_SAISIE',
+    dateSoumission: null,
+    dateValidation: null,
+    dateReouverture: null,
+    fkSaisisseur: null,
+    fkValidateur: null,
+    motifRejet: null,
+    motifReouverture: null,
+  }),
+  soumettreCr: vi.fn().mockResolvedValue({ statut: 'SOUMIS' }),
+}));
 vi.mock('@/lib/auth/permissions', () => ({
   useHasPermission: vi.fn(() => true),
 }));
@@ -67,8 +83,12 @@ import {
   saveGrilleSaisie,
   type GrilleSaisie,
 } from '@/lib/api/budget-grille';
+import { getCrStatut, soumettreCr } from '@/lib/api/cr-workflow';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 import { SaisieBudgetairePage } from './SaisieBudgetairePage';
+
+const mockCrStatut = getCrStatut as unknown as ReturnType<typeof vi.fn>;
+const mockSoumettre = soumettreCr as unknown as ReturnType<typeof vi.fn>;
 
 const mockGet = getGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
 const mockSave = saveGrilleSaisie as unknown as ReturnType<typeof vi.fn>;
@@ -271,5 +291,43 @@ describe('SaisieBudgetairePage', () => {
       expect(screen.getByText('Ligne métier')).toBeInTheDocument(),
     );
     expect(localStorage.getItem('miznas-saisie-vue-consolidee')).toBe('1');
+  });
+
+  it('soumettre : bouton EN_SAISIE → modale → appelle soumettreCr', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('cr-soumettre')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('cr-soumettre'));
+    const confirmer = await screen.findByTestId('soumission-confirmer');
+    fireEvent.click(confirmer);
+    await waitFor(() => expect(mockSoumettre).toHaveBeenCalledTimes(1));
+    expect(mockSoumettre).toHaveBeenCalledWith('CR_SIEGE', 'v1', undefined);
+  });
+
+  it('lecture seule quand le CR est SOUMIS (pas de bouton soumettre)', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    mockCrStatut.mockResolvedValue({
+      versionId: 'v1',
+      crId: 'cr1',
+      crCode: 'CR_SIEGE',
+      statut: 'SOUMIS',
+      dateSoumission: '2027-06-01',
+      dateValidation: null,
+      dateReouverture: null,
+      fkSaisisseur: null,
+      fkValidateur: null,
+      motifRejet: null,
+      motifReouverture: null,
+    });
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('statut-cr-banner')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('cr-soumettre')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByTestId('ligne-saisie-modifier')[0]).toBeDisabled(),
+    );
   });
 });
