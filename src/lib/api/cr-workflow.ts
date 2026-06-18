@@ -35,6 +35,8 @@ export interface CrStatutLigne {
   validateurEmail: string | null;
   dateSoumission: string | null;
   dateValidation: string | null;
+  /** PNB du CR (Produits cl.7 − Charges cl.6). */
+  pnb: number;
 }
 
 export interface StatutsCrsVersion {
@@ -62,9 +64,11 @@ export async function getCrStatut(
 
 export async function getStatutsCrsVersion(
   versionId: string,
+  monPerimetre = false,
 ): Promise<StatutsCrsVersion> {
   const { data } = await apiClient.get<StatutsCrsVersion>(
     `/budget/version/${encodeURIComponent(versionId)}/statuts-crs`,
+    monPerimetre ? { params: { monPerimetre: 'true' } } : undefined,
   );
   return data;
 }

@@ -21,8 +21,9 @@
  * grille n'est chargée qu'en best-effort pour pré-remplir les valeurs
  * déjà saisies. Grain mensuel en base : aucun changement de schéma.
  */
-import { FileUp, Send } from 'lucide-react';
+import { ArrowLeft, FileUp, Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { CompteCombobox } from '@/components/budget/CompteCombobox';
@@ -113,6 +114,9 @@ type CompteSaisi = Pick<
 >;
 
 export function SaisieBudgetairePage(): JSX.Element {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const retourValidations = searchParams.get('retour') === 'validations';
   const canSaisir = useHasPermission('BUDGET.SAISIR');
   const canSoumettre = useHasPermission('BUDGET.SOUMETTRE');
   const { versionId, scenarioId, crId, ligneMetierId, codeClasse, setLigneMetierId } =
@@ -578,6 +582,19 @@ export function SaisieBudgetairePage(): JSX.Element {
 
   return (
     <div>
+      {retourValidations && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 mb-3 gap-1.5 -ml-2"
+          onClick={() => navigate('/budget/validations')}
+          data-testid="retour-validations"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Retour aux validations
+        </Button>
+      )}
+
       {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>

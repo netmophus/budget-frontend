@@ -5,6 +5,7 @@ import {
   Calculator,
   BarChart3,
   Calendar,
+  CheckCheck,
   CheckSquare,
   ChevronDown,
   ChevronRight,
@@ -137,7 +138,14 @@ const NAV_BUDGET: NavItem[] = [
     icon: PencilLine,
     permission: 'BUDGET.LIRE',
   },
-  // Lot 3.5 — file de validation pour les contrôleurs.
+  // Lot workflow par CR — file de validation par CR pour les validateurs.
+  {
+    to: '/budget/validations',
+    label: 'Validations',
+    icon: CheckCheck,
+    permission: 'BUDGET.VALIDER',
+  },
+  // Lot 3.5 — file de validation (version-globale, ancien workflow).
   {
     to: '/budget/a-valider',
     label: 'À valider',

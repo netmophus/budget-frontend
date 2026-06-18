@@ -2,7 +2,16 @@
  * Tests SaisieBudgetairePage (saisie focalisée compte par compte).
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <SaisieBudgetairePage />
+    </MemoryRouter>,
+  );
+}
 
 // SelecteurContexte fait des fetch référentiels : on le neutralise.
 vi.mock('@/components/budget/grille/SelecteurContexte', () => ({
@@ -176,13 +185,13 @@ describe('SaisieBudgetairePage', () => {
   });
 
   it('affiche le message vide tant qu’aucun compte sélectionné', async () => {
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
     expect(screen.getByTestId('hybride-vide')).toBeInTheDocument();
   });
 
   it('mode annuel : répartit /12 et enregistre 12 cellules identiques', async () => {
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
 
     // Sélection du compte via le stub combobox.
@@ -210,7 +219,7 @@ describe('SaisieBudgetairePage', () => {
   });
 
   it('justification répliquée sur les 12 cellules', async () => {
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() => expect(mockGet).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId('mock-compte-select'));
     await waitFor(() =>
@@ -229,7 +238,7 @@ describe('SaisieBudgetairePage', () => {
 
   it('liste les lignes déjà saisies dans le tableau récap', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('lignes-saisies')).toBeInTheDocument(),
     );
@@ -242,7 +251,7 @@ describe('SaisieBudgetairePage', () => {
 
   it('Modifier : ouvre le mode édition et pré-remplit le montant annuel', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('ligne-saisie-modifier')).toBeInTheDocument(),
     );
@@ -263,7 +272,7 @@ describe('SaisieBudgetairePage', () => {
 
   it('Supprimer : confirme puis POST 12 cellules à 0', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('ligne-saisie-supprimer')).toBeInTheDocument(),
     );
@@ -281,7 +290,7 @@ describe('SaisieBudgetairePage', () => {
 
   it('Vue consolidée : persiste localStorage et affiche la colonne LM', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('lignes-saisies')).toBeInTheDocument(),
     );
@@ -295,7 +304,7 @@ describe('SaisieBudgetairePage', () => {
 
   it('soumettre : bouton EN_SAISIE → modale → appelle soumettreCr', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('cr-soumettre')).toBeInTheDocument(),
     );
@@ -321,7 +330,7 @@ describe('SaisieBudgetairePage', () => {
       motifRejet: null,
       motifReouverture: null,
     });
-    render(<SaisieBudgetairePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('statut-cr-banner')).toBeInTheDocument(),
     );
