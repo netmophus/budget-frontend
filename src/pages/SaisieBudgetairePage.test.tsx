@@ -50,6 +50,11 @@ vi.mock('@/lib/api/versions', () => ({
     .fn()
     .mockResolvedValue({ id: 'v1', exerciceFiscal: 2027, statut: 'ouvert' }),
 }));
+vi.mock('@/lib/api/referentiels', () => ({
+  listLignesMetier: vi
+    .fn()
+    .mockResolvedValue({ items: [{ id: 'lm1', estActif: true }] }),
+}));
 vi.mock('@/lib/auth/permissions', () => ({
   useHasPermission: vi.fn(() => true),
 }));
@@ -252,5 +257,19 @@ describe('SaisieBudgetairePage', () => {
     expect(
       cellules.every((c: { montant: number }) => c.montant === 0),
     ).toBe(true);
+  });
+
+  it('Vue consolidée : persiste localStorage et affiche la colonne LM', async () => {
+    mockGet.mockResolvedValue(grilleAvecSaisie());
+    render(<SaisieBudgetairePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('lignes-saisies')).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Ligne métier')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('vue-consolidee'));
+    await waitFor(() =>
+      expect(screen.getByText('Ligne métier')).toBeInTheDocument(),
+    );
+    expect(localStorage.getItem('miznas-saisie-vue-consolidee')).toBe('1');
   });
 });

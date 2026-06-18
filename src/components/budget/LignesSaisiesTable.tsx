@@ -49,6 +49,9 @@ interface LignesSaisiesTableProps {
   readOnly: boolean;
   /** Ligne actuellement en cours d'édition (surlignée). */
   editingKey: LigneSaisieKey | null;
+  /** Vue consolidée (toutes LM) : affiche la colonne « Ligne métier ». */
+  vueConsolidee: boolean;
+  onToggleVue: (vueConsolidee: boolean) => void;
 }
 
 /** Déduit le mode de saisie : annuel si les 11 premiers mois sont égaux. */
@@ -80,6 +83,8 @@ export function LignesSaisiesTable({
   onSupprimer,
   readOnly,
   editingKey,
+  vueConsolidee,
+  onToggleVue,
 }: LignesSaisiesTableProps): JSX.Element {
   const total = lignes.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -96,41 +101,86 @@ export function LignesSaisiesTable({
     .reduce((s, l) => s + l.totalAnnee, 0);
   const pnb = totalProduits - totalCharges;
 
-  if (total === 0) {
-    return (
-      <div
-        className="bg-white border border-dashed border-(--border) rounded-lg py-8 px-6 text-center text-sm text-(--muted-foreground)"
-        data-testid="lignes-saisies-vide"
+  // Bascule Filtré / Consolidé — toujours visible (même tableau vide :
+  // c'est précisément le cas où l'utilisateur veut « voir toutes ses
+  // lignes » après un changement de LM).
+  const toggle = (
+    <div
+      className="inline-flex rounded-md border border-(--border) overflow-hidden text-xs"
+      role="group"
+      data-testid="vue-toggle"
+    >
+      <button
+        type="button"
+        onClick={() => onToggleVue(false)}
+        data-testid="vue-filtre"
+        aria-pressed={!vueConsolidee}
+        className={`px-2.5 py-1 ${
+          !vueConsolidee
+            ? 'bg-(--miznas-bleu-nuit-dark) text-white'
+            : 'bg-white text-(--muted-foreground)'
+        }`}
       >
-        Aucune ligne saisie pour ce contexte. Saisissez un compte ci-dessus.
-      </div>
-    );
-  }
+        Filtrer par LM sélectionnée
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggleVue(true)}
+        data-testid="vue-consolidee"
+        aria-pressed={vueConsolidee}
+        className={`px-2.5 py-1 ${
+          vueConsolidee
+            ? 'bg-(--miznas-bleu-nuit-dark) text-white'
+            : 'bg-white text-(--muted-foreground)'
+        }`}
+      >
+        Vue toutes lignes métier
+      </button>
+    </div>
+  );
 
   return (
     <div className="space-y-3" data-testid="lignes-saisies">
-      <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold m-0">
-          Lignes saisies{' '}
-          <span className="text-(--muted-foreground) font-normal">
-            ({total})
-          </span>
-        </h4>
-        <label className="text-xs text-(--muted-foreground) flex items-center gap-1.5">
-          Lignes / page
-          <select
-            value={limit}
-            onChange={(e) => onLimitChange(Number(e.target.value))}
-            data-testid="lignes-saisies-pagesize"
-            className="h-8 rounded-md border border-(--border) bg-white px-2 text-sm"
-          >
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </select>
-        </label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <h4 className="text-sm font-semibold m-0">
+            Lignes saisies{' '}
+            <span className="text-(--muted-foreground) font-normal">
+              ({total})
+            </span>
+          </h4>
+          {toggle}
+        </div>
+        {total > 0 && (
+          <label className="text-xs text-(--muted-foreground) flex items-center gap-1.5">
+            Lignes / page
+            <select
+              value={limit}
+              onChange={(e) => onLimitChange(Number(e.target.value))}
+              data-testid="lignes-saisies-pagesize"
+              className="h-8 rounded-md border border-(--border) bg-white px-2 text-sm"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        )}
       </div>
 
+      {total === 0 && (
+        <div
+          className="bg-white border border-dashed border-(--border) rounded-lg py-8 px-6 text-center text-sm text-(--muted-foreground)"
+          data-testid="lignes-saisies-vide"
+        >
+          {vueConsolidee
+            ? 'Aucune ligne saisie pour ce CR (toutes lignes métier).'
+            : 'Aucune ligne saisie pour cette ligne métier. Basculez en « Vue toutes lignes métier » pour voir les autres.'}
+        </div>
+      )}
+
+      {total > 0 && (
+        <>
       <div className="rounded-md border border-(--border) overflow-x-auto">
         <Table>
           <TableHeader>
@@ -138,7 +188,7 @@ export function LignesSaisiesTable({
               <TableHead className="w-10">N°</TableHead>
               <TableHead>Compte</TableHead>
               <TableHead>Libellé compte</TableHead>
-              <TableHead>Ligne métier</TableHead>
+              {vueConsolidee && <TableHead>Ligne métier</TableHead>}
               <TableHead>Mode</TableHead>
               <TableHead className="text-right">Montant annuel</TableHead>
               <TableHead>Justification</TableHead>
@@ -166,7 +216,9 @@ export function LignesSaisiesTable({
                   <TableCell className="max-w-[220px] truncate">
                     {ligne.compte.libelle}
                   </TableCell>
-                  <TableCell>{ligne.ligneMetier.codeLigneMetier}</TableCell>
+                  {vueConsolidee && (
+                    <TableCell>{ligne.ligneMetier.codeLigneMetier}</TableCell>
+                  )}
                   <TableCell>
                     <span
                       title="Mode déduit (non persisté) : 12 montants uniformes ⇒ annuel"
@@ -286,6 +338,8 @@ export function LignesSaisiesTable({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
