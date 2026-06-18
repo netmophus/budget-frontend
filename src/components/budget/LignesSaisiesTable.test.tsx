@@ -70,6 +70,8 @@ function renderTable(props: Partial<Parameters<typeof LignesSaisiesTable>[0]> = 
       onSupprimer={vi.fn()}
       readOnly={false}
       editingKey={null}
+      vueConsolidee={false}
+      onToggleVue={vi.fn()}
       {...props}
     />,
   );
@@ -128,5 +130,42 @@ describe('LignesSaisiesTable', () => {
     expect(next).not.toBeDisabled();
     fireEvent.click(next);
     expect(onPageChange).toHaveBeenCalledWith(1);
+  });
+
+  it('colonne « Ligne métier » masquée en filtré, visible en consolidé', () => {
+    const { rerender } = renderTable({ vueConsolidee: false });
+    expect(screen.queryByText('Ligne métier')).not.toBeInTheDocument();
+    rerender(
+      <LignesSaisiesTable
+        lignes={[ligneA, ligneB]}
+        moisKeys={MOIS}
+        page={0}
+        limit={20}
+        onPageChange={vi.fn()}
+        onLimitChange={vi.fn()}
+        onModifier={vi.fn()}
+        onSupprimer={vi.fn()}
+        readOnly={false}
+        editingKey={null}
+        vueConsolidee
+        onToggleVue={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Ligne métier')).toBeInTheDocument();
+  });
+
+  it('le toggle appelle onToggleVue', () => {
+    const onToggleVue = vi.fn();
+    renderTable({ onToggleVue, vueConsolidee: false });
+    fireEvent.click(screen.getByTestId('vue-consolidee'));
+    expect(onToggleVue).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByTestId('vue-filtre'));
+    expect(onToggleVue).toHaveBeenCalledWith(false);
+  });
+
+  it('toggle visible même quand le tableau est vide', () => {
+    renderTable({ lignes: [] });
+    expect(screen.getByTestId('vue-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('lignes-saisies-vide')).toBeInTheDocument();
   });
 });

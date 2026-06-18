@@ -42,13 +42,14 @@ import {
   type GrilleLigne,
   type GrilleSaisie,
 } from '@/lib/api/budget-grille';
-import { type Compte } from '@/lib/api/referentiels';
+import { listLignesMetier, type Compte } from '@/lib/api/referentiels';
 import { getVersionById } from '@/lib/api/versions';
 import { useHasPermission } from '@/lib/auth/permissions';
 import { useBudgetGrilleStore } from '@/lib/stores/budget-grille-store';
 
 type ModeSaisieUi = 'annuel' | 'mensuel';
 const MODE_STORAGE_KEY = 'miznas-saisie-mode-hybride';
+const VUE_STORAGE_KEY = 'miznas-saisie-vue-consolidee';
 const JUSTIF_MAX = 250;
 const MOIS_FR = [
   'Janv.',
@@ -86,6 +87,14 @@ function chargerMode(): ModeSaisieUi {
   return v === 'mensuel' ? 'mensuel' : 'annuel';
 }
 
+/** Vue consolidée (toutes LM) mémorisée par utilisateur via localStorage. */
+function chargerVueConsolidee(): boolean {
+  return (
+    typeof localStorage !== 'undefined' &&
+    localStorage.getItem(VUE_STORAGE_KEY) === '1'
+  );
+}
+
 /**
  * Sous-ensemble du compte réellement utilisé par le formulaire — permet
  * de réhydrater l'édition depuis une ligne de grille (qui n'expose pas
@@ -98,7 +107,7 @@ type CompteSaisi = Pick<
 
 export function SaisieBudgetairePage(): JSX.Element {
   const canSaisir = useHasPermission('BUDGET.SAISIR');
-  const { versionId, scenarioId, crId, ligneMetierId, codeClasse } =
+  const { versionId, scenarioId, crId, ligneMetierId, codeClasse, setLigneMetierId } =
     useBudgetGrilleStore();
 
   const [importOuvert, setImportOuvert] = useState(false);
@@ -106,8 +115,17 @@ export function SaisieBudgetairePage(): JSX.Element {
   const [statutVersion, setStatutVersion] = useState<string | null>(null);
   const [grille, setGrille] = useState<GrilleSaisie | null>(null);
 
+  // Vue consolidée : tableau récap toutes lignes métier (sinon LM courante).
+  const [vueConsolidee, setVueConsolidee] = useState<boolean>(chargerVueConsolidee);
+  // Ids des LM actives (pour la boucle de chargement en vue consolidée).
+  const [lmIds, setLmIds] = useState<string[]>([]);
+
   // Édition d'une ligne existante (null = création d'une nouvelle ligne).
   const [editingKey, setEditingKey] = useState<LigneSaisieKey | null>(null);
+  // Miroir synchrone d'editingKey : permet à l'effet de changement de
+  // contexte de NE PAS réinitialiser la sélection pendant une édition
+  // (cas vue consolidée où Modifier bascule la LM du contexte).
+  const editingKeyRef = useRef<LigneSaisieKey | null>(null);
   // Ligne en attente de confirmation de suppression.
   const [confirmDelete, setConfirmDelete] = useState<GrilleLigne | null>(null);
   // Pagination du tableau récapitulatif.
@@ -166,11 +184,34 @@ export function SaisieBudgetairePage(): JSX.Element {
     );
   }, [exerciceFiscal]);
 
-  // Grille (best-effort) : sert UNIQUEMENT à pré-remplir les valeurs
-  // déjà saisies des comptes feuilles. Son échec n'empêche pas la saisie.
+  // Grille : pré-remplissage du formulaire + source du tableau récap.
+  // En vue consolidée, on charge la grille de CHAQUE LM active (l'API
+  // exige un ligne_metier) puis on fusionne les lignes — aucun appel
+  // backend modifié. Son échec n'empêche pas la saisie.
   function reloadGrille(): void {
     if (!contexteComplet) {
       setGrille(null);
+      return;
+    }
+    if (vueConsolidee && lmIds.length > 0) {
+      Promise.all(
+        lmIds.map((lmId) =>
+          getGrilleSaisie({
+            versionId: versionId!,
+            scenarioId: scenarioId!,
+            crId: crId!,
+            ligneMetierId: lmId,
+            exerciceFiscal: exerciceFiscal!,
+          }).catch(() => null),
+        ),
+      ).then((resultats) => {
+        const ok = resultats.filter((g): g is GrilleSaisie => g !== null);
+        if (ok.length === 0) {
+          setGrille(null);
+          return;
+        }
+        setGrille({ ...ok[0]!, lignes: ok.flatMap((g) => g.lignes) });
+      });
       return;
     }
     getGrilleSaisie({
@@ -184,18 +225,46 @@ export function SaisieBudgetairePage(): JSX.Element {
       .catch(() => setGrille(null));
   }
 
+  // Chargement des LM actives (univers de la boucle consolidée).
+  useEffect(() => {
+    listLignesMetier({ limit: 200, versionCouranteUniquement: true })
+      .then((res) =>
+        setLmIds(res.items.filter((l) => l.estActif).map((l) => l.id)),
+      )
+      .catch(() => setLmIds([]));
+  }, []);
+
+  // Maintient editingKeyRef aligné sur editingKey (notamment aux clears).
+  useEffect(() => {
+    editingKeyRef.current = editingKey;
+  }, [editingKey]);
+
+  // Changement de contexte : recharge la grille. On ne réinitialise PAS
+  // la sélection pendant une édition (la bascule de LM en vue consolidée
+  // change ligneMetierId mais ne doit pas fermer le formulaire).
   useEffect(() => {
     reloadGrille();
-    setSelectedCompte(null);
+    if (!editingKeyRef.current) setSelectedCompte(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionId, scenarioId, crId, ligneMetierId, exerciceFiscal]);
 
+  // Bascule de vue (ou arrivée des LM) : recharge la grille sans toucher
+  // à la sélection courante.
+  useEffect(() => {
+    reloadGrille();
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vueConsolidee, lmIds]);
+
   // À la sélection d'un compte : pré-remplit depuis la grille si la ligne
-  // existe (feuille déjà chargée), sinon part de zéro.
+  // existe (pour la LM ciblée), sinon part de zéro.
   useEffect(() => {
     if (!selectedCompte) return;
+    const targetLm = editingKey ? editingKey.ligneMetierId : ligneMetierId;
     const ligne =
-      grille?.lignes.find((l) => l.compte.id === selectedCompte.id) ?? null;
+      grille?.lignes.find(
+        (l) => l.compte.id === selectedCompte.id && l.ligneMetier.id === targetLm,
+      ) ?? null;
     if (ligne && moisKeys.length === 12) {
       const parMois = new Map(ligne.cellules.map((c) => [c.mois, c]));
       const vals = moisKeys.map((m) => parMois.get(m)?.montant ?? 0);
@@ -209,7 +278,7 @@ export function SaisieBudgetairePage(): JSX.Element {
       setMontantAnnuel(0);
       setJustification('');
     }
-  }, [selectedCompte, grille, moisKeys]);
+  }, [selectedCompte, grille, moisKeys, editingKey, ligneMetierId]);
 
   const versionVerrouillee =
     statutVersion !== null && statutVersion !== 'ouvert';
@@ -332,21 +401,40 @@ export function SaisieBudgetairePage(): JSX.Element {
   // ─── Tableau récapitulatif : lignes réellement saisies ────────────
   // On filtre la grille (qui contient TOUS les comptes éligibles) sur
   // celles ayant au moins une cellule persistée (ligneId != null).
-  // Tri par code compte (l'ordre de création n'est pas exposé par
-  // l'endpoint agrégé GET /budget/grille).
+  // Vue consolidée : tri LM puis code compte ; sinon code compte.
+  // (L'ordre de création n'est pas exposé par GET /budget/grille.)
   const lignesSaisies = useMemo<GrilleLigne[]>(() => {
     if (!grille) return [];
     return grille.lignes
       .filter((l) => l.cellules.some((c) => c.ligneId !== null))
-      .sort((a, b) => a.compte.codeCompte.localeCompare(b.compte.codeCompte));
-  }, [grille]);
+      .sort((a, b) => {
+        if (vueConsolidee) {
+          const parLm = a.ligneMetier.codeLigneMetier.localeCompare(
+            b.ligneMetier.codeLigneMetier,
+          );
+          if (parLm !== 0) return parLm;
+        }
+        return a.compte.codeCompte.localeCompare(b.compte.codeCompte);
+      });
+  }, [grille, vueConsolidee]);
 
   // ─── Édition d'une ligne existante ────────────────────────────────
   function modifierLigne(ligne: GrilleLigne): void {
+    // Ref synchrone AVANT tout setState : l'effet de changement de
+    // contexte (déclenché par la bascule de LM ci-dessous en vue
+    // consolidée) doit voir qu'une édition est en cours.
+    editingKeyRef.current = {
+      compteId: ligne.compte.id,
+      ligneMetierId: ligne.ligneMetier.id,
+    };
     setEditingKey({
       compteId: ligne.compte.id,
       ligneMetierId: ligne.ligneMetier.id,
     });
+    // Vue consolidée : bascule la LM du contexte sur celle de la ligne.
+    if (vueConsolidee && ligne.ligneMetier.id !== ligneMetierId) {
+      setLigneMetierId(ligne.ligneMetier.id);
+    }
     setSelectedCompte({
       id: ligne.compte.id,
       codeCompte: ligne.compte.codeCompte,
@@ -713,6 +801,11 @@ export function SaisieBudgetairePage(): JSX.Element {
             onSupprimer={(ligne) => setConfirmDelete(ligne)}
             readOnly={readOnly}
             editingKey={editingKey}
+            vueConsolidee={vueConsolidee}
+            onToggleVue={(next) => {
+              localStorage.setItem(VUE_STORAGE_KEY, next ? '1' : '0');
+              setVueConsolidee(next);
+            }}
           />
         </div>
       )}
