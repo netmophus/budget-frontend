@@ -127,7 +127,32 @@ export async function rouvrirCr(
   return data;
 }
 
-// ─── Soumission au Comité (utilisé en PR C) ────────────────────────
+// ─── Snapshot des CR attendus (Coordinateur) ──────────────────────
+
+export async function initialiserSnapshot(
+  versionId: string,
+): Promise<{ ajoutes: number; total: number }> {
+  const { data } = await apiClient.post<{ ajoutes: number; total: number }>(
+    `/budget/version/${encodeURIComponent(versionId)}/initialiser-snapshot`,
+  );
+  return data;
+}
+
+export async function retirerCrDuSnapshot(
+  versionId: string,
+  crCode: string,
+  motif: string,
+): Promise<{ crCode: string; retire: boolean }> {
+  const { data } = await apiClient.post<{ crCode: string; retire: boolean }>(
+    `/budget/version/${encodeURIComponent(
+      versionId,
+    )}/cr/${encodeURIComponent(crCode)}/retirer-snapshot`,
+    { motif },
+  );
+  return data;
+}
+
+// ─── Soumission au Comité (Coordinateur) ───────────────────────────
 
 export async function soumettreComite(
   versionId: string,

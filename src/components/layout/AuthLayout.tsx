@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   Library,
+  ListTree,
   LogOut,
   Menu,
   Package,
@@ -144,6 +145,13 @@ const NAV_BUDGET: NavItem[] = [
     label: 'Validations',
     icon: CheckCheck,
     permission: 'BUDGET.VALIDER',
+  },
+  // Lot workflow par CR — pilotage par le Coordinateur.
+  {
+    to: '/budget/coordination',
+    label: 'Coordination',
+    icon: ListTree,
+    permission: 'BUDGET.COORDONNER',
   },
   // Lot 3.5 — file de validation (version-globale, ancien workflow).
   {

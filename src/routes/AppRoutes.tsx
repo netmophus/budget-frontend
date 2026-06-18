@@ -71,6 +71,11 @@ const ValidationsPage = lazy(() =>
     default: m.ValidationsPage,
   })),
 );
+const CoordinationPage = lazy(() =>
+  import('@/pages/CoordinationPage').then((m) => ({
+    default: m.CoordinationPage,
+  })),
+);
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
   import('@/pages/ConfigurationPage').then((m) => ({
@@ -347,6 +352,16 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.VALIDER">
               <Suspense fallback={<PageFallback />}>
                 <ValidationsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/coordination"
+          element={
+            <PermissionRoute permission="BUDGET.COORDONNER">
+              <Suspense fallback={<PageFallback />}>
+                <CoordinationPage />
               </Suspense>
             </PermissionRoute>
           }
