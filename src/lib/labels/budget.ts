@@ -3,6 +3,7 @@
  * Cohérent avec les enums backend (DimVersion / DimScenario / TypeTaux).
  */
 
+import type { StatutCr } from '@/lib/api/cr-workflow';
 import type { StatutVersion, TypeVersion } from '@/lib/api/versions';
 import type { StatutScenario, TypeScenario } from '@/lib/api/scenarios';
 
@@ -62,6 +63,31 @@ export function badgeClassStatutVersion(value: StatutVersion): string {
     case 'valide':
       return 'bg-blue-500 text-white border-transparent';
     case 'gele':
+      return 'bg-green-600 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
+
+// ─── Statut de validation par CR (Lot workflow CR) ─────────────────
+
+export const STATUTS_CR = [
+  { value: 'EN_SAISIE', libelle: 'En cours de saisie' },
+  { value: 'SOUMIS', libelle: 'Soumis au validateur' },
+  { value: 'VALIDE', libelle: 'Validé' },
+] as const;
+
+export function libelleStatutCr(value: StatutCr): string {
+  return STATUTS_CR.find((s) => s.value === value)?.libelle ?? value;
+}
+
+export function badgeClassStatutCr(value: StatutCr): string {
+  switch (value) {
+    case 'EN_SAISIE':
+      return 'bg-gray-200 text-gray-800 border-transparent';
+    case 'SOUMIS':
+      return 'bg-orange-500 text-white border-transparent';
+    case 'VALIDE':
       return 'bg-green-600 text-white border-transparent';
     default:
       return 'bg-gray-300 text-gray-800 border-transparent';
