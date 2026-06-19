@@ -10,7 +10,16 @@ export type TypeVersion =
   // sur le backend DimVersion (Lot 6.7.3 frontend).
   | 'reforecast';
 
-export type StatutVersion = 'ouvert' | 'soumis' | 'valide' | 'gele';
+export type StatutVersion =
+  | 'ouvert'
+  | 'soumis'
+  | 'valide'
+  | 'gele'
+  // Lot workflow par CR — statuts intermédiaires du cycle par CR
+  // (cf. backend migration 490). `pre_valide` = tous les CR attendus
+  // validés ; `soumis_comite` = transmise au Comité par le Coordinateur.
+  | 'pre_valide'
+  | 'soumis_comite';
 
 export interface Version {
   id: string;
@@ -57,6 +66,8 @@ export const STATUT_VERSION_LABEL: Record<StatutVersion, string> = {
   soumis: 'Soumis',
   valide: 'Validé',
   gele: 'Publié',
+  pre_valide: 'Pré-validé',
+  soumis_comite: 'Soumis au Comité',
 };
 
 /**

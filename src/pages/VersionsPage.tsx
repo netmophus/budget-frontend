@@ -695,6 +695,9 @@ const STATUT_VERSION_CONFIG: Record<
   soumis: { hex: '#BA7517', bgHex: '#BA75171A', Icon: Send },
   valide: { hex: '#2E5BAE', bgHex: '#2E5BAE1A', Icon: CircleCheck },
   gele: { hex: '#0F6E56', bgHex: '#0F6E561A', Icon: Lock },
+  // Lot workflow par CR — statuts intermédiaires du cycle par CR.
+  pre_valide: { hex: '#0EA5E9', bgHex: '#0EA5E91A', Icon: CircleCheck },
+  soumis_comite: { hex: '#2563EB', bgHex: '#2563EB1A', Icon: Send },
 };
 
 export function StatutVersionBadge({

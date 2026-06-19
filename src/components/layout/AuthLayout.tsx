@@ -153,6 +153,14 @@ const NAV_BUDGET: NavItem[] = [
     icon: ListTree,
     permission: 'BUDGET.COORDONNER',
   },
+  // Lot workflow par CR — arbitrage du Comité Budget (approbation /
+  // demande de révision sur une version SOUMIS_COMITE).
+  {
+    to: '/budget/comite',
+    label: 'Comité Budget',
+    icon: ClipboardCheck,
+    permission: 'BUDGET.VALIDER',
+  },
   // Lot 3.5 — file de validation (version-globale, ancien workflow).
   {
     to: '/budget/a-valider',

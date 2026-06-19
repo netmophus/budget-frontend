@@ -167,3 +167,47 @@ export async function soumettreComite(
   });
   return data;
 }
+
+// ─── Transitions Comité (membre du Comité, BUDGET.VALIDER) ─────────
+
+/** Approbation Comité : version SOUMIS_COMITE → VALIDE. */
+export async function approuverComite(
+  versionId: string,
+  commentaire?: string,
+): Promise<{ id: string; codeVersion: string; statut: string }> {
+  const { data } = await apiClient.post<{
+    id: string;
+    codeVersion: string;
+    statut: string;
+  }>(
+    `/referentiels/versions/${encodeURIComponent(versionId)}/approuver-comite`,
+    { commentaire },
+  );
+  return data;
+}
+
+/**
+ * Demande de révision Comité : version SOUMIS_COMITE → OUVERT + CR ciblé
+ * VALIDE → EN_SAISIE. Motif obligatoire.
+ */
+export async function demanderRevisionComite(
+  versionId: string,
+  crCode: string,
+  motif: string,
+): Promise<{
+  versionId: string;
+  crCode: string;
+  statutVersion: string;
+  statutCr: StatutCr;
+}> {
+  const { data } = await apiClient.post<{
+    versionId: string;
+    crCode: string;
+    statutVersion: string;
+    statutCr: StatutCr;
+  }>(`/budget/version/${encodeURIComponent(versionId)}/demander-revision`, {
+    crCode,
+    motif,
+  });
+  return data;
+}
