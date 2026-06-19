@@ -170,7 +170,7 @@ describe('ComitePage', () => {
     expect(mockFaits).toHaveBeenCalledWith({
       fkVersion: 'v1',
       fkCentre: 'cr1',
-      limit: 500,
+      limit: 200,
     });
     expect(screen.getByTestId('comite-detail-row').textContent).toContain(
       '701000',

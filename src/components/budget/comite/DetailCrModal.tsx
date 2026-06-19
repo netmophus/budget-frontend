@@ -46,7 +46,7 @@ export function DetailCrModal({
     if (!versionId || !cr) return;
     setLoading(true);
     setErreur(null);
-    listFaitsBudget({ fkVersion: versionId, fkCentre: cr.crId, limit: 500 })
+    listFaitsBudget({ fkVersion: versionId, fkCentre: cr.crId, limit: 200 })
       .then((res) => {
         // Vue plate : 1 ligne par couple (compte × LM), via la primitive
         // partagée avec l'impression (palier 7).
