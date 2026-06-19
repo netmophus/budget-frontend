@@ -88,6 +88,11 @@ const ImpressionCrPage = lazy(() =>
     default: m.ImpressionCrPage,
   })),
 );
+const ImpressionPerimetrePage = lazy(() =>
+  import('@/features/budget/comite/impression/ImpressionPerimetrePage').then(
+    (m) => ({ default: m.ImpressionPerimetrePage }),
+  ),
+);
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
   import('@/pages/ConfigurationPage').then((m) => ({
@@ -222,6 +227,19 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <ImpressionCrPage />
+              </Suspense>
+            </PermissionRoute>
+          </ProtectedRoute>
+        }
+      />
+      {/* Palier 7.2 — impression du périmètre d'un validateur (hors layout). */}
+      <Route
+        path="/budget/validations/impression"
+        element={
+          <ProtectedRoute>
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ImpressionPerimetrePage />
               </Suspense>
             </PermissionRoute>
           </ProtectedRoute>

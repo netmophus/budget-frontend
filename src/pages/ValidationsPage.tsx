@@ -63,6 +63,15 @@ function ouvrirImpressionCr(crCode: string, versionId: string): void {
   );
 }
 
+/** Ouvre la vue d'impression du périmètre validateur (palier 7.2). */
+function ouvrirImpressionPerimetre(versionId: string): void {
+  window.open(
+    `/budget/validations/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
+}
+
 export function ValidationsPage(): JSX.Element {
   const navigate = useNavigate();
   const { versionId: storeVersionId, setVersionId: setStoreVersionId, setCrId } =
@@ -217,16 +226,31 @@ export function ValidationsPage(): JSX.Element {
             ))}
           </select>
         </label>
-        {vue && (
-          <div
-            className="rounded-md border border-(--border) bg-(--secondary) px-3 py-2 text-sm"
-            data-testid="validations-indicateur"
-          >
-            <strong className="tabular-nums">{vue.nbSoumis}</strong> CR à valider
-            sur <strong className="tabular-nums">{vue.totalAttendus}</strong> CR
-            de votre périmètre.
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {vue && (
+            <div
+              className="rounded-md border border-(--border) bg-(--secondary) px-3 py-2 text-sm"
+              data-testid="validations-indicateur"
+            >
+              <strong className="tabular-nums">{vue.nbSoumis}</strong> CR à
+              valider sur{' '}
+              <strong className="tabular-nums">{vue.totalAttendus}</strong> CR de
+              votre périmètre.
+            </div>
+          )}
+          {versionId && vue && vue.totalAttendus > 0 && (
+            <Button
+              variant="outline"
+              className="h-9 gap-1.5"
+              onClick={() => ouvrirImpressionPerimetre(versionId)}
+              data-testid="validations-imprimer-perimetre"
+              title="Imprimer le détail de tout votre périmètre"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Imprimer mon périmètre
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ─── Filtres ────────────────────────────────────────────── */}
