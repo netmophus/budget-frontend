@@ -8,9 +8,18 @@
  * retombe sur le marqueur « — » ; une cellule (compte × LM) absente du
  * pivot n'apparaît pas dans `montants` (le consommateur affiche « — »).
  */
-import type { FaitBudget } from '@/lib/api/budget';
-
 export const PLACEHOLDER_VIDE = '—';
+
+/**
+ * Forme minimale d'un fait agrégeable — compatible avec `FaitBudget`
+ * (endpoint /faits/budget) ET `LigneCrComite` (endpoint Comité dédié,
+ * perimeter-free). Seuls compte / ligneMetier / montant sont requis.
+ */
+export interface FaitAgregeable {
+  montantDevise: number;
+  compte?: { code: string; libelle: string } | null;
+  ligneMetier?: { code: string; libelle: string } | null;
+}
 
 export interface RefCompte {
   code: string;
@@ -46,7 +55,7 @@ const triCode = (a: string, b: string): number => a.localeCompare(b);
  * Plusieurs faits sur le même couple sont sommés (`montantDevise`).
  */
 export function agregerFaitsParCompteLigneMetier(
-  faits: FaitBudget[],
+  faits: FaitAgregeable[],
 ): AgregationCr {
   const cellules = new Map<string, CelluleAgregee>();
   const comptes = new Map<string, RefCompte>();

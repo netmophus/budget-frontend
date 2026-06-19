@@ -24,25 +24,20 @@ vi.mock('@/lib/api/cr-workflow', () => ({
   demanderRevisionComite: vi
     .fn()
     .mockResolvedValue({ statutVersion: 'ouvert', statutCr: 'EN_SAISIE' }),
-}));
-vi.mock('@/lib/api/budget', () => ({
-  listFaitsBudget: vi.fn().mockResolvedValue({
-    items: [
-      {
-        id: 'f1',
-        montantDevise: 1000,
-        compte: { id: 'c1', code: '701000', libelle: 'Intérêts' },
-        ligneMetier: { id: 'lm1', code: 'LM_PART', libelle: 'Particuliers' },
-      },
-    ],
-  }),
+  getLignesCrComite: vi.fn().mockResolvedValue([
+    {
+      montantDevise: 1000,
+      compte: { code: '701000', libelle: 'Intérêts' },
+      ligneMetier: { code: 'LM_PART', libelle: 'Particuliers' },
+    },
+  ]),
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-import { listFaitsBudget } from '@/lib/api/budget';
 import {
   approuverComite,
   demanderRevisionComite,
+  getLignesCrComite,
   getStatutsCrsVersion,
 } from '@/lib/api/cr-workflow';
 import { ComitePage } from './ComitePage';
@@ -50,7 +45,7 @@ import { ComitePage } from './ComitePage';
 const mockVue = getStatutsCrsVersion as unknown as ReturnType<typeof vi.fn>;
 const mockAppro = approuverComite as unknown as ReturnType<typeof vi.fn>;
 const mockRev = demanderRevisionComite as unknown as ReturnType<typeof vi.fn>;
-const mockFaits = listFaitsBudget as unknown as ReturnType<typeof vi.fn>;
+const mockLignes = getLignesCrComite as unknown as ReturnType<typeof vi.fn>;
 
 function vue(statutVersion = 'soumis_comite') {
   return {
@@ -167,11 +162,7 @@ describe('ComitePage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('comite-detail-table')).toBeInTheDocument(),
     );
-    expect(mockFaits).toHaveBeenCalledWith({
-      fkVersion: 'v1',
-      fkCentre: 'cr1',
-      limit: 200,
-    });
+    expect(mockLignes).toHaveBeenCalledWith('v1', 'CR_A');
     expect(screen.getByTestId('comite-detail-row').textContent).toContain(
       '701000',
     );

@@ -14,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { listFaitsBudget } from '@/lib/api/budget';
-import type { CrStatutLigne } from '@/lib/api/cr-workflow';
+import { getLignesCrComite, type CrStatutLigne } from '@/lib/api/cr-workflow';
 import {
   agregerFaitsParCompteLigneMetier,
   type CelluleAgregee,
@@ -46,11 +45,13 @@ export function DetailCrModal({
     if (!versionId || !cr) return;
     setLoading(true);
     setErreur(null);
-    listFaitsBudget({ fkVersion: versionId, fkCentre: cr.crId, limit: 200 })
-      .then((res) => {
+    // Endpoint Comité dédié (perimeter-free) : un membre du Comité voit
+    // tout CR de la version, hors de son périmètre de saisie/validation.
+    getLignesCrComite(versionId, cr.crCode)
+      .then((items) => {
         // Vue plate : 1 ligne par couple (compte × LM), via la primitive
         // partagée avec l'impression (palier 7).
-        setLignes(agregerFaitsParCompteLigneMetier(res.items).cellules);
+        setLignes(agregerFaitsParCompteLigneMetier(items).cellules);
       })
       .catch(() => setErreur('Impossible de charger le détail du CR.'))
       .finally(() => setLoading(false));

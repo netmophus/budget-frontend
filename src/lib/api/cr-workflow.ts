@@ -73,6 +73,33 @@ export async function getStatutsCrsVersion(
   return data;
 }
 
+/**
+ * Lignes budgétaires agrégées (compte × ligne métier) d'un CR — vue
+ * Comité. Endpoint dédié SANS filtre périmètre (contrairement à
+ * /faits/budget) : un membre du Comité examine n'importe quel CR de la
+ * version. Forme compatible avec `agregerFaitsParCompteLigneMetier`.
+ */
+export interface LigneCrComite {
+  montantDevise: number;
+  compte: { code: string; libelle: string };
+  ligneMetier: { code: string; libelle: string };
+}
+
+export async function getLignesCrComite(
+  versionId: string,
+  crCode: string,
+): Promise<LigneCrComite[]> {
+  const { data } = await apiClient.get<{
+    crCode: string;
+    items: LigneCrComite[];
+  }>(
+    `/budget/version/${encodeURIComponent(
+      versionId,
+    )}/cr/${encodeURIComponent(crCode)}/lignes`,
+  );
+  return data.items;
+}
+
 // ─── Transitions par CR ────────────────────────────────────────────
 
 export async function soumettreCr(
