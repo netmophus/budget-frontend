@@ -7,17 +7,22 @@
  *
  * Permission d'accès : BUDGET.COORDONNER (route protégée).
  */
-import { ListTree } from 'lucide-react';
+import { ListTree, Send, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { InitialiserSnapshotDialog } from '@/components/budget/coordination/InitialiserSnapshotDialog';
 import { ProgressionVersionTable } from '@/components/budget/coordination/ProgressionVersionTable';
+import { RetirerCrDialog } from '@/components/budget/coordination/RetirerCrDialog';
+import { SoumissionComiteDialog } from '@/components/budget/coordination/SoumissionComiteDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   getStatutsCrsVersion,
   initialiserSnapshot,
+  retirerCrDuSnapshot,
+  soumettreComite,
+  type CrStatutLigne,
   type StatutsCrsVersion,
 } from '@/lib/api/cr-workflow';
 import { listVersions, type Version } from '@/lib/api/versions';
@@ -41,6 +46,9 @@ export function CoordinationPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [snapshotDialog, setSnapshotDialog] = useState(false);
   const [initSubmitting, setInitSubmitting] = useState(false);
+  const [retirerCible, setRetirerCible] = useState<CrStatutLigne | null>(null);
+  const [comiteDialog, setComiteDialog] = useState(false);
+  const [comiteSubmitting, setComiteSubmitting] = useState(false);
 
   useEffect(() => {
     listVersions({ limit: 200 })
@@ -107,7 +115,39 @@ export function CoordinationPage(): JSX.Element {
     }
   }
 
+  async function handleRetirer(motif: string): Promise<void> {
+    if (!versionId || !retirerCible) return;
+    try {
+      await retirerCrDuSnapshot(versionId, retirerCible.crCode, motif);
+      toast.success(`CR ${retirerCible.crCode} retiré du snapshot.`);
+      setRetirerCible(null);
+      reload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec du retrait : ${msg}`);
+      throw err;
+    }
+  }
+
+  async function handleSoumettreComite(commentaire?: string): Promise<void> {
+    if (!versionId) return;
+    setComiteSubmitting(true);
+    try {
+      await soumettreComite(versionId, commentaire);
+      toast.success('Version soumise au Comité budgétaire.');
+      setComiteDialog(false);
+      reload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec de la soumission : ${msg}`);
+    } finally {
+      setComiteSubmitting(false);
+    }
+  }
+
   const snapshotVide = vue !== null && vue.totalAttendus === 0;
+  const versionOuverte = vue?.statutVersion === 'ouvert';
+  const versionPreValide = vue?.statutVersion === 'pre_valide';
 
   return (
     <div>
@@ -154,6 +194,16 @@ export function CoordinationPage(): JSX.Element {
           >
             {libelleStatutVersionWorkflow(vue.statutVersion)}
           </Badge>
+        )}
+        {versionPreValide && (
+          <Button
+            onClick={() => setComiteDialog(true)}
+            data-testid="coordination-soumettre-comite"
+            className="ml-auto h-9 gap-1.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Soumettre au Comité
+          </Button>
         )}
       </div>
 
@@ -226,7 +276,25 @@ export function CoordinationPage(): JSX.Element {
             </div>
           </div>
 
-          <ProgressionVersionTable crs={vue.crs} />
+          <ProgressionVersionTable
+            crs={vue.crs}
+            renderActions={
+              versionOuverte
+                ? (cr) => (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-(--destructive)"
+                      onClick={() => setRetirerCible(cr)}
+                      data-testid="coordination-retirer"
+                      title="Retirer ce CR du snapshot"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )
+                : undefined
+            }
+          />
         </div>
       )}
 
@@ -236,6 +304,20 @@ export function CoordinationPage(): JSX.Element {
         onConfirm={handleInit}
         versionLibelle={versionLibelle}
         submitting={initSubmitting}
+      />
+
+      <RetirerCrDialog
+        crCode={retirerCible?.crCode ?? null}
+        onClose={() => setRetirerCible(null)}
+        onConfirm={handleRetirer}
+      />
+
+      <SoumissionComiteDialog
+        isOpen={comiteDialog}
+        onClose={() => setComiteDialog(false)}
+        onConfirm={handleSoumettreComite}
+        pnbConsolide={pnbConsolide}
+        submitting={comiteSubmitting}
       />
     </div>
   );
