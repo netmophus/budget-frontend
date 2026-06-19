@@ -3,7 +3,7 @@
  * (lecture seule, écran Comité Budget). Agrège les faits budget du CR
  * par couple (compte PCB × ligne métier) avec total annuel.
  *
- * L'impression est différée au palier 7 (bouton volontairement absent).
+ * L'impression du détail est différée à une PR dédiée (bouton absent).
  */
 import { useEffect, useState } from 'react';
 
@@ -139,7 +139,7 @@ export function DetailCrModal({
         )}
 
         <p className="text-[11px] text-(--muted-foreground)">
-          🖨 Impression du détail : disponible au palier suivant.
+          🖨 Impression du détail : prévue dans une PR dédiée à venir.
         </p>
       </DialogContent>
     </Dialog>
