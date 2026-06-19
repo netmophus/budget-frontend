@@ -111,7 +111,7 @@ describe('ComitePage', () => {
       '—',
     );
     // 2 CR validés dans la table.
-    expect(screen.getAllByTestId('progression-row')).toHaveLength(2);
+    expect(screen.getAllByTestId('comite-cr-row')).toHaveLength(2);
     expect(screen.getByTestId('comite-approuver')).toBeInTheDocument();
     expect(
       screen.getByTestId('comite-demander-revision'),

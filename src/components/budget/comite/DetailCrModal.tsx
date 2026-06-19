@@ -16,20 +16,15 @@ import {
 } from '@/components/ui/dialog';
 import { listFaitsBudget } from '@/lib/api/budget';
 import type { CrStatutLigne } from '@/lib/api/cr-workflow';
+import {
+  agregerFaitsParCompteLigneMetier,
+  type CelluleAgregee,
+} from '@/features/budget/lib/agregation-cr';
 
 const FMT = new Intl.NumberFormat('fr-FR', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
-
-interface LigneAgregee {
-  cle: string;
-  compteCode: string;
-  compteLibelle: string;
-  lmCode: string;
-  lmLibelle: string;
-  total: number;
-}
 
 interface DetailCrModalProps {
   versionId: string | null;
@@ -43,7 +38,7 @@ export function DetailCrModal({
   cr,
   onClose,
 }: DetailCrModalProps): JSX.Element | null {
-  const [lignes, setLignes] = useState<LigneAgregee[]>([]);
+  const [lignes, setLignes] = useState<CelluleAgregee[]>([]);
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -53,30 +48,9 @@ export function DetailCrModal({
     setErreur(null);
     listFaitsBudget({ fkVersion: versionId, fkCentre: cr.crId, limit: 500 })
       .then((res) => {
-        const map = new Map<string, LigneAgregee>();
-        for (const f of res.items) {
-          const compteCode = f.compte?.code ?? '—';
-          const lmCode = f.ligneMetier?.code ?? '—';
-          const cle = `${compteCode}|${lmCode}`;
-          const prev = map.get(cle);
-          if (prev) {
-            prev.total += f.montantDevise;
-          } else {
-            map.set(cle, {
-              cle,
-              compteCode,
-              compteLibelle: f.compte?.libelle ?? '—',
-              lmCode,
-              lmLibelle: f.ligneMetier?.libelle ?? '—',
-              total: f.montantDevise,
-            });
-          }
-        }
-        setLignes(
-          [...map.values()].sort((a, b) =>
-            a.compteCode.localeCompare(b.compteCode),
-          ),
-        );
+        // Vue plate : 1 ligne par couple (compte × LM), via la primitive
+        // partagée avec l'impression (palier 7).
+        setLignes(agregerFaitsParCompteLigneMetier(res.items).cellules);
       })
       .catch(() => setErreur('Impossible de charger le détail du CR.'))
       .finally(() => setLoading(false));
@@ -84,7 +58,7 @@ export function DetailCrModal({
 
   if (!cr) return null;
 
-  const total = lignes.reduce((s, l) => s + l.total, 0);
+  const total = lignes.reduce((s, l) => s + l.montant, 0);
 
   return (
     <Dialog open={cr !== null} onOpenChange={(o) => !o && onClose()}>
@@ -132,7 +106,7 @@ export function DetailCrModal({
               <tbody>
                 {lignes.map((l) => (
                   <tr
-                    key={l.cle}
+                    key={`${l.compteCode}|${l.lmCode}`}
                     className="border-t border-(--border)"
                     data-testid="comite-detail-row"
                   >
@@ -144,7 +118,7 @@ export function DetailCrModal({
                       {l.lmCode}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {FMT.format(l.total)}
+                      {FMT.format(l.montant)}
                     </td>
                   </tr>
                 ))}

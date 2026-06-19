@@ -17,9 +17,16 @@ import { ApprobationDialog } from '@/components/budget/comite/ApprobationDialog'
 import { DemanderRevisionDialog } from '@/components/budget/comite/DemanderRevisionDialog';
 import { DetailCrModal } from '@/components/budget/comite/DetailCrModal';
 import { VueConsolideeVersion } from '@/components/budget/comite/VueConsolideeVersion';
-import { ProgressionVersionTable } from '@/components/budget/coordination/ProgressionVersionTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   approuverComite,
   demanderRevisionComite,
@@ -38,6 +45,14 @@ const FMT = new Intl.NumberFormat('fr-FR', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 });
+
+function formatDateFr(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = (n: number): string => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 export function ComitePage(): JSX.Element {
   const { versionId: storeVersionId } = useBudgetGrilleStore();
@@ -262,21 +277,59 @@ export function ComitePage(): JSX.Element {
                 Aucun CR validé pour cette version.
               </div>
             ) : (
-              <ProgressionVersionTable
-                crs={crsValides}
-                renderActions={(cr) => (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setDetailCible(cr)}
-                    data-testid="comite-voir-detail"
-                    title="Voir le détail du CR"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              />
+              <div className="rounded-md border border-(--border) overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">N°</TableHead>
+                      <TableHead>Code CR</TableHead>
+                      <TableHead>Libellé</TableHead>
+                      <TableHead>Saisisseur</TableHead>
+                      <TableHead>Validateur</TableHead>
+                      <TableHead className="text-right">PNB</TableHead>
+                      <TableHead>Validé le</TableHead>
+                      <TableHead className="text-right">Détail</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crsValides.map((cr, i) => (
+                      <TableRow key={cr.crId} data-testid="comite-cr-row">
+                        <TableCell className="text-(--muted-foreground) tabular-nums">
+                          {i + 1}
+                        </TableCell>
+                        <TableCell className="font-mono">{cr.crCode}</TableCell>
+                        <TableCell className="max-w-[180px] truncate">
+                          {cr.libelle}
+                        </TableCell>
+                        <TableCell className="max-w-[160px] truncate text-(--muted-foreground)">
+                          {cr.saisisseurEmail ?? '—'}
+                        </TableCell>
+                        <TableCell className="max-w-[160px] truncate text-(--muted-foreground)">
+                          {cr.validateurEmail ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-medium">
+                          {FMT.format(cr.pnb)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {formatDateFr(cr.dateValidation)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => setDetailCible(cr)}
+                            data-testid="comite-voir-detail"
+                            title="Voir le détail du CR"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </section>
         </div>
