@@ -9,7 +9,13 @@
  * Permission d'accès : BUDGET.VALIDER (route protégée). Les actions ne
  * sont actives que si la version est effectivement SOUMIS_COMITE.
  */
-import { ClipboardCheck, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import {
+  ClipboardCheck,
+  Eye,
+  Printer,
+  RotateCcw,
+  ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -52,6 +58,17 @@ function formatDateFr(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number): string => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Ouvre la vue d'impression du CR (palier 7) dans un nouvel onglet. */
+function ouvrirImpressionCr(crCode: string, versionId: string): void {
+  window.open(
+    `/budget/comite/cr/${encodeURIComponent(
+      crCode,
+    )}/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
 }
 
 export function ComitePage(): JSX.Element {
@@ -288,7 +305,7 @@ export function ComitePage(): JSX.Element {
                       <TableHead>Validateur</TableHead>
                       <TableHead className="text-right">PNB</TableHead>
                       <TableHead>Validé le</TableHead>
-                      <TableHead className="text-right">Détail</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -313,7 +330,7 @@ export function ComitePage(): JSX.Element {
                         <TableCell className="tabular-nums">
                           {formatDateFr(cr.dateValidation)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -324,6 +341,20 @@ export function ComitePage(): JSX.Element {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
+                          {versionId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() =>
+                                ouvrirImpressionCr(cr.crCode, versionId)
+                              }
+                              data-testid="comite-imprimer-cr"
+                              title="Imprimer le détail du CR"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

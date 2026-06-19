@@ -1,0 +1,27 @@
+/* Styles d'impression des documents workflow CR (palier 7).
+   Le rendu écran reste standard ; @media print cadre en A4 propre et
+   masque les éléments interactifs (.impression-no-print). */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #ffffff;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .impression-no-print {
+    display: none !important;
+  }
+  /* Évite de couper un bloc CR au milieu d'une page. */
+  .impression-bloc-cr {
+    break-inside: avoid;
+  }
+  .impression-saut-page {
+    break-before: page;
+  }
+}

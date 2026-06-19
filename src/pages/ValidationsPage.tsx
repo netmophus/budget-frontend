@@ -8,7 +8,7 @@
  *
  * Permission d'accès : BUDGET.VALIDER (route protégée).
  */
-import { CheckCheck, Eye } from 'lucide-react';
+import { CheckCheck, Eye, Printer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -50,6 +50,17 @@ function formatDateFr(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number): string => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Ouvre la vue d'impression du CR (palier 7) dans un nouvel onglet. */
+function ouvrirImpressionCr(crCode: string, versionId: string): void {
+  window.open(
+    `/budget/comite/cr/${encodeURIComponent(
+      crCode,
+    )}/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
 }
 
 export function ValidationsPage(): JSX.Element {
@@ -345,6 +356,20 @@ export function ValidationsPage(): JSX.Element {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
+                    {versionId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() =>
+                          ouvrirImpressionCr(ligne.crCode, versionId)
+                        }
+                        data-testid="action-imprimer"
+                        title="Imprimer le détail du CR"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     {ligne.statut === 'SOUMIS' && (
                       <>
                         <Button
