@@ -21,8 +21,9 @@
  * grille n'est chargée qu'en best-effort pour pré-remplir les valeurs
  * déjà saisies. Grain mensuel en base : aucun changement de schéma.
  */
-import { FileUp } from 'lucide-react';
+import { ArrowLeft, FileUp, Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { CompteCombobox } from '@/components/budget/CompteCombobox';
@@ -31,11 +32,18 @@ import {
   LignesSaisiesTable,
   type LigneSaisieKey,
 } from '@/components/budget/LignesSaisiesTable';
+import { SoumissionDialog } from '@/components/budget/cr-workflow/SoumissionDialog';
+import { StatutCrBanner } from '@/components/budget/cr-workflow/StatutCrBanner';
 import { SelecteurContexte } from '@/components/budget/grille/SelecteurContexte';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  getCrStatut,
+  soumettreCr,
+  type CrStatut,
+} from '@/lib/api/cr-workflow';
 import {
   getGrilleSaisie,
   saveGrilleSaisie,
@@ -106,11 +114,18 @@ type CompteSaisi = Pick<
 >;
 
 export function SaisieBudgetairePage(): JSX.Element {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const retourValidations = searchParams.get('retour') === 'validations';
   const canSaisir = useHasPermission('BUDGET.SAISIR');
+  const canSoumettre = useHasPermission('BUDGET.SOUMETTRE');
   const { versionId, scenarioId, crId, ligneMetierId, codeClasse, setLigneMetierId } =
     useBudgetGrilleStore();
 
   const [importOuvert, setImportOuvert] = useState(false);
+  // Statut de validation du CR courant (workflow par CR).
+  const [crStatut, setCrStatut] = useState<CrStatut | null>(null);
+  const [soumissionOuvert, setSoumissionOuvert] = useState(false);
   const [exerciceFiscal, setExerciceFiscal] = useState<number | null>(null);
   const [statutVersion, setStatutVersion] = useState<string | null>(null);
   const [grille, setGrille] = useState<GrilleSaisie | null>(null);
@@ -166,6 +181,23 @@ export function SaisieBudgetairePage(): JSX.Element {
       annule = true;
     };
   }, [versionId]);
+
+  // Statut de validation du CR courant (workflow par CR). Le crCode
+  // provient de la grille chargée (best-effort).
+  const crCode = grille?.cr.codeCr ?? null;
+  function rafraichirStatutCr(): void {
+    if (!crCode || !versionId) {
+      setCrStatut(null);
+      return;
+    }
+    getCrStatut(crCode, versionId)
+      .then(setCrStatut)
+      .catch(() => setCrStatut(null));
+  }
+  useEffect(() => {
+    rafraichirStatutCr();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crCode, versionId]);
 
   const contexteComplet =
     !!versionId &&
@@ -282,7 +314,11 @@ export function SaisieBudgetairePage(): JSX.Element {
 
   const versionVerrouillee =
     statutVersion !== null && statutVersion !== 'ouvert';
-  const readOnly = !canSaisir || versionVerrouillee;
+  // CR verrouillé dès qu'il est soumis ou validé (workflow par CR).
+  const crVerrouille =
+    crStatut !== null &&
+    (crStatut.statut === 'SOUMIS' || crStatut.statut === 'VALIDE');
+  const readOnly = !canSaisir || versionVerrouillee || crVerrouille;
 
   const totalMensuel = useMemo(
     () => montants.reduce((s, v) => s + v, 0),
@@ -418,6 +454,36 @@ export function SaisieBudgetairePage(): JSX.Element {
       });
   }, [grille, vueConsolidee]);
 
+  // ─── Soumission du CR au validateur (workflow par CR) ─────────────
+  const recapSoumission = useMemo(() => {
+    const produits = lignesSaisies
+      .filter((l) => l.compte.classe === '7')
+      .reduce((s, l) => s + l.totalAnnee, 0);
+    const charges = lignesSaisies
+      .filter((l) => l.compte.classe === '6')
+      .reduce((s, l) => s + l.totalAnnee, 0);
+    return {
+      nbLignes: lignesSaisies.length,
+      totalProduits: produits,
+      totalCharges: charges,
+      pnb: produits - charges,
+    };
+  }, [lignesSaisies]);
+
+  async function handleSoumettre(commentaire?: string): Promise<void> {
+    if (!crCode || !versionId) return;
+    try {
+      await soumettreCr(crCode, versionId, commentaire);
+      toast.success(`CR ${crCode} soumis au validateur.`);
+      rafraichirStatutCr();
+      reloadGrille();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec de la soumission : ${msg}`);
+      throw err; // garde la modale ouverte
+    }
+  }
+
   // ─── Édition d'une ligne existante ────────────────────────────────
   function modifierLigne(ligne: GrilleLigne): void {
     // Ref synchrone AVANT tout setState : l'effet de changement de
@@ -516,6 +582,19 @@ export function SaisieBudgetairePage(): JSX.Element {
 
   return (
     <div>
+      {retourValidations && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 mb-3 gap-1.5 -ml-2"
+          onClick={() => navigate('/budget/validations')}
+          data-testid="retour-validations"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Retour aux validations
+        </Button>
+      )}
+
       {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
@@ -527,24 +606,45 @@ export function SaisieBudgetairePage(): JSX.Element {
             ou mensuel
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setImportOuvert(true)}
-          disabled={!contexteComplet || readOnly}
-          title={
-            !contexteComplet
-              ? 'Sélectionnez un contexte (version, scénario, CR…) avant d’importer'
-              : readOnly
-                ? 'Version verrouillée — import impossible'
-                : 'Importer un fichier CSV ou XLSX'
-          }
-          data-testid="hybride-import"
-          className="h-9 gap-1.5 shrink-0"
-        >
-          <FileUp className="w-3.5 h-3.5" />
-          Importer Excel
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          {canSoumettre && crStatut?.statut === 'EN_SAISIE' && (
+            <Button
+              onClick={() => setSoumissionOuvert(true)}
+              disabled={!contexteComplet || recapSoumission.nbLignes === 0}
+              title={
+                recapSoumission.nbLignes === 0
+                  ? 'Saisissez au moins une ligne avant de soumettre'
+                  : 'Soumettre la saisie de ce CR au validateur'
+              }
+              data-testid="cr-soumettre"
+              className="h-9 gap-1.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Soumettre au validateur
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => setImportOuvert(true)}
+            disabled={!contexteComplet || readOnly}
+            title={
+              !contexteComplet
+                ? 'Sélectionnez un contexte (version, scénario, CR…) avant d’importer'
+                : readOnly
+                  ? 'Saisie verrouillée — import impossible'
+                  : 'Importer un fichier CSV ou XLSX'
+            }
+            data-testid="hybride-import"
+            className="h-9 gap-1.5"
+          >
+            <FileUp className="w-3.5 h-3.5" />
+            Importer Excel
+          </Button>
+        </div>
       </div>
+
+      {/* ─── Bandeau de statut du CR (workflow par CR) ──────────── */}
+      {crStatut && <StatutCrBanner statut={crStatut} />}
 
       {/* ─── Bandeau mode édition ───────────────────────────────── */}
       {editingKey && (
@@ -863,6 +963,17 @@ export function SaisieBudgetairePage(): JSX.Element {
         scenarioLibelle={grille?.scenario.libelle}
         onSucces={() => reloadGrille()}
       />
+
+      {/* Soumission du CR au validateur (workflow par CR) */}
+      {crCode && (
+        <SoumissionDialog
+          isOpen={soumissionOuvert}
+          onClose={() => setSoumissionOuvert(false)}
+          onConfirm={handleSoumettre}
+          crCode={crCode}
+          recap={recapSoumission}
+        />
+      )}
     </div>
   );
 }

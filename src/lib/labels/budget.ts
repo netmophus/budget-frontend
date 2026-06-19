@@ -3,6 +3,7 @@
  * Cohérent avec les enums backend (DimVersion / DimScenario / TypeTaux).
  */
 
+import type { StatutCr } from '@/lib/api/cr-workflow';
 import type { StatutVersion, TypeVersion } from '@/lib/api/versions';
 import type { StatutScenario, TypeScenario } from '@/lib/api/scenarios';
 
@@ -63,6 +64,67 @@ export function badgeClassStatutVersion(value: StatutVersion): string {
       return 'bg-blue-500 text-white border-transparent';
     case 'gele':
       return 'bg-green-600 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
+
+// ─── Statut de validation par CR (Lot workflow CR) ─────────────────
+
+export const STATUTS_CR = [
+  { value: 'EN_SAISIE', libelle: 'En cours de saisie' },
+  { value: 'SOUMIS', libelle: 'Soumis au validateur' },
+  { value: 'VALIDE', libelle: 'Validé' },
+] as const;
+
+export function libelleStatutCr(value: StatutCr): string {
+  return STATUTS_CR.find((s) => s.value === value)?.libelle ?? value;
+}
+
+export function badgeClassStatutCr(value: StatutCr): string {
+  switch (value) {
+    case 'EN_SAISIE':
+      return 'bg-gray-200 text-gray-800 border-transparent';
+    case 'SOUMIS':
+      return 'bg-orange-500 text-white border-transparent';
+    case 'VALIDE':
+      return 'bg-green-600 text-white border-transparent';
+    default:
+      return 'bg-gray-300 text-gray-800 border-transparent';
+  }
+}
+
+// ─── Statut version dans le workflow par CR ─────────────────────────
+// Vocabulaire enrichi (Lot workflow CR) : pré-validé / soumis Comité /
+// approuvé / publié. `statutVersion` arrive en string depuis l'API.
+
+const STATUTS_VERSION_WORKFLOW: Record<string, string> = {
+  ouvert: 'Ouvert',
+  soumis: 'Soumis',
+  pre_valide: 'Pré-validé',
+  soumis_comite: 'Soumis au Comité',
+  valide: 'Approuvé',
+  gele: 'Publié',
+};
+
+export function libelleStatutVersionWorkflow(value: string): string {
+  return STATUTS_VERSION_WORKFLOW[value] ?? value;
+}
+
+export function badgeClassStatutVersionWorkflow(value: string): string {
+  switch (value) {
+    case 'ouvert':
+      return 'bg-gray-200 text-gray-800 border-transparent';
+    case 'soumis':
+      return 'bg-orange-500 text-white border-transparent';
+    case 'pre_valide':
+      return 'bg-sky-400 text-white border-transparent';
+    case 'soumis_comite':
+      return 'bg-blue-600 text-white border-transparent';
+    case 'valide':
+      return 'bg-green-700 text-white border-transparent';
+    case 'gele':
+      return 'bg-amber-500 text-white border-transparent';
     default:
       return 'bg-gray-300 text-gray-800 border-transparent';
   }

@@ -66,6 +66,21 @@ const SaisieBudgetPage = lazy(() =>
     default: m.SaisieBudgetPage,
   })),
 );
+const ValidationsPage = lazy(() =>
+  import('@/pages/ValidationsPage').then((m) => ({
+    default: m.ValidationsPage,
+  })),
+);
+const CoordinationPage = lazy(() =>
+  import('@/pages/CoordinationPage').then((m) => ({
+    default: m.CoordinationPage,
+  })),
+);
+const ComitePage = lazy(() =>
+  import('@/pages/ComitePage').then((m) => ({
+    default: m.ComitePage,
+  })),
+);
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
   import('@/pages/ConfigurationPage').then((m) => ({
@@ -332,6 +347,36 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.LIRE">
               <Suspense fallback={<PageFallback />}>
                 <SaisieBudgetairePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/validations"
+          element={
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ValidationsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/coordination"
+          element={
+            <PermissionRoute permission="BUDGET.COORDONNER">
+              <Suspense fallback={<PageFallback />}>
+                <CoordinationPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/budget/comite"
+          element={
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ComitePage />
               </Suspense>
             </PermissionRoute>
           }
