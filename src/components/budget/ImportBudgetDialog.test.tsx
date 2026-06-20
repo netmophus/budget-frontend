@@ -186,6 +186,52 @@ describe('ImportBudgetDialog', () => {
     expect(screen.getByTestId('btn-importer')).toBeDisabled();
   });
 
+  it('Aide en ligne : tableau 9 colonnes + exemple BSIC + dépliée par défaut', () => {
+    render(
+      <ImportBudgetDialog
+        isOpen
+        onClose={vi.fn()}
+        versionId="10"
+        scenarioId="100"
+      />,
+    );
+    const aide = screen.getByTestId('aide-format') as HTMLDetailsElement;
+    expect(aide).toBeInTheDocument();
+    // Dépliée par défaut (1ère ouverture).
+    expect(aide.open).toBe(true);
+    // Tableau des 9 colonnes.
+    const colonnes = screen.getByTestId('aide-colonnes');
+    expect(colonnes).toBeInTheDocument();
+    expect(colonnes.querySelectorAll('tbody tr')).toHaveLength(9);
+    // Exemple aux codes BSIC réels.
+    const exemple = screen.getByTestId('aide-exemple').textContent ?? '';
+    expect(exemple).toContain('CR_AG_SIEGE');
+    expect(exemple).toContain('RET_PME');
+    expect(exemple).toContain('ENCOURS_TIE');
+    expect(exemple).not.toContain('BR_CIV');
+  });
+
+  it('Aide : bouton « Télécharger le template Excel » génère un blob', () => {
+    const createSpy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:http://test/x');
+    const revokeSpy = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {});
+    render(
+      <ImportBudgetDialog
+        isOpen
+        onClose={vi.fn()}
+        versionId="10"
+        scenarioId="100"
+      />,
+    );
+    fireEvent.click(screen.getByTestId('aide-btn-template'));
+    expect(createSpy).toHaveBeenCalled();
+    createSpy.mockRestore();
+    revokeSpy.mockRestore();
+  });
+
   it('Bouton « Télécharger le template » crée un blob CSV (lien <a>)', () => {
     // jsdom n'a pas URL.createObjectURL — on stubbe pour valider l'appel.
     const createSpy = vi

@@ -15,6 +15,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Info,
   Upload,
   X,
 } from 'lucide-react';
@@ -33,10 +34,136 @@ import {
 import {
   genererTemplateCsv,
   importBudget,
+  TEMPLATE_EXEMPLES,
+  TEMPLATE_HEADER,
   type ImportBudgetRapport,
 } from '@/lib/api/budget-import';
 
 type Etape = 'selection' | 'upload' | 'rapport';
+
+/** Spécification des 9 colonnes pour le bloc d'aide en ligne. */
+const COLONNES_AIDE: ReadonlyArray<{
+  nom: string;
+  format: string;
+  obligatoire: string;
+}> = [
+  { nom: 'code_cr', format: 'Code CR (ex : CR_AG_SIEGE)', obligatoire: 'Oui' },
+  { nom: 'code_compte', format: 'Code PCB (ex : 70213)', obligatoire: 'Oui' },
+  {
+    nom: 'code_ligne_metier',
+    format: 'Code LM (ex : RET_PME)',
+    obligatoire: 'Oui',
+  },
+  { nom: 'mois', format: 'Format YYYY-MM (ex : 2027-01)', obligatoire: 'Oui' },
+  {
+    nom: 'mode_saisie',
+    format: 'MONTANT ou ENCOURS_TIE',
+    obligatoire: 'Oui',
+  },
+  { nom: 'montant', format: 'Nombre en FCFA', obligatoire: 'Si MONTANT' },
+  {
+    nom: 'encours_moyen',
+    format: 'Nombre en FCFA',
+    obligatoire: 'Si ENCOURS',
+  },
+  { nom: 'tie', format: 'Décimal 0-1 (ex : 0.065)', obligatoire: 'Si ENCOURS' },
+  {
+    nom: 'commentaire',
+    format: 'Texte libre (max 2000 car.)',
+    obligatoire: 'Non',
+  },
+];
+
+/** Bloc d'aide en ligne : format des 9 colonnes + exemple + rappels. */
+function AideFormatImport({
+  onTelecharger,
+}: {
+  onTelecharger: () => void;
+}): JSX.Element {
+  const exempleTexte = [
+    TEMPLATE_HEADER.join(','),
+    ...TEMPLATE_EXEMPLES.map((l) => l.join(',')),
+  ].join('\n');
+
+  return (
+    <details
+      open
+      className="rounded-md border border-(--primary)/30 bg-(--primary)/5"
+      data-testid="aide-format"
+    >
+      <summary className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 text-sm font-semibold">
+        <Info className="h-4 w-4 text-(--primary)" />
+        Format attendu (9 colonnes) — aide
+      </summary>
+
+      <div className="px-3 pb-3 space-y-3">
+        {/* Tableau des 9 colonnes */}
+        <div className="overflow-x-auto rounded border border-(--border) bg-(--background)">
+          <table className="w-full text-xs" data-testid="aide-colonnes">
+            <thead className="bg-(--muted) text-(--muted-foreground)">
+              <tr>
+                <th className="text-left px-2 py-1.5">Colonne</th>
+                <th className="text-left px-2 py-1.5">Format</th>
+                <th className="text-left px-2 py-1.5 whitespace-nowrap">
+                  Obligatoire
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COLONNES_AIDE.map((c) => (
+                <tr key={c.nom} className="border-t border-(--border)">
+                  <td className="px-2 py-1 font-mono">{c.nom}</td>
+                  <td className="px-2 py-1">{c.format}</td>
+                  <td className="px-2 py-1 whitespace-nowrap">
+                    {c.obligatoire}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Exemple concret */}
+        <div>
+          <p className="text-xs font-semibold mb-1">Exemple concret</p>
+          <pre
+            className="overflow-x-auto rounded border border-(--border) bg-(--muted) p-2 text-[11px] font-mono leading-relaxed"
+            data-testid="aide-exemple"
+          >
+            {exempleTexte}
+          </pre>
+        </div>
+
+        {/* À retenir */}
+        <div>
+          <p className="text-xs font-semibold mb-1">À retenir</p>
+          <ul className="list-disc pl-5 space-y-0.5 text-xs text-(--muted-foreground)">
+            <li>
+              1 ligne = 1 mois. Un budget annuel = 12 lignes par couple
+              compte × ligne métier.
+            </li>
+            <li>Vous ne pouvez importer que dans votre périmètre RBAC.</li>
+            <li>
+              L'import ne fonctionne que si la version est{' '}
+              <strong>ouverte</strong> (Brouillon).
+            </li>
+            <li>Formats acceptés : CSV et XLSX (max 10 Mo).</li>
+          </ul>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onTelecharger}
+          data-testid="aide-btn-template"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Télécharger le template Excel
+        </Button>
+      </div>
+    </details>
+  );
+}
 
 interface ImportBudgetDialogProps {
   isOpen: boolean;
@@ -229,6 +356,9 @@ export function ImportBudgetDialog({
               </div>
             </div>
 
+            {/* Aide en ligne : format des 9 colonnes + exemple + rappels. */}
+            <AideFormatImport onTelecharger={downloadTemplate} />
+
             <div
               onDrop={handleDrop}
               onDragOver={(e) => {
@@ -323,7 +453,7 @@ export function ImportBudgetDialog({
 
             <div className="flex items-center justify-between">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={downloadTemplate}
                 data-testid="btn-template"

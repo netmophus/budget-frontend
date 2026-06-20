@@ -92,16 +92,25 @@ export const TEMPLATE_HEADER = [
 ] as const;
 
 /**
- * Génère un fichier CSV vide (header + 1 ligne d'exemple commentée)
- * pour le bouton « Télécharger le template ». Pas d'API nécessaire.
+ * Lignes d'exemple du template — codes réels BSIC NIGER (CR_AG_SIEGE,
+ * RET_PME, RET_PART…) pour que l'utilisateur parte d'un modèle valide
+ * plutôt que de codes génériques. Couvre les 2 modes de saisie.
+ */
+export const TEMPLATE_EXEMPLES: ReadonlyArray<readonly string[]> = [
+  ['CR_AG_SIEGE', '70213', 'RET_PME', '2027-01', 'MONTANT', '10833333', '', '', 'Intérêts prêts à terme PME janvier'],
+  ['CR_AG_SIEGE', '70213', 'RET_PME', '2027-02', 'MONTANT', '10833333', '', '', 'Intérêts prêts à terme PME février'],
+  ['CR_AG_SIEGE', '70214', 'RET_PART', '2027-01', 'ENCOURS_TIE', '', '2400000000', '0.072', 'Encours immobiliers particuliers'],
+];
+
+/**
+ * Génère un fichier CSV modèle (header + 3 lignes d'exemple aux codes
+ * BSIC réels) pour le bouton « Télécharger le template ». Pas d'API
+ * nécessaire. L'utilisateur remplace/complète ces lignes avant import.
  */
 export function genererTemplateCsv(): Blob {
   const lignes = [
     TEMPLATE_HEADER.join(','),
-    // Ligne d'exemple — commentée (#) pour qu'elle soit ignorée si
-    // l'utilisateur la garde par mégarde (le service la rejettera
-    // toutefois — c'est juste indicatif).
-    '# Exemple : BR_CIV,611100,RETAIL_PARTICULIERS,2027-01,MONTANT,1000,,,Loyer Q1',
+    ...TEMPLATE_EXEMPLES.map((l) => l.join(',')),
   ];
   return new Blob([lignes.join('\n') + '\n'], {
     type: 'text/csv;charset=utf-8',
