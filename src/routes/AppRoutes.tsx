@@ -93,6 +93,11 @@ const ImpressionPerimetrePage = lazy(() =>
     (m) => ({ default: m.ImpressionPerimetrePage }),
   ),
 );
+const ImpressionComitePage = lazy(() =>
+  import('@/features/budget/comite/impression/ImpressionComitePage').then(
+    (m) => ({ default: m.ImpressionComitePage }),
+  ),
+);
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
   import('@/pages/ConfigurationPage').then((m) => ({
@@ -240,6 +245,19 @@ export function AppRoutes() {
             <PermissionRoute permission="BUDGET.VALIDER">
               <Suspense fallback={<PageFallback />}>
                 <ImpressionPerimetrePage />
+              </Suspense>
+            </PermissionRoute>
+          </ProtectedRoute>
+        }
+      />
+      {/* Palier 7.3 — impression de la vue globale Comité (hors layout). */}
+      <Route
+        path="/budget/comite/impression"
+        element={
+          <ProtectedRoute>
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ImpressionComitePage />
               </Suspense>
             </PermissionRoute>
           </ProtectedRoute>

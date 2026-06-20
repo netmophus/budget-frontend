@@ -71,6 +71,15 @@ function ouvrirImpressionCr(crCode: string, versionId: string): void {
   );
 }
 
+/** Ouvre la vue d'impression consolidée Comité (palier 7.3). */
+function ouvrirImpressionComite(versionId: string): void {
+  window.open(
+    `/budget/comite/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
+}
+
 export function ComitePage(): JSX.Element {
   const { versionId: storeVersionId } = useBudgetGrilleStore();
 
@@ -222,27 +231,41 @@ export function ComitePage(): JSX.Element {
             {libelleStatutVersionWorkflow(vue.statutVersion)}
           </Badge>
         )}
-        {versionSoumisComite && (
-          <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex gap-2">
+          {versionId && vue && (
             <Button
               variant="outline"
-              onClick={() => setRevisionOpen(true)}
-              data-testid="comite-demander-revision"
-              className="h-9 gap-1.5 border-(--miznas-ambre) text-(--miznas-ambre) hover:bg-(--miznas-ambre)/10"
+              onClick={() => ouvrirImpressionComite(versionId)}
+              data-testid="comite-imprimer-consolide"
+              title="Imprimer le budget consolidé (vue Comité)"
+              className="h-9 gap-1.5"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Demander révision
+              <Printer className="w-3.5 h-3.5" />
+              Imprimer le budget consolidé
             </Button>
-            <Button
-              onClick={() => setApprobationOpen(true)}
-              data-testid="comite-approuver"
-              className="h-9 gap-1.5 bg-green-700 hover:bg-green-700/90 text-white"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Approuver
-            </Button>
-          </div>
-        )}
+          )}
+          {versionSoumisComite && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setRevisionOpen(true)}
+                data-testid="comite-demander-revision"
+                className="h-9 gap-1.5 border-(--miznas-ambre) text-(--miznas-ambre) hover:bg-(--miznas-ambre)/10"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Demander révision
+              </Button>
+              <Button
+                onClick={() => setApprobationOpen(true)}
+                data-testid="comite-approuver"
+                className="h-9 gap-1.5 bg-green-700 hover:bg-green-700/90 text-white"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Approuver
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {loading && (
