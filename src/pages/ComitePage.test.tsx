@@ -179,4 +179,28 @@ describe('ComitePage', () => {
       screen.queryByTestId('comite-demander-revision'),
     ).not.toBeInTheDocument();
   });
+
+  it('boutons Imprimer : ouvrent les bonnes URLs dans un nouvel onglet', async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal('open', openSpy);
+    renderPage();
+    // Bouton consolidé (Comité).
+    await waitFor(() =>
+      expect(screen.getByTestId('comite-imprimer-consolide')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('comite-imprimer-consolide'));
+    expect(openSpy).toHaveBeenCalledWith(
+      '/budget/comite/impression?versionId=v1',
+      '_blank',
+      'noopener',
+    );
+    // Bouton impression d'un CR de la ligne.
+    fireEvent.click(screen.getAllByTestId('comite-imprimer-cr')[0]!);
+    expect(openSpy).toHaveBeenCalledWith(
+      '/budget/comite/cr/CR_A/impression?versionId=v1',
+      '_blank',
+      'noopener',
+    );
+    vi.unstubAllGlobals();
+  });
 });

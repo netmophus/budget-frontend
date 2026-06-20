@@ -21,7 +21,7 @@
  * grille n'est chargée qu'en best-effort pour pré-remplir les valeurs
  * déjà saisies. Grain mensuel en base : aucun changement de schéma.
  */
-import { ArrowLeft, FileUp, Send } from 'lucide-react';
+import { ArrowLeft, FileUp, Printer, Send } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,6 +59,17 @@ type ModeSaisieUi = 'annuel' | 'mensuel';
 const MODE_STORAGE_KEY = 'miznas-saisie-mode-hybride';
 const VUE_STORAGE_KEY = 'miznas-saisie-vue-consolidee';
 const JUSTIF_MAX = 250;
+
+/** Ouvre la vue d'impression du CR (palier 7) dans un nouvel onglet. */
+function ouvrirImpressionCr(crCode: string, versionId: string): void {
+  window.open(
+    `/budget/comite/cr/${encodeURIComponent(
+      crCode,
+    )}/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
+}
 const MOIS_FR = [
   'Janv.',
   'Févr.',
@@ -607,6 +618,18 @@ export function SaisieBudgetairePage(): JSX.Element {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
+          {crCode && versionId && (
+            <Button
+              variant="outline"
+              onClick={() => ouvrirImpressionCr(crCode, versionId)}
+              data-testid="saisie-imprimer"
+              title="Imprimer la saisie de ce CR"
+              className="h-9 gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Imprimer ma saisie
+            </Button>
+          )}
           {canSoumettre && crStatut?.statut === 'EN_SAISIE' && (
             <Button
               onClick={() => setSoumissionOuvert(true)}

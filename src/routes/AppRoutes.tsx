@@ -81,6 +81,23 @@ const ComitePage = lazy(() =>
     default: m.ComitePage,
   })),
 );
+// Lot workflow par CR — palier 7 : impression PDF (vue standalone,
+// hors layout MIZNAS).
+const ImpressionCrPage = lazy(() =>
+  import('@/features/budget/comite/impression/ImpressionCrPage').then((m) => ({
+    default: m.ImpressionCrPage,
+  })),
+);
+const ImpressionPerimetrePage = lazy(() =>
+  import('@/features/budget/comite/impression/ImpressionPerimetrePage').then(
+    (m) => ({ default: m.ImpressionPerimetrePage }),
+  ),
+);
+const ImpressionComitePage = lazy(() =>
+  import('@/features/budget/comite/impression/ImpressionComitePage').then(
+    (m) => ({ default: m.ImpressionComitePage }),
+  ),
+);
 // Lazy-loaded — page Configuration (Lot 2.5-bis-C).
 const ConfigurationPage = lazy(() =>
   import('@/pages/ConfigurationPage').then((m) => ({
@@ -200,6 +217,49 @@ export function AppRoutes() {
         element={
           <ProtectedRoute>
             <ForceChangePasswordPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Lot workflow par CR — palier 7 : impression du détail d'un CR.
+          Route HORS AuthLayout (vue propre pour impression, sans sidebar
+          ni topbar). Protégée (auth) + BUDGET.LIRE ; l'accès fin (CR
+          validateur OU saisisseur) est porté par les endpoints data. */}
+      <Route
+        path="/budget/comite/cr/:crCode/impression"
+        element={
+          <ProtectedRoute>
+            <PermissionRoute permission="BUDGET.LIRE">
+              <Suspense fallback={<PageFallback />}>
+                <ImpressionCrPage />
+              </Suspense>
+            </PermissionRoute>
+          </ProtectedRoute>
+        }
+      />
+      {/* Palier 7.2 — impression du périmètre d'un validateur (hors layout). */}
+      <Route
+        path="/budget/validations/impression"
+        element={
+          <ProtectedRoute>
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ImpressionPerimetrePage />
+              </Suspense>
+            </PermissionRoute>
+          </ProtectedRoute>
+        }
+      />
+      {/* Palier 7.3 — impression de la vue globale Comité (hors layout). */}
+      <Route
+        path="/budget/comite/impression"
+        element={
+          <ProtectedRoute>
+            <PermissionRoute permission="BUDGET.VALIDER">
+              <Suspense fallback={<PageFallback />}>
+                <ImpressionComitePage />
+              </Suspense>
+            </PermissionRoute>
           </ProtectedRoute>
         }
       />

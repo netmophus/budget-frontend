@@ -8,7 +8,7 @@
  *
  * Permission d'accès : BUDGET.VALIDER (route protégée).
  */
-import { CheckCheck, Eye } from 'lucide-react';
+import { CheckCheck, Eye, Printer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -50,6 +50,26 @@ function formatDateFr(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number): string => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Ouvre la vue d'impression du CR (palier 7) dans un nouvel onglet. */
+function ouvrirImpressionCr(crCode: string, versionId: string): void {
+  window.open(
+    `/budget/comite/cr/${encodeURIComponent(
+      crCode,
+    )}/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
+}
+
+/** Ouvre la vue d'impression du périmètre validateur (palier 7.2). */
+function ouvrirImpressionPerimetre(versionId: string): void {
+  window.open(
+    `/budget/validations/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
 }
 
 export function ValidationsPage(): JSX.Element {
@@ -206,16 +226,31 @@ export function ValidationsPage(): JSX.Element {
             ))}
           </select>
         </label>
-        {vue && (
-          <div
-            className="rounded-md border border-(--border) bg-(--secondary) px-3 py-2 text-sm"
-            data-testid="validations-indicateur"
-          >
-            <strong className="tabular-nums">{vue.nbSoumis}</strong> CR à valider
-            sur <strong className="tabular-nums">{vue.totalAttendus}</strong> CR
-            de votre périmètre.
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {vue && (
+            <div
+              className="rounded-md border border-(--border) bg-(--secondary) px-3 py-2 text-sm"
+              data-testid="validations-indicateur"
+            >
+              <strong className="tabular-nums">{vue.nbSoumis}</strong> CR à
+              valider sur{' '}
+              <strong className="tabular-nums">{vue.totalAttendus}</strong> CR de
+              votre périmètre.
+            </div>
+          )}
+          {versionId && vue && vue.totalAttendus > 0 && (
+            <Button
+              variant="outline"
+              className="h-9 gap-1.5"
+              onClick={() => ouvrirImpressionPerimetre(versionId)}
+              data-testid="validations-imprimer-perimetre"
+              title="Imprimer le détail de tout votre périmètre"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Imprimer mon périmètre
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ─── Filtres ────────────────────────────────────────────── */}
@@ -345,6 +380,20 @@ export function ValidationsPage(): JSX.Element {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
+                    {versionId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() =>
+                          ouvrirImpressionCr(ligne.crCode, versionId)
+                        }
+                        data-testid="action-imprimer"
+                        title="Imprimer le détail du CR"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     {ligne.statut === 'SOUMIS' && (
                       <>
                         <Button

@@ -9,7 +9,13 @@
  * Permission d'accès : BUDGET.VALIDER (route protégée). Les actions ne
  * sont actives que si la version est effectivement SOUMIS_COMITE.
  */
-import { ClipboardCheck, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import {
+  ClipboardCheck,
+  Eye,
+  Printer,
+  RotateCcw,
+  ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -52,6 +58,26 @@ function formatDateFr(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number): string => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Ouvre la vue d'impression du CR (palier 7) dans un nouvel onglet. */
+function ouvrirImpressionCr(crCode: string, versionId: string): void {
+  window.open(
+    `/budget/comite/cr/${encodeURIComponent(
+      crCode,
+    )}/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
+}
+
+/** Ouvre la vue d'impression consolidée Comité (palier 7.3). */
+function ouvrirImpressionComite(versionId: string): void {
+  window.open(
+    `/budget/comite/impression?versionId=${encodeURIComponent(versionId)}`,
+    '_blank',
+    'noopener',
+  );
 }
 
 export function ComitePage(): JSX.Element {
@@ -205,27 +231,41 @@ export function ComitePage(): JSX.Element {
             {libelleStatutVersionWorkflow(vue.statutVersion)}
           </Badge>
         )}
-        {versionSoumisComite && (
-          <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex gap-2">
+          {versionId && vue && (
             <Button
               variant="outline"
-              onClick={() => setRevisionOpen(true)}
-              data-testid="comite-demander-revision"
-              className="h-9 gap-1.5 border-(--miznas-ambre) text-(--miznas-ambre) hover:bg-(--miznas-ambre)/10"
+              onClick={() => ouvrirImpressionComite(versionId)}
+              data-testid="comite-imprimer-consolide"
+              title="Imprimer le budget consolidé (vue Comité)"
+              className="h-9 gap-1.5"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Demander révision
+              <Printer className="w-3.5 h-3.5" />
+              Imprimer le budget consolidé
             </Button>
-            <Button
-              onClick={() => setApprobationOpen(true)}
-              data-testid="comite-approuver"
-              className="h-9 gap-1.5 bg-green-700 hover:bg-green-700/90 text-white"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Approuver
-            </Button>
-          </div>
-        )}
+          )}
+          {versionSoumisComite && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setRevisionOpen(true)}
+                data-testid="comite-demander-revision"
+                className="h-9 gap-1.5 border-(--miznas-ambre) text-(--miznas-ambre) hover:bg-(--miznas-ambre)/10"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Demander révision
+              </Button>
+              <Button
+                onClick={() => setApprobationOpen(true)}
+                data-testid="comite-approuver"
+                className="h-9 gap-1.5 bg-green-700 hover:bg-green-700/90 text-white"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Approuver
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {loading && (
@@ -288,7 +328,7 @@ export function ComitePage(): JSX.Element {
                       <TableHead>Validateur</TableHead>
                       <TableHead className="text-right">PNB</TableHead>
                       <TableHead>Validé le</TableHead>
-                      <TableHead className="text-right">Détail</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -313,7 +353,7 @@ export function ComitePage(): JSX.Element {
                         <TableCell className="tabular-nums">
                           {formatDateFr(cr.dateValidation)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -324,6 +364,20 @@ export function ComitePage(): JSX.Element {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
+                          {versionId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              onClick={() =>
+                                ouvrirImpressionCr(cr.crCode, versionId)
+                              }
+                              data-testid="comite-imprimer-cr"
+                              title="Imprimer le détail du CR"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

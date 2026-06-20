@@ -154,3 +154,24 @@ export function construirePivotCr(agg: AgregationCr): PivotCr {
   const totalGeneral = Object.values(totauxParLm).reduce((s, v) => s + v, 0);
   return { lignesMetier: agg.lignesMetier, lignes, totauxParLm, totalGeneral };
 }
+
+export interface SynthesePnb {
+  produits: number;
+  charges: number;
+  pnb: number;
+}
+
+/**
+ * Synthèse Produits (classe 7) / Charges (classe 6) / PNB d'un pivot CR.
+ * PNB = Produits − Charges, aligné sur le calcul backend (SUM cl.7 −
+ * SUM cl.6). Le classe est déduit du 1er caractère du code compte PCB.
+ */
+export function synthesePnbDepuisPivot(pivot: PivotCr): SynthesePnb {
+  let produits = 0;
+  let charges = 0;
+  for (const l of pivot.lignes) {
+    if (l.compteCode.startsWith('7')) produits += l.totalLigne;
+    else if (l.compteCode.startsWith('6')) charges += l.totalLigne;
+  }
+  return { produits, charges, pnb: produits - charges };
+}
