@@ -99,7 +99,7 @@ export const TEMPLATE_HEADER = [
 export const TEMPLATE_EXEMPLES: ReadonlyArray<readonly string[]> = [
   ['CR_AG_SIEGE', '70213', 'RET_PME', '2027-01', 'MONTANT', '10833333', '', '', 'Intérêts prêts à terme PME janvier'],
   ['CR_AG_SIEGE', '70213', 'RET_PME', '2027-02', 'MONTANT', '10833333', '', '', 'Intérêts prêts à terme PME février'],
-  ['CR_AG_SIEGE', '70214', 'RET_PART', '2027-01', 'ENCOURS_TIE', '', '28000000', '0.072', 'Encours immobiliers particuliers'],
+  ['CR_AG_SIEGE', '70214', 'RET_PART', '2027-01', 'ENCOURS_TIE', '', '2400000000', '0.072', 'Encours immobiliers particuliers'],
 ];
 
 /**
