@@ -315,6 +315,22 @@ describe('SaisieBudgetairePage', () => {
     expect(mockSoumettre).toHaveBeenCalledWith('CR_SIEGE', 'v1', undefined);
   });
 
+  it('« Imprimer ma saisie » : ouvre la vue impression du CR courant', async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal('open', openSpy);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByTestId('saisie-imprimer')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('saisie-imprimer'));
+    expect(openSpy).toHaveBeenCalledWith(
+      '/budget/comite/cr/CR_SIEGE/impression?versionId=v1',
+      '_blank',
+      'noopener',
+    );
+    vi.unstubAllGlobals();
+  });
+
   it('lecture seule quand le CR est SOUMIS (pas de bouton soumettre)', async () => {
     mockGet.mockResolvedValue(grilleAvecSaisie());
     mockCrStatut.mockResolvedValue({

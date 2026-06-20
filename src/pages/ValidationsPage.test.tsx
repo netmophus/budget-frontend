@@ -132,4 +132,28 @@ describe('ValidationsPage', () => {
     });
     expect(confirmer).not.toBeDisabled();
   });
+
+  it('boutons Imprimer : périmètre + détail CR ouvrent les bonnes URLs', async () => {
+    const openSpy = vi.fn();
+    vi.stubGlobal('open', openSpy);
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('validations-imprimer-perimetre'),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('validations-imprimer-perimetre'));
+    expect(openSpy).toHaveBeenCalledWith(
+      '/budget/validations/impression?versionId=v1',
+      '_blank',
+      'noopener',
+    );
+    fireEvent.click(screen.getAllByTestId('action-imprimer')[0]!);
+    expect(openSpy).toHaveBeenCalledWith(
+      '/budget/comite/cr/CR_A/impression?versionId=v1',
+      '_blank',
+      'noopener',
+    );
+    vi.unstubAllGlobals();
+  });
 });
