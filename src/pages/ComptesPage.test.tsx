@@ -204,6 +204,43 @@ describe('ComptesPage', () => {
     });
   });
 
+  it('pagination : total affiché + bouton Suivant charge la page 2', async () => {
+    mockList.mockResolvedValue({
+      items: SAMPLE,
+      total: 120,
+      page: 1,
+      limit: 50,
+    });
+    render(<ComptesPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('comptes-next')).toBeInTheDocument(),
+    );
+    // 120 / 50 = 3 pages → Précédent désactivé, Suivant actif.
+    expect(screen.getByTestId('comptes-total').textContent).toContain('120');
+    expect(screen.getByTestId('comptes-prev')).toBeDisabled();
+    expect(screen.getByTestId('comptes-next')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('comptes-next'));
+    await waitFor(() =>
+      expect(mockList).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
+  });
+
+  it('recherche : saisie d’un code → listComptes rappelé avec search (serveur)', async () => {
+    mockList.mockResolvedValue({ items: [], total: 0, page: 1, limit: 50 });
+    render(<ComptesPage />);
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    fireEvent.change(screen.getByPlaceholderText('ex. salaires'), {
+      target: { value: '6311' },
+    });
+    await waitFor(() =>
+      expect(mockList).toHaveBeenCalledWith(
+        expect.objectContaining({ search: '6311' }),
+      ),
+    );
+  });
+
   // ─── Lot 2.5E : CRUD actions
 
   it('admin : 2 boutons "Nouveau compte" + "Importer CSV"', async () => {

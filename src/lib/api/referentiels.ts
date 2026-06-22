@@ -475,6 +475,12 @@ export interface ListComptesQuery {
   codePosteBudgetaire?: string;
   estCompteCollectif?: boolean;
   estPorteurInterets?: boolean;
+  /** Filtre niveau hiérarchique (1-6), appliqué côté serveur. */
+  niveau?: number;
+  /** Ne retourne que les comptes racines (sans parent). */
+  racinesUniquement?: boolean;
+  /** Ne retourne que les comptes actifs. */
+  actifsUniquement?: boolean;
   page?: number;
   limit?: number;
   versionCouranteUniquement?: boolean;
