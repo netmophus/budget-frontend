@@ -64,7 +64,7 @@ import { cn } from '@/lib/utils';
 
 const ALL_NIVEAUX = '__all__';
 const DEFAULT_LIMIT = 50;
-const PAGE_SIZES = [20, 50, 100];
+const PAGE_SIZES = [20, 50, 100, 200, 500];
 const NIVEAUX = [1, 2, 3, 4, 5, 6];
 
 function formatDateFr(iso: string): string {
@@ -103,6 +103,7 @@ export function ComptesPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT);
   const [data, setData] = useState<Compte[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -131,16 +132,22 @@ export function ComptesPage() {
 
   useEffect(() => {
     setLoading(true);
+    // Tous les filtres sont passés au SERVEUR (cohérence sur l'ensemble
+    // des comptes, pas seulement la page courante) — Option B.
     listComptes({
       page,
       limit,
       classe: classeFilter || undefined,
       search: debouncedSearch || undefined,
+      niveau: niveauFilter !== ALL_NIVEAUX ? Number(niveauFilter) : undefined,
+      racinesUniquement: racinesUniquement || undefined,
+      actifsUniquement: activesUniquement || undefined,
       estCompteCollectif: feuillesUniquement ? false : undefined,
       estPorteurInterets: porteursUniquement ? true : undefined,
     })
       .then((res) => {
         setData(res.items);
+        setTotal(res.total);
       })
       .catch(() => {
         toast.error('Impossible de charger les comptes');
@@ -150,6 +157,9 @@ export function ComptesPage() {
     page,
     limit,
     classeFilter,
+    niveauFilter,
+    racinesUniquement,
+    activesUniquement,
     feuillesUniquement,
     porteursUniquement,
     debouncedSearch,
@@ -191,23 +201,16 @@ export function ComptesPage() {
     }
   }
 
-  // Filtres niveau / racines / actives uniquement appliqués côté client.
-  const filtered = useMemo(() => {
-    return data.filter((c) => {
-      if (racinesUniquement && c.fkCompteParent !== null) return false;
-      if (activesUniquement && !c.estActif) return false;
-      if (niveauFilter !== ALL_NIVEAUX && String(c.niveau) !== niveauFilter)
-        return false;
-      return true;
-    });
-  }, [data, racinesUniquement, activesUniquement, niveauFilter]);
-
+  // Filtres désormais appliqués CÔTÉ SERVEUR (Option B). On conserve un
+  // tri d'affichage local (niveau puis code) pour l'indentation lisible.
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
+    return [...data].sort((a, b) => {
       if (a.niveau !== b.niveau) return a.niveau - b.niveau;
       return a.codeCompte.localeCompare(b.codeCompte);
     });
-  }, [filtered]);
+  }, [data]);
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // 5 KPI cards (sur les data filtrées par le serveur uniquement,
   // pour cohérence avec l'affichage tableau).
@@ -488,6 +491,41 @@ export function ComptesPage() {
               </div>
             </button>
           ))}
+      </div>
+
+      {/* ─── Pagination serveur ─────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-3 mt-3 text-sm"
+        data-testid="comptes-pagination"
+      >
+        <span className="text-(--muted-foreground)" data-testid="comptes-total">
+          {total} résultat{total > 1 ? 's' : ''}
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-(--muted-foreground)">
+            Page {Math.min(page, totalPages)} sur {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            data-testid="comptes-prev"
+          >
+            Précédent
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((p) => p + 1)}
+            data-testid="comptes-next"
+          >
+            Suivant
+          </Button>
+        </div>
       </div>
 
       <DetailDrawer<Compte, Compte>
