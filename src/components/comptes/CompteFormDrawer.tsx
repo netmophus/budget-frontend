@@ -27,10 +27,11 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { RefSecondaireSelect } from '@/components/common/RefSecondaireSelect';
+import { ParentCompteCombobox } from '@/components/comptes/ParentCompteCombobox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,18 +42,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   type Compte,
   type CompteModeMaj,
   type CreateCompteDto,
   createCompte,
-  listComptes,
+  getComptesParentsEligibles,
   type SensCompte,
   type UpdateCompteDto,
   updateCompte,
@@ -60,7 +54,6 @@ import {
 import { useScd2EditDiff } from '@/lib/hooks/useScd2EditDiff';
 import { cn } from '@/lib/utils';
 
-const NONE = '__none__';
 const NIVEAU_MAX = 6;
 
 interface FormState extends Record<string, unknown> {
@@ -167,16 +160,11 @@ export function CompteFormDrawer({
     initialFromCompte(initial ?? null),
   );
   const [submitting, setSubmitting] = useState(false);
-  const [allComptes, setAllComptes] = useState<Compte[]>([]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    listComptes({ versionCouranteUniquement: true, limit: 200 })
-      .then((res) => setAllComptes(res.items))
-      .catch(() =>
-        toast.error('Impossible de charger les comptes parents'),
-      );
-  }, [isOpen]);
+  // Parents éligibles : liste ciblée renvoyée par le serveur (niveau < N,
+  // même classe, courants, actifs, hors descendants) — corrige le bug du
+  // chargement tronqué à 200 comptes.
+  const [parentsEligibles, setParentsEligibles] = useState<Compte[]>([]);
+  const [parentsLoading, setParentsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -184,37 +172,33 @@ export function CompteFormDrawer({
     }
   }, [isOpen, initial]);
 
-  const idsExclus = useMemo(() => {
-    if (mode !== 'edit' || !initial) return new Set<string>();
-    const exclus = new Set<string>([initial.id]);
-    let frontier = [initial.id];
-    while (frontier.length > 0) {
-      const next: string[] = [];
-      for (const c of allComptes) {
-        if (
-          c.fkCompteParent !== null &&
-          frontier.includes(c.fkCompteParent)
-        ) {
-          if (!exclus.has(c.id)) {
-            exclus.add(c.id);
-            next.push(c.id);
-          }
-        }
-      }
-      frontier = next;
+  // Refetch des parents éligibles quand classe / niveau (ou le compte
+  // édité) changent. Niveau 1 = racine → pas de parent à charger.
+  useEffect(() => {
+    if (!isOpen || form.classe === '' || form.niveau <= 1) {
+      setParentsEligibles([]);
+      return;
     }
-    return exclus;
-  }, [allComptes, mode, initial]);
-
-  const parentsEligibles = useMemo(() => {
-    return allComptes.filter((c) => {
-      if (idsExclus.has(c.id)) return false;
-      if (c.niveau >= form.niveau) return false;
-      if (!c.estActif) return false;
-      if (form.classe && c.classe !== form.classe) return false;
-      return true;
-    });
-  }, [allComptes, idsExclus, form.niveau, form.classe]);
+    let annule = false;
+    setParentsLoading(true);
+    getComptesParentsEligibles({
+      classe: form.classe,
+      niveau: form.niveau,
+      ...(mode === 'edit' && initial ? { excludeId: initial.id } : {}),
+    })
+      .then((rows) => {
+        if (!annule) setParentsEligibles(rows);
+      })
+      .catch(() => {
+        if (!annule) toast.error('Impossible de charger les comptes parents');
+      })
+      .finally(() => {
+        if (!annule) setParentsLoading(false);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [isOpen, form.classe, form.niveau, mode, initial]);
 
   const codeValide =
     mode === 'edit' ? true : /^[0-9]{1,20}$/.test(form.codeCompte);
@@ -523,28 +507,15 @@ export function CompteFormDrawer({
                 <span className="text-(--destructive)"> *</span>
               )}
             </Label>
-            <Select
-              value={form.fkCompteParent || NONE}
-              onValueChange={(v) =>
-                setForm({
-                  ...form,
-                  fkCompteParent: v === NONE ? '' : v,
-                })
-              }
+            <ParentCompteCombobox
+              id="parent"
+              value={form.fkCompteParent}
+              onChange={(v) => setForm({ ...form, fkCompteParent: v })}
+              options={parentsEligibles}
+              loading={parentsLoading}
               disabled={submitting}
-            >
-              <SelectTrigger id="parent" className="h-9 mt-1.5">
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Aucun (racine)</SelectItem>
-                {parentsEligibles.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.codeCompte} — {c.libelle} (niveau {c.niveau})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              autoriserRacine={isRacine}
+            />
             <p className="text-xs text-(--muted-foreground)/70 mt-1.5">
               {isRacine
                 ? 'Optionnel — un compte niveau 1 est typiquement racine de classe.'

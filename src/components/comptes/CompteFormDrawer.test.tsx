@@ -4,6 +4,7 @@ import { AxiosError, AxiosHeaders } from 'axios';
 
 vi.mock('@/lib/api/referentiels', () => ({
   listComptes: vi.fn(),
+  getComptesParentsEligibles: vi.fn(),
   createCompte: vi.fn(),
   updateCompte: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock('sonner', () => ({
 import {
   type Compte,
   createCompte,
+  getComptesParentsEligibles,
   listComptes,
   updateCompte,
 } from '@/lib/api/referentiels';
@@ -34,6 +36,9 @@ import { __resetRefSecondaireCache } from '@/lib/hooks/useRefSecondaireOptions';
 import { CompteFormDrawer } from './CompteFormDrawer';
 
 const mockListComptes = listComptes as unknown as ReturnType<typeof vi.fn>;
+const mockParents = getComptesParentsEligibles as unknown as ReturnType<
+  typeof vi.fn
+>;
 const mockCreate = createCompte as unknown as ReturnType<typeof vi.fn>;
 const mockUpdate = updateCompte as unknown as ReturnType<typeof vi.fn>;
 const mockListRef = listRefSecondaires as unknown as ReturnType<typeof vi.fn>;
@@ -101,6 +106,7 @@ function setupMocks(
     page: 1,
     limit: 200,
   });
+  mockParents.mockResolvedValue([COMPTE_RACINE]);
   mockListRef.mockImplementation((refKey: string) => {
     const items = refKey === 'classe-compte' ? REF_CLASSES : REF_SENS;
     return Promise.resolve({

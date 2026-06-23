@@ -530,6 +530,23 @@ export async function listComptes(
   return data;
 }
 
+/**
+ * Comptes éligibles comme parent (endpoint dédié) : niveau < `niveau`,
+ * même `classe`, courants + actifs, hors descendants de `excludeId`.
+ * Liste ciblée non paginée — alimente le dropdown « Compte parent ».
+ */
+export async function getComptesParentsEligibles(query: {
+  classe: string;
+  niveau: number;
+  excludeId?: string;
+}): Promise<Compte[]> {
+  const { data } = await apiClient.get<Compte[]>(
+    '/referentiels/comptes/parents-eligibles',
+    { params: query },
+  );
+  return data;
+}
+
 export async function listComptesRacines(): Promise<Compte[]> {
   const { data } = await apiClient.get<Compte[]>(
     '/referentiels/comptes/racines',
