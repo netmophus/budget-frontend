@@ -271,6 +271,13 @@ const NAV_ADMIN: NavItem[] = [
     icon: Mail,
     permission: 'USER.GERER',
   },
+  // Palier 1 — paramétrage système (mode de saisie du réalisé)
+  {
+    to: '/admin/parametres-systeme',
+    label: 'Paramètres système',
+    icon: Sliders,
+    permission: 'CONFIGURATION.GERER',
+  },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];
 

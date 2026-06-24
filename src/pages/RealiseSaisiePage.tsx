@@ -57,6 +57,10 @@ import {
   listCrs,
   listDevises,
 } from '@/lib/api/referentiels';
+import {
+  getModeSaisieRealise,
+  type ModeSaisieRealise,
+} from '@/lib/api/realise-config';
 import { useHasPermission } from '@/lib/auth/permissions';
 import { useRealiseStore } from '@/lib/stores/realise-store';
 
@@ -112,6 +116,12 @@ export function RealiseSaisiePage(): JSX.Element {
 
   const [crs, setCrs] = useState<CentreResponsabilite[]>([]);
   const [devises, setDevises] = useState<Devise[]>([]);
+  // Palier 1 — mode de saisie du réalisé (gouvernance). En CENTRALISE,
+  // la saisie manuelle est désactivée (réservée à l'import Finance).
+  const [modeRealise, setModeRealise] = useState<ModeSaisieRealise | null>(
+    null,
+  );
+  const saisieDesactivee = modeRealise === 'CENTRALISE';
 
   const [creerOuvert, setCreerOuvert] = useState(false);
   const [editing, setEditing] = useState<FaitRealise | null>(null);
@@ -139,6 +149,17 @@ export function RealiseSaisiePage(): JSX.Element {
         toast.error('Impossible de charger les référentiels (CR/devises).'),
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pattern mount-only fetch : init CR/devises une seule fois au montage
+  }, []);
+
+  // Mode de saisie du réalisé (toggle global, Palier 1). En cas d'échec
+  // on laisse `null` : la saisie reste possible (pas de blocage UI dur ;
+  // le backend reste l'autorité, il refusera la saisie en CENTRALISE).
+  useEffect(() => {
+    getModeSaisieRealise()
+      .then(setModeRealise)
+      .catch(() => {
+        /* silencieux : le backend reste l'autorité */
+      });
   }, []);
 
   useEffect(() => {
@@ -287,7 +308,7 @@ export function RealiseSaisiePage(): JSX.Element {
                 Valider ({lignesSelectionnees.length})
               </Button>
             )}
-            {canSaisir && (
+            {canSaisir && !saisieDesactivee && (
               <Button
                 onClick={() => {
                   setEditing(null);
@@ -303,6 +324,24 @@ export function RealiseSaisiePage(): JSX.Element {
           </div>
         }
       />
+
+      {saisieDesactivee && (
+        <div
+          className="rounded-md border p-3 text-sm mb-4 flex items-start gap-2"
+          style={{
+            borderColor: '#0C447C40',
+            backgroundColor: '#0C447C0D',
+            color: '#0C447C',
+          }}
+          data-testid="bandeau-mode-centralise"
+        >
+          <span aria-hidden="true">ℹ</span>
+          <span>
+            Mode CENTRALISÉ : la saisie du réalisé est réservée à la Direction
+            Finance (import). La saisie manuelle est désactivée.
+          </span>
+        </div>
+      )}
 
       {/* Sélecteur contexte */}
       <div

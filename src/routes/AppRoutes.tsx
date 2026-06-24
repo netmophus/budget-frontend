@@ -34,6 +34,13 @@ const SegmentsPage = lazy(() =>
   import('@/pages/SegmentsPage').then((m) => ({ default: m.SegmentsPage })),
 );
 
+// Palier 1 — écran admin de paramétrage système (mode saisie réalisé).
+const ParametresSystemePage = lazy(() =>
+  import('@/pages/ParametresSystemePage').then((m) => ({
+    default: m.ParametresSystemePage,
+  })),
+);
+
 // Lazy-loaded — module Budget (Lot 3.2 + 3.4 + 3.5-mini).
 const ScenariosPage = lazy(() =>
   import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
@@ -287,6 +294,16 @@ export function AppRoutes() {
             <PermissionRoute permission="USER.GERER">
               <Suspense fallback={<PageFallback />}>
                 <AffectationsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/parametres-systeme"
+          element={
+            <PermissionRoute permission="CONFIGURATION.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <ParametresSystemePage />
               </Suspense>
             </PermissionRoute>
           }
