@@ -1,27 +1,36 @@
 /**
  * CompteCombobox (UX A.1+A.2) — sélecteur de compte budgétaire avec
- * filtrage et recherche.
+ * recherche CÔTÉ SERVEUR.
  *
- * Charge UNIQUEMENT les comptes saisissables budget :
- *   - classe ∈ {6, 7}  (charges + produits)
- *   - estCompteCollectif=false (feuilles uniquement)
- *   - estActif=true, versionCourante=true (filtres serveur par défaut)
+ * La recherche est déléguée au backend (param `search` de
+ * `/referentiels/comptes`, ILIKE %terme% sur code OU libellé) avec un
+ * debounce de 300 ms, au lieu de l'ancien préchargement `limit=200`
+ * filtré en mémoire. Corrige le bug où tout compte au-delà du 200ᵉ code
+ * (ex. « 66 », rang 216 en classe 6 — 260 comptes) restait introuvable.
+ *
+ * Comptes proposés :
+ *   - classe ∈ `classes` (défaut {6, 7} — charges + produits)
+ *   - parents + feuilles si `inclureCollectifs`, sinon feuilles seules
+ *     (estCompteCollectif=false — comportement historique)
+ *   - versionCourante=true (filtre serveur par défaut)
  *
  * UX :
  *   - Input avec placeholder
- *   - Recherche live par code ou libellé (insensible à la casse)
- *   - Liste déroulante avec format "611100 — Salaires bruts"
- *   - Tri par code numérique ASC
- *   - Sélection au clic ou avec Enter sur le 1ʳᵉ résultat
+ *   - Recherche live (debounce 300 ms) par code OU libellé, serveur
+ *   - Liste déroulante format "611100 — Salaires bruts", triée code ASC
+ *   - Sélection au clic ou avec Enter sur le 1ᵉʳ résultat
  *
  * Aucune dépendance externe : implémentation custom légère.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
 import { listComptes, type Compte } from '@/lib/api/referentiels';
 
 const CLASSES_SAISISSABLES_DEFAULT = ['6', '7'];
+const SEARCH_DEBOUNCE_MS = 300;
+/** Nb max de résultats ramenés par requête (la recherche serveur cible). */
+const RESULTS_LIMIT = 50;
 
 export interface CompteCombobxProps {
   id?: string;
@@ -34,7 +43,7 @@ export interface CompteCombobxProps {
    * Classes PCB à charger (defaut `['6', '7']` — charges + produits
    * saisissables). Quand cette prop change, la liste est re-fetchée
    * et la sélection courante est réinitialisée si elle n'appartient
-   * plus à la nouvelle liste.
+   * plus à la nouvelle classe.
    */
   classes?: string[];
   /**
@@ -60,9 +69,14 @@ export function CompteCombobox({
   onSelectCompte,
 }: CompteCombobxProps): JSX.Element {
   const [comptes, setComptes] = useState<Compte[]>([]);
+  // Compte résolu correspondant à `value` (pour l'affichage de l'input).
+  // Persistant entre les recherches — la liste `comptes` ne contient que
+  // les résultats du terme courant, pas forcément la sélection.
+  const [selectedCompte, setSelectedCompte] = useState<Compte | null>(null);
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [recherche, setRecherche] = useState('');
+  const [debouncedRecherche, setDebouncedRecherche] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,58 +84,104 @@ export function CompteCombobox({
   // (évite un re-fetch infini sur une nouvelle ref d'array identique).
   const classesKey = classes.slice().sort().join(',');
 
-  // Chargement des comptes saisissables — refetch quand `classes`
-  // change (mini-fix B.1 Lot 3).
+  // Filtre `estCompteCollectif` partagé par les deux requêtes.
+  const collectifFilter = inclureCollectifs
+    ? {}
+    : { estCompteCollectif: false };
+
+  // Debounce du terme saisi → un seul fetch après 300 ms d'inactivité.
   useEffect(() => {
+    const handle = setTimeout(
+      () => setDebouncedRecherche(recherche.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(handle);
+  }, [recherche]);
+
+  // Recherche serveur — refetch quand `classes` OU le terme débouncé
+  // change. La liste est vidée le temps du fetch (état « Recherche… »)
+  // pour ne jamais afficher de résultats périmés pour le terme courant.
+  useEffect(() => {
+    let active = true;
     setLoading(true);
+    setComptes([]);
     setErreur(null);
     listComptes({
       classes,
-      // Politique BSIC : si inclureCollectifs, pas de restriction
-      // parents/feuilles (filtre omis → tous les comptes).
-      ...(inclureCollectifs ? {} : { estCompteCollectif: false }),
+      ...collectifFilter,
       versionCouranteUniquement: true,
-      limit: 200,
+      ...(debouncedRecherche ? { search: debouncedRecherche } : {}),
+      limit: RESULTS_LIMIT,
     })
       .then((res) => {
+        if (!active) return;
         // Tri code numérique ASC (le tri serveur est lexicographique
         // donc '60' < '6' — on retrie côté client par sécurité).
         const tries = [...res.items].sort((a, b) =>
           a.codeCompte.localeCompare(b.codeCompte, undefined, { numeric: true }),
         );
         setComptes(tries);
-        // Mini-fix B.1 — reset de la sélection si le compte courant
-        // n'appartient plus à la nouvelle liste filtrée.
-        if (value && !tries.some((c) => c.codeCompte === value)) {
+      })
+      .catch((err) => {
+        if (!active) return;
+        setErreur(err instanceof Error ? err.message : 'Erreur réseau');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // `classes`/`collectifFilter` exclus volontairement : `classesKey`
+    // fournit une dépendance stable et `inclureCollectifs` ne change pas
+    // au cours de la vie du composant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classesKey, debouncedRecherche]);
+
+  // Résolution de la sélection (affichage) + reset B.1 : lookup ciblé
+  // par code exact, indépendant de la liste de recherche limitée. Si le
+  // `value` courant n'existe pas (plus) dans les `classes` actives, on
+  // réinitialise la sélection (ex. bascule classe 6 → 7).
+  useEffect(() => {
+    if (!value) {
+      setSelectedCompte(null);
+      return;
+    }
+    // Déjà résolu et cohérent avec les classes actives : rien à faire.
+    if (
+      selectedCompte &&
+      selectedCompte.codeCompte === value &&
+      classes.includes(selectedCompte.classe)
+    ) {
+      return;
+    }
+    let active = true;
+    listComptes({
+      classes,
+      ...collectifFilter,
+      versionCouranteUniquement: true,
+      search: value,
+      limit: 5,
+    })
+      .then((res) => {
+        if (!active) return;
+        const exact = res.items.find((c) => c.codeCompte === value) ?? null;
+        if (exact) {
+          setSelectedCompte(exact);
+        } else {
+          // `value` invalide pour ces classes → reset (mini-fix B.1).
+          setSelectedCompte(null);
           onChange('');
         }
       })
-      .catch((err) => {
-        setErreur(err instanceof Error ? err.message : 'Erreur réseau');
-      })
-      .finally(() => setLoading(false));
-    // `classes` exclu volontairement : on utilise `classesKey` pour
-    // une dépendance stable. `value` et `onChange` exclus pour ne pas
-    // re-fetcher à chaque saisie.
+      .catch(() => {
+        // Tolérant : une erreur réseau ne doit pas effacer la sélection.
+      });
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classesKey]);
-
-  // Compte actuellement affiché en valeur "résolue" (pour l'input).
-  const compteSelectionne = useMemo(
-    () => comptes.find((c) => c.codeCompte === value) ?? null,
-    [comptes, value],
-  );
-
-  // Filtre par code OU libellé — insensible casse, sans accents.
-  const optionsFiltrees = useMemo(() => {
-    const q = recherche.trim().toLowerCase();
-    if (q === '') return comptes;
-    return comptes.filter(
-      (c) =>
-        c.codeCompte.toLowerCase().includes(q) ||
-        c.libelle.toLowerCase().includes(q),
-    );
-  }, [comptes, recherche]);
+  }, [classesKey, value]);
 
   // Fermer la liste quand on clique en dehors.
   useEffect(() => {
@@ -144,8 +204,12 @@ export function CompteCombobox({
   function handleSelect(code: string): void {
     onChange(code);
     const compte = comptes.find((c) => c.codeCompte === code);
-    if (compte) onSelectCompte?.(compte);
+    if (compte) {
+      setSelectedCompte(compte);
+      onSelectCompte?.(compte);
+    }
     setRecherche('');
+    setDebouncedRecherche('');
     setOpen(false);
   }
 
@@ -153,8 +217,8 @@ export function CompteCombobox({
   const inputValue =
     open || recherche
       ? recherche
-      : compteSelectionne
-        ? `${compteSelectionne.codeCompte} — ${compteSelectionne.libelle}`
+      : selectedCompte
+        ? `${selectedCompte.codeCompte} — ${selectedCompte.libelle}`
         : '';
 
   return (
@@ -169,16 +233,16 @@ export function CompteCombobox({
         }}
         onFocus={handleFocus}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && optionsFiltrees.length > 0) {
+          if (e.key === 'Enter' && comptes.length > 0) {
             e.preventDefault();
-            handleSelect(optionsFiltrees[0]!.codeCompte);
+            handleSelect(comptes[0]!.codeCompte);
           } else if (e.key === 'Escape') {
             setOpen(false);
             setRecherche('');
           }
         }}
-        placeholder={loading ? 'Chargement…' : placeholder}
-        disabled={disabled || loading}
+        placeholder={loading && comptes.length === 0 ? 'Chargement…' : placeholder}
+        disabled={disabled}
         autoComplete="off"
         data-testid="compte-combobox-input"
       />
@@ -187,13 +251,21 @@ export function CompteCombobox({
           ⚠ Comptes non chargés : {erreur}
         </p>
       )}
-      {open && !loading && !erreur && (
+      {open && !erreur && (
         <ul
           className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-(--border) bg-(--popover) shadow-md"
           role="listbox"
           data-testid="compte-combobox-list"
         >
-          {optionsFiltrees.length === 0 && (
+          {loading && comptes.length === 0 && (
+            <li
+              className="px-3 py-2 text-sm text-(--muted-foreground)"
+              data-testid="compte-combobox-loading"
+            >
+              Recherche…
+            </li>
+          )}
+          {!loading && comptes.length === 0 && (
             <li
               className="px-3 py-2 text-sm text-(--muted-foreground)"
               data-testid="compte-combobox-empty"
@@ -201,7 +273,7 @@ export function CompteCombobox({
               Aucun compte ne correspond à « {recherche} ».
             </li>
           )}
-          {optionsFiltrees.map((c) => {
+          {comptes.map((c) => {
             const selected = c.codeCompte === value;
             return (
               <li

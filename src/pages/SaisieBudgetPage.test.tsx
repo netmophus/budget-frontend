@@ -473,18 +473,22 @@ describe('SaisieBudgetPage', () => {
     });
   });
 
-  it('listComptes appelé avec limit=200 (borne backend @Max(200))', async () => {
+  it('listComptes (filtre) appelé classes 6/7 + limit=500, sans restriction feuilles', async () => {
     setupReferentielMocks();
     mockGetVersion.mockResolvedValue(VERSION_OUVERT);
 
     renderPage();
 
     await waitFor(() => {
-      expect(
-        (
-          mockListCpt.mock.calls as Array<[{ limit?: number }]>
-        )[0]?.[0]?.limit,
-      ).toBe(200);
+      const call = (
+        mockListCpt.mock.calls as Array<
+          [{ limit?: number; classes?: string[]; estCompteCollectif?: boolean }]
+        >
+      )[0]?.[0];
+      expect(call?.limit).toBe(500);
+      expect(call?.classes).toEqual(['6', '7']);
+      // Politique BSIC : plus de filtre feuilles-uniquement sur le filtre.
+      expect(call?.estCompteCollectif).toBeUndefined();
     });
   });
 
