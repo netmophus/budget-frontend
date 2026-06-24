@@ -26,6 +26,9 @@ vi.mock('@/lib/api/realise', async () => {
 vi.mock('@/lib/api/client', () => ({
   apiClient: { get: vi.fn().mockResolvedValue({ data: { items: [] } }) },
 }));
+vi.mock('@/lib/api/realise-config', () => ({
+  getModeSaisieRealise: vi.fn(),
+}));
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -58,11 +61,13 @@ vi.mock('@/components/realise/ValiderLignesRealiseDialog', () => ({
 import { useRealiseStore } from '@/lib/stores/realise-store';
 import { listCrs, listDevises } from '@/lib/api/referentiels';
 import { getGrilleRealise } from '@/lib/api/realise';
+import { getModeSaisieRealise } from '@/lib/api/realise-config';
 import { RealiseSaisiePage } from './RealiseSaisiePage';
 
 const mockListCrs = listCrs as unknown as ReturnType<typeof vi.fn>;
 const mockListDevises = listDevises as unknown as ReturnType<typeof vi.fn>;
 const mockGetGrille = getGrilleRealise as unknown as ReturnType<typeof vi.fn>;
+const mockMode = getModeSaisieRealise as unknown as ReturnType<typeof vi.fn>;
 
 describe('RealiseSaisiePage', () => {
   beforeEach(() => {
@@ -79,6 +84,9 @@ describe('RealiseSaisiePage', () => {
       limit: 200,
     });
     mockGetGrille.mockResolvedValue([]);
+    // Par défaut MIXTE : la saisie manuelle est active (les tests RBAC
+    // existants ne doivent pas être impactés par le toggle de mode).
+    mockMode.mockResolvedValue('MIXTE');
     // Reset store
     useRealiseStore.setState({
       crId: null,
@@ -142,5 +150,31 @@ describe('RealiseSaisiePage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('empty-no-cr')).toBeInTheDocument(),
     );
+  });
+
+  // ─── Palier 1 — garde-fou mode de saisie ─────────────────────────
+
+  it('mode CENTRALISE → bandeau info + bouton "Nouvelle ligne" masqué', async () => {
+    mockHasPermission.mockReturnValue(true); // a pourtant REALISE.SAISIR
+    mockMode.mockResolvedValue('CENTRALISE');
+    render(<RealiseSaisiePage />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('bandeau-mode-centralise'),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('btn-nouvelle-ligne')).not.toBeInTheDocument();
+  });
+
+  it('mode DECENTRALISE → pas de bandeau + bouton "Nouvelle ligne" présent', async () => {
+    mockHasPermission.mockReturnValue(true);
+    mockMode.mockResolvedValue('DECENTRALISE');
+    render(<RealiseSaisiePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('btn-nouvelle-ligne')).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId('bandeau-mode-centralise'),
+    ).not.toBeInTheDocument();
   });
 });
