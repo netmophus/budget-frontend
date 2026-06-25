@@ -87,6 +87,30 @@ const ALL_COMPTES: Compte[] = [
     niveau: 4,
   }),
   makeCompte({ id: '6', codeCompte: '701100', libelle: 'Intérêts sur prêts', classe: '7' }),
+  // Trio classe 7 pour les tests clavier « meilleur match » :
+  // 702 (exact) est un préfixe de 70213 et 702130.
+  makeCompte({
+    id: '7',
+    codeCompte: '702',
+    libelle: 'Produits sur opérations',
+    classe: '7',
+    niveau: 3,
+    estCompteCollectif: false,
+  }),
+  makeCompte({
+    id: '8',
+    codeCompte: '70213',
+    libelle: 'Commissions sur virements',
+    classe: '7',
+    niveau: 5,
+  }),
+  makeCompte({
+    id: '9',
+    codeCompte: '702130',
+    libelle: 'Commissions diverses',
+    classe: '7',
+    niveau: 6,
+  }),
 ];
 
 // Codes ramenés SANS terme de recherche (« 1ʳᵉ page »). Volontairement
@@ -333,5 +357,104 @@ describe('CompteCombobox', () => {
     render(<CompteCombobox value="" onChange={vi.fn()} disabled />);
     await waitFor(() => expect(mockList).toHaveBeenCalled());
     expect(screen.getByTestId('compte-combobox-input')).toBeDisabled();
+  });
+
+  // ─── Saisie directe au clavier (Phase 1) ─────────────────────────
+
+  it('« 70213 » + Enter → sélectionne 70213 + onCommit', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    render(
+      <CompteCombobox value="" onChange={onChange} onCommit={onCommit} />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: '70213' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-70213')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('70213');
+    expect(onCommit).toHaveBeenCalled();
+  });
+
+  it('« 70213 » + Tab → sélectionne 70213 + onCommit (focus suivant)', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    render(
+      <CompteCombobox value="" onChange={onChange} onCommit={onCommit} />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: '70213' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-70213')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(onChange).toHaveBeenCalledWith('70213');
+    expect(onCommit).toHaveBeenCalled();
+  });
+
+  it('match exact prioritaire : « 702 » + Enter → 702 (pas un sous-compte)', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    render(<CompteCombobox value="" onChange={onChange} />);
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: '702' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-702')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('702');
+  });
+
+  it('sans match exact : « 7021 » + Enter → 1ᵉʳ résultat (70213)', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    render(<CompteCombobox value="" onChange={onChange} />);
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: '7021' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-70213')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('70213');
+  });
+
+  it('Tab sur champ vide → pas de commit (navigation normale)', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    render(
+      <CompteCombobox value="" onChange={onChange} onCommit={onCommit} />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    fireEvent.keyDown(screen.getByTestId('compte-combobox-input'), {
+      key: 'Tab',
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it('Tab avec recherche sans résultat → pas de commit', async () => {
+    mockBackend();
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    render(
+      <CompteCombobox value="" onChange={onChange} onCommit={onCommit} />,
+    );
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: 'zzzzz' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-combobox-empty')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onCommit).not.toHaveBeenCalled();
   });
 });

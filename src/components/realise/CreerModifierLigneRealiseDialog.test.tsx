@@ -36,19 +36,47 @@ const mockListLm = listLignesMetier as unknown as ReturnType<typeof vi.fn>;
 const mockListDevises = listDevises as unknown as ReturnType<typeof vi.fn>;
 const mockCreer = creerRealise as unknown as ReturnType<typeof vi.fn>;
 
+// Le champ Compte est désormais un CompteCombobox (recherche serveur) :
+// le mock filtre par `search` et inclut « 66 » (collectif=false, niveau 2)
+// pour prouver qu'il est trouvable (corrige l'ancien bug limit:200/feuilles).
+const COMPTES_REALISE = [
+  {
+    id: '20',
+    codeCompte: '611100',
+    libelle: 'Salaires',
+    classe: '6',
+    estCompteCollectif: false,
+  },
+  {
+    id: '21',
+    codeCompte: '66',
+    libelle: 'Dotations aux amortissements',
+    classe: '6',
+    niveau: 2,
+    estCompteCollectif: false,
+  },
+];
+
 function setupMocks() {
-  mockListComptes.mockResolvedValue({
-    items: [
-      {
-        id: '20',
-        codeCompte: '611100',
-        libelle: 'Salaires',
-        estCompteCollectif: false,
-      },
-    ],
-    total: 1,
-    page: 1,
-    limit: 200,
+  mockListComptes.mockImplementation((q: { search?: string; limit?: number } = {}) => {
+    let items: typeof COMPTES_REALISE;
+    if (q.search) {
+      const s = q.search.toLowerCase();
+      items = COMPTES_REALISE.filter(
+        (c) =>
+          c.codeCompte.toLowerCase().includes(s) ||
+          c.libelle.toLowerCase().includes(s),
+      );
+    } else {
+      // « 1ʳᵉ page » sans 66 : son apparition prouve le narrowing serveur.
+      items = COMPTES_REALISE.filter((c) => c.codeCompte === '611100');
+    }
+    return Promise.resolve({
+      items,
+      total: items.length,
+      page: 1,
+      limit: q.limit ?? 50,
+    });
   });
   mockListLm.mockResolvedValue({
     items: [{ id: '30', codeLigneMetier: 'RETAIL', libelle: 'Retail' }],
@@ -142,5 +170,36 @@ describe('CreerModifierLigneRealiseDialog', () => {
     expect(screen.getByTestId('btn-enregistrer-realise')).toBeDisabled();
     // creerRealise N'A PAS été appelé sans champs valides.
     expect(mockCreer).not.toHaveBeenCalled();
+  });
+
+  // ─── Phase 2 — champ Compte via CompteCombobox ───────────────────
+
+  it('compte 66 trouvable à la recherche (corrige limit:200/feuilles)', async () => {
+    renderCreate();
+    await waitFor(() => expect(mockListComptes).toHaveBeenCalled());
+    fireEvent.change(screen.getByTestId('compte-combobox-input'), {
+      target: { value: '66' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-66')).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId('compte-option-611100'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Enter committe le compte et avance le focus vers Ligne métier', async () => {
+    renderCreate();
+    await waitFor(() => expect(mockListComptes).toHaveBeenCalled());
+    const input = screen.getByTestId('compte-combobox-input');
+    fireEvent.change(input, { target: { value: '66' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('compte-option-66')).toBeInTheDocument(),
+    );
+    fireEvent.keyDown(input, { key: 'Enter' });
+    // Focus déplacé sur le trigger Ligne métier (id r-lm).
+    await waitFor(() =>
+      expect(screen.getByTestId('r-lignemetier')).toHaveFocus(),
+    );
   });
 });

@@ -18,7 +18,11 @@
  *   - Input avec placeholder
  *   - Recherche live (debounce 300 ms) par code OU libellé, serveur
  *   - Liste déroulante format "611100 — Salaires bruts", triée code ASC
- *   - Sélection au clic ou avec Enter sur le 1ᵉʳ résultat
+ *   - Saisie directe au clavier : Enter OU Tab committe le « meilleur
+ *     match » (code exact > liste fraîche → 1ᵉʳ résultat) puis, via la
+ *     prop `onCommit`, avance le focus au champ suivant. Le clic reste
+ *     disponible (UX hybride). Champ vide / aucun résultat → pas de
+ *     commit (navigation clavier normale).
  *
  * Aucune dépendance externe : implémentation custom légère.
  */
@@ -56,6 +60,12 @@ export interface CompteCombobxProps {
   inclureCollectifs?: boolean;
   /** Callback optionnel recevant le compte complet sélectionné (id, etc.). */
   onSelectCompte?: (compte: Compte) => void;
+  /**
+   * Appelé après un commit AU CLAVIER (Enter/Tab) réussi — permet au
+   * parent d'avancer le focus au champ suivant (saisie rapide). N'est
+   * PAS appelé sur sélection par clic (l'utilisateur garde la main).
+   */
+  onCommit?: () => void;
 }
 
 export function CompteCombobox({
@@ -67,6 +77,7 @@ export function CompteCombobox({
   classes = CLASSES_SAISISSABLES_DEFAULT,
   inclureCollectifs = false,
   onSelectCompte,
+  onCommit,
 }: CompteCombobxProps): JSX.Element {
   const [comptes, setComptes] = useState<Compte[]>([]);
   // Compte résolu correspondant à `value` (pour l'affichage de l'input).
@@ -213,6 +224,27 @@ export function CompteCombobox({
     setOpen(false);
   }
 
+  /**
+   * Commit au clavier du « meilleur match » :
+   *   1. code exact (codeCompte === saisie) — prioritaire ;
+   *   2. sinon, si les résultats sont à jour (debounce appliqué) et non
+   *      vides → le 1ᵉʳ résultat (liste triée code ASC).
+   * Renvoie `true` si un compte a été committé. Renvoie `false` si le
+   * champ est vide, si aucun résultat n'est exploitable, ou si une
+   * recherche est encore en attente (évite de committer un résultat
+   * périmé sur une frappe rapide).
+   */
+  function commitClavier(): boolean {
+    const q = recherche.trim();
+    if (q === '') return false;
+    const exact = comptes.find((c) => c.codeCompte === q);
+    const fresh = debouncedRecherche === q;
+    const choix = exact ?? (fresh && comptes.length > 0 ? comptes[0]! : null);
+    if (!choix) return false;
+    handleSelect(choix.codeCompte);
+    return true;
+  }
+
   // Affichage de l'input : la recherche en cours OU le compte sélectionné.
   const inputValue =
     open || recherche
@@ -233,9 +265,20 @@ export function CompteCombobox({
         }}
         onFocus={handleFocus}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && comptes.length > 0) {
+          if (e.key === 'Enter') {
+            // Enter ne doit jamais soumettre le formulaire parent.
             e.preventDefault();
-            handleSelect(comptes[0]!.codeCompte);
+            if (commitClavier()) onCommit?.();
+          } else if (e.key === 'Tab') {
+            // Tab committe le meilleur match sans casser la navigation
+            // clavier. Si `onCommit` est fourni, on gère le focus suivant
+            // nous-mêmes (preventDefault pour éviter un double saut) ;
+            // sinon on laisse le Tab natif avancer le focus.
+            const committed = commitClavier();
+            if (committed && onCommit) {
+              e.preventDefault();
+              onCommit();
+            }
           } else if (e.key === 'Escape') {
             setOpen(false);
             setRecherche('');

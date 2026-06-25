@@ -595,6 +595,11 @@ export function SaisieBudgetPage() {
                 value={form.codeCompte}
                 onChange={(v) => setForm({ ...form, codeCompte: v })}
                 disabled={!versionOuverte}
+                // Saisie rapide : après commit clavier (Enter/Tab), focus
+                // le champ suivant (Ligne de métier).
+                onCommit={() =>
+                  document.getElementById('codeLigneMetier')?.focus()
+                }
               />
             </div>
 

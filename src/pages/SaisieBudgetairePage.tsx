@@ -166,6 +166,22 @@ export function SaisieBudgetairePage(): JSX.Element {
   const [saving, setSaving] = useState(false);
   const [confirmBascule, setConfirmBascule] = useState(false);
   const compteInputRef = useRef<HTMLDivElement>(null);
+  // Saisie rapide : armé par le commit clavier (Enter/Tab) du compte,
+  // consommé par l'effet ci-dessous pour focus le 1ᵉʳ champ montant une
+  // fois le formulaire rendu. Non armé sur sélection par clic.
+  const focusMontantRef = useRef(false);
+
+  // Auto-avance focus : après un commit clavier du compte, le formulaire
+  // de saisie apparaît → on focus son 1ᵉʳ champ montant (selon le mode).
+  useEffect(() => {
+    if (!selectedCompte || !focusMontantRef.current) return;
+    focusMontantRef.current = false;
+    const sel =
+      mode === 'annuel'
+        ? '#hybride-annuel'
+        : '[data-testid="hybride-mois-0"]';
+    document.querySelector<HTMLInputElement>(sel)?.focus();
+  }, [selectedCompte, mode]);
 
   // Résout l'exercice fiscal + le statut depuis la version sélectionnée.
   useEffect(() => {
@@ -708,6 +724,9 @@ export function SaisieBudgetairePage(): JSX.Element {
               if (!code) setSelectedCompte(null);
             }}
             onSelectCompte={setSelectedCompte}
+            onCommit={() => {
+              focusMontantRef.current = true;
+            }}
             classes={[codeClasse]}
             inclureCollectifs
             disabled={!contexteComplet}
