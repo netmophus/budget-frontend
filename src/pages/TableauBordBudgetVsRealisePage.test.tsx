@@ -42,17 +42,23 @@ vi.mock('@/lib/api/tableau-bord', async () => {
     ...actual,
     analyserEcarts: vi.fn(),
     exporterEcartsExcel: vi.fn(),
+    exporterEcartsPdf: vi.fn(),
   };
 });
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { analyserEcarts, type EcartsResponse } from '@/lib/api/tableau-bord';
+import {
+  analyserEcarts,
+  exporterEcartsPdf,
+  type EcartsResponse,
+} from '@/lib/api/tableau-bord';
 import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
 import { TableauBordBudgetVsRealisePage } from './TableauBordBudgetVsRealisePage';
 
 const mockAnalyser = analyserEcarts as unknown as ReturnType<typeof vi.fn>;
+const mockExportPdf = exporterEcartsPdf as unknown as ReturnType<typeof vi.fn>;
 
 function makeResponse(): EcartsResponse {
   return {
@@ -239,5 +245,42 @@ describe('TableauBordBudgetVsRealisePage', () => {
     );
     // Empty state du tableau
     expect(screen.getByTestId('empty-ecarts')).toBeInTheDocument();
+  });
+
+  // ─── Lot 8.6.B — export PDF (dropdown)
+
+  it('export PDF : appelle exporterEcartsPdf sans snapshot IA', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    mockExportPdf.mockResolvedValue(undefined);
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    const trigger = screen.getByTestId('btn-exporter');
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    fireEvent.click(await screen.findByTestId('export-pdf'));
+
+    await waitFor(() => expect(mockExportPdf).toHaveBeenCalledTimes(1));
+    expect(mockExportPdf.mock.calls[0][0]).toMatchObject({
+      versionId: 'v1',
+      scenarioId: 's1',
+    });
+    // Sans analyse IA à l'écran → pas de snapshot (2e argument undefined).
+    expect(mockExportPdf.mock.calls[0][1]).toBeUndefined();
+  });
+
+  it('item « PDF avec analyse IA » désactivé tant qu’aucune analyse IA', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    const trigger = screen.getByTestId('btn-exporter');
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    const item = await screen.findByTestId('export-pdf-ia');
+    // Radix pose `data-disabled` sur un DropdownMenuItem désactivé.
+    expect(item).toHaveAttribute('data-disabled');
   });
 });

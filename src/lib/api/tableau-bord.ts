@@ -2,6 +2,8 @@
  * Client API tableau de bord budget vs réalisé (Lot 5.2.C).
  * Aligné sur les DTOs backend src/tableau-de-bord/dto/tableau-bord.dto.ts.
  */
+import { triggerBlobDownload } from '@/lib/blob-download';
+
 import { apiClient } from './client';
 
 export type NiveauAlerte = 'NORMAL' | 'ATTENTION' | 'CRITIQUE' | 'MANQUANT';
@@ -86,6 +88,45 @@ export async function analyserEcarts(
     { params: filtres, paramsSerializer: PARAMS_SERIALIZER },
   );
   return data;
+}
+
+/**
+ * Lot 8.6.B — snapshot d'analyse MIZNAS AI à embarquer dans le PDF.
+ * Aligné sur `AnalyseIaSnapshotDto` backend. Réutilise l'analyse déjà
+ * affichée à l'écran (state `analyseAi`) → AUCUN nouvel appel Anthropic.
+ */
+export interface AnalyseIaSnapshot {
+  analyse: string;
+  model: string;
+  tokensInput: number;
+  tokensOutput: number;
+  dureeMs: number;
+  dryRun: boolean;
+  generatedAt?: string;
+}
+
+/**
+ * Lot 8.6.B — export PDF du tableau de bord Budget vs Réalisé. Si
+ * `analyseIa` est fourni, le PDF inclut la section analyse IA. Le
+ * fichier est téléchargé via `triggerBlobDownload` (nom issu du
+ * header Content-Disposition).
+ */
+export async function exporterEcartsPdf(
+  filtres: FiltresEcarts,
+  analyseIa?: AnalyseIaSnapshot,
+): Promise<void> {
+  const { data, headers } = await apiClient.post<Blob>(
+    '/tableau-de-bord/export-pdf',
+    { filtres, analyseIa },
+    { responseType: 'blob' },
+  );
+  const cd = headers['content-disposition'];
+  let filename = 'MIZNAS_AnalyseBudget.pdf';
+  if (cd) {
+    const m = /filename="([^"]+)"/.exec(cd);
+    if (m) filename = m[1]!;
+  }
+  triggerBlobDownload(data, filename);
 }
 
 export async function exporterEcartsExcel(

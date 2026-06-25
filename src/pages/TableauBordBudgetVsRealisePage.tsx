@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import {
   exporterEcartsExcel,
+  exporterEcartsPdf,
   type FiltresEcarts,
 } from '@/lib/api/tableau-bord';
 import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
@@ -172,6 +173,48 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     }
   }
 
+  // Lot 8.6.B — export PDF. Si `avecIa`, embarque le snapshot de
+  // l'analyse MIZNAS AI déjà affichée (state `analyseAi`) — AUCUN
+  // nouvel appel Anthropic.
+  async function handleExporterPdf(avecIa: boolean): Promise<void> {
+    if (!versionId || !scenarioId) return;
+    setExporting(true);
+    const filtres: FiltresEcarts = {
+      versionId,
+      scenarioId,
+      crIds: crIds.length > 0 ? crIds : undefined,
+      moisDebut,
+      moisFin,
+      seuilEcartPctAttention,
+      seuilEcartPctCritique,
+    };
+    const snapshot =
+      avecIa && analyseAi
+        ? {
+            analyse: analyseAi.analyse,
+            model: analyseAi.model,
+            tokensInput: analyseAi.tokensInput,
+            tokensOutput: analyseAi.tokensOutput,
+            dureeMs: analyseAi.dureeMs,
+            dryRun: analyseAi.dryRun,
+            generatedAt: new Date().toISOString(),
+          }
+        : undefined;
+    try {
+      await exporterEcartsPdf(filtres, snapshot);
+      toast.success(
+        snapshot
+          ? 'Export PDF (avec analyse IA) téléchargé.'
+          : 'Export PDF téléchargé.',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec export : ${msg}`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       {/* ─── Header custom ──────────────────────────────────── */}
@@ -200,6 +243,9 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
       <FiltresEcartsForm
         onAnalyser={() => void analyser()}
         onExporter={() => void handleExporter()}
+        onExporterPdf={() => void handleExporterPdf(false)}
+        onExporterPdfIa={() => void handleExporterPdf(true)}
+        analyseDisponible={analyseAi !== null}
         loading={loading || exporting}
         onAnalyseAiClick={() => void lancerAnalyseAi()}
         loadingAi={loadingAi}

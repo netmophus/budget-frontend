@@ -18,7 +18,10 @@
  */
 import {
   AlertTriangle,
+  ChevronDown,
+  Download,
   FileSpreadsheet,
+  FileText,
   Play,
   Sparkles,
   Target,
@@ -27,6 +30,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -46,7 +55,14 @@ import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
 
 interface Props {
   onAnalyser: () => void;
+  /** Lot 8.6.B — export Excel (item du dropdown « Exporter »). */
   onExporter: () => void;
+  /** Lot 8.6.B — export PDF sans analyse IA. */
+  onExporterPdf: () => void;
+  /** Lot 8.6.B — export PDF avec snapshot de l'analyse IA affichée. */
+  onExporterPdfIa: () => void;
+  /** Lot 8.6.B — true si une analyse MIZNAS AI est affichée (active l'item PDF+IA). */
+  analyseDisponible: boolean;
   loading: boolean;
   // Lot 8.6.A — bouton « ✨ Analyser avec MIZNAS AI ». Le caller
   // fournit le handler + indique si une analyse est en cours +
@@ -60,6 +76,9 @@ interface Props {
 export function FiltresEcartsForm({
   onAnalyser,
   onExporter,
+  onExporterPdf,
+  onExporterPdfIa,
+  analyseDisponible,
   loading,
   onAnalyseAiClick,
   loadingAi,
@@ -302,16 +321,49 @@ export function FiltresEcartsForm({
             />
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              onClick={onExporter}
-              disabled={!peutAnalyser}
-              data-testid="btn-exporter"
-              className="h-9 gap-1.5"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              Exporter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={!peutAnalyser}
+                  data-testid="btn-exporter"
+                  className="h-9 gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Exporter
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  data-testid="export-excel"
+                  onSelect={onExporter}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid="export-pdf"
+                  onSelect={onExporterPdf}
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid="export-pdf-ia"
+                  onSelect={onExporterPdfIa}
+                  disabled={!analyseDisponible}
+                  title={
+                    analyseDisponible
+                      ? undefined
+                      : "Lancez d'abord une analyse MIZNAS AI"
+                  }
+                >
+                  <Sparkles className="w-4 h-4" />
+                  PDF avec analyse IA
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               onClick={onAnalyser}
               disabled={!peutAnalyser}
