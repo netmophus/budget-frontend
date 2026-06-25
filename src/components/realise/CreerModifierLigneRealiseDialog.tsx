@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { CompteCombobox } from '@/components/budget/CompteCombobox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -43,10 +44,14 @@ import {
   type Compte,
   type Devise,
   type LigneMetier,
-  listComptes,
   listDevises,
   listLignesMetier,
 } from '@/lib/api/referentiels';
+
+// Toutes les classes PCB : le réalisé n'est pas restreint à 6/7 (on
+// préserve le périmètre historique du champ, tout en passant à la
+// recherche serveur + parents&feuilles via CompteCombobox).
+const CLASSES_REALISE = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 interface Props {
   isOpen: boolean;
@@ -93,13 +98,14 @@ export function CreerModifierLigneRealiseDialog({
   resolveFkTemps,
   onSaved,
 }: Props): JSX.Element {
-  const [comptes, setComptes] = useState<Compte[]>([]);
   const [lignesMetier, setLignesMetier] = useState<LigneMetier[]>([]);
   const [devises, setDevises] = useState<Devise[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [fkCompte, setFkCompte] = useState('');
+  // Compte sélectionné (objet complet : on a besoin de son `id` pour le
+  // submit, alors que CompteCombobox travaille avec le `codeCompte`).
+  const [compteSel, setCompteSel] = useState<Compte | null>(null);
   const [fkLigneMetier, setFkLigneMetier] = useState('');
   const [mois, setMois] = useState(moisDebut);
   const [fkDevise, setFkDevise] = useState('');
@@ -112,12 +118,10 @@ export function CreerModifierLigneRealiseDialog({
     if (!isOpen) return;
     setLoading(true);
     Promise.all([
-      listComptes({ versionCouranteUniquement: true, limit: 200 }),
       listLignesMetier({ versionCouranteUniquement: true, limit: 200 }),
       listDevises({ estActive: true }),
     ])
-      .then(([c, l, d]) => {
-        setComptes(c.items);
+      .then(([l, d]) => {
         setLignesMetier(l.items);
         setDevises(d.items);
       })
@@ -129,7 +133,8 @@ export function CreerModifierLigneRealiseDialog({
   useEffect(() => {
     if (!isOpen) return;
     if (mode === 'edit' && editing) {
-      setFkCompte(editing.fkCompte);
+      // En édition, le compte n'est pas modifiable (clé d'unicité) et le
+      // champ n'est pas rendu → pas de résolution de compteSel nécessaire.
       setFkLigneMetier(editing.fkLigneMetier);
       setFkDevise(editing.fkDevise);
       setMontant(String(editing.montant));
@@ -137,7 +142,7 @@ export function CreerModifierLigneRealiseDialog({
       setCommentaire(editing.commentaire ?? '');
       // Le mois est non éditable en modif (clé d'unicité backend)
     } else if (mode === 'create') {
-      setFkCompte('');
+      setCompteSel(null);
       setFkLigneMetier('');
       setFkDevise(fkDeviseDefaut ?? '');
       setMontant('');
@@ -156,7 +161,7 @@ export function CreerModifierLigneRealiseDialog({
       return Number(montant) > 0;
     }
     return (
-      fkCompte.length > 0 &&
+      compteSel != null &&
       fkLigneMetier.length > 0 &&
       fkDevise.length > 0 &&
       Number(montant) > 0 &&
@@ -164,7 +169,7 @@ export function CreerModifierLigneRealiseDialog({
     );
   }, [
     mode,
-    fkCompte,
+    compteSel,
     fkLigneMetier,
     fkDevise,
     montant,
@@ -195,7 +200,7 @@ export function CreerModifierLigneRealiseDialog({
         }
         await creerRealise({
           fkCentreResponsabilite: crId,
-          fkCompte,
+          fkCompte: compteSel!.id,
           fkLigneMetier,
           fkTemps,
           fkDevise,
@@ -246,28 +251,21 @@ export function CreerModifierLigneRealiseDialog({
             {mode === 'create' && (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="r-compte">Compte *</Label>
-                    <Select
-                      value={fkCompte || undefined}
-                      onValueChange={setFkCompte}
-                    >
-                      <SelectTrigger
-                        id="r-compte"
-                        data-testid="r-compte"
-                      >
-                        <SelectValue placeholder="Sélectionner…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {comptes
-                          .filter((c) => !c.estCompteCollectif)
-                          .map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.codeCompte} — {c.libelle}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                  <div data-testid="r-compte">
+                    <Label htmlFor="r-compte-input">Compte *</Label>
+                    <CompteCombobox
+                      id="r-compte-input"
+                      value={compteSel?.codeCompte ?? ''}
+                      onChange={(code) => {
+                        if (!code) setCompteSel(null);
+                      }}
+                      onSelectCompte={setCompteSel}
+                      onCommit={() =>
+                        document.getElementById('r-lm')?.focus()
+                      }
+                      classes={CLASSES_REALISE}
+                      inclureCollectifs
+                    />
                   </div>
                   <div>
                     <Label htmlFor="r-lm">Ligne métier *</Label>
