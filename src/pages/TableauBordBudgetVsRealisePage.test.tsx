@@ -185,6 +185,8 @@ describe('TableauBordBudgetVsRealisePage', () => {
       filtreRapide: 'TOUS',
       filtreClasse: 'TOUTES',
       rechercheTexte: '',
+      drillCr: null,
+      drillLm: null,
     });
     mockAnalyser.mockReset();
   });
@@ -361,5 +363,42 @@ describe('TableauBordBudgetVsRealisePage', () => {
       expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('th-tauxExecution')).toBeInTheDocument();
+  });
+
+  // ─── PR2 — visualisations + drill-down ───────────────────────
+
+  it('affiche la section Visualisations par dimension (CR + LM)', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId('visualisations-dimension'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('graph-barres-cr')).toBeInTheDocument();
+    expect(screen.getByTestId('graph-barres-lm')).toBeInTheDocument();
+  });
+
+  it('drill-down CR : filtre le tableau + chip + clear', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    // Simule un clic sur la barre CR_BANDABARI (2 lignes : 6111, 6112).
+    useTableauBordStore.setState({ drillCr: 'CR_BANDABARI' });
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('2'),
+    );
+    expect(screen.getByTestId('drill-indicateur').textContent).toContain(
+      'CR_BANDABARI',
+    );
+    // Clear → retour aux 3 lignes.
+    fireEvent.click(screen.getByTestId('drill-clear'));
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('3'),
+    );
+    expect(screen.queryByTestId('drill-indicateur')).not.toBeInTheDocument();
   });
 });

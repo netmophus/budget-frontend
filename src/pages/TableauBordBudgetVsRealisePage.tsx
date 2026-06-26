@@ -25,10 +25,13 @@ import {
   CircleCheck,
   Play,
   Search,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { EcartsBarChartCR } from '@/components/tableau-bord/EcartsBarChartCR';
+import { EcartsBarChartLM } from '@/components/tableau-bord/EcartsBarChartLM';
 import { EcartsBarChartMensuel } from '@/components/tableau-bord/EcartsBarChartMensuel';
 import { EcartsDonutNiveaux } from '@/components/tableau-bord/EcartsDonutNiveaux';
 import { EcartsTable } from '@/components/tableau-bord/EcartsTable';
@@ -75,9 +78,14 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     filtreRapide,
     filtreClasse,
     rechercheTexte,
+    drillCr,
+    drillLm,
     setFiltreRapide,
     setFiltreClasse,
     setRechercheTexte,
+    setDrillCr,
+    setDrillLm,
+    clearDrill,
     analyser,
   } = useTableauBordStore();
 
@@ -95,7 +103,10 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const lignesFiltrees = useMemo(() => {
+  // Niveau 1 : filtres rapides (niveau + classe + recherche). Alimente
+  // les charts par dimension (CR / LM) → toutes les dimensions restent
+  // visibles pour permettre le drill-down.
+  const lignesBase = useMemo(() => {
     if (!ecarts) return [];
     return filtrerLignes(
       ecarts.lignes,
@@ -105,13 +116,33 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     );
   }, [ecarts, filtreRapide, rechercheTexte, filtreClasse]);
 
-  // Lot 8.5.C — pour le donut, on applique la recherche + le filtre
-  // classe, mais PAS le filtre niveau (sinon le donut deviendrait
-  // mono-couleur et perdrait son sens — décision actée brief 8.5.C).
+  // Niveau 2 : drill-down (clic sur une barre CR / LM). Alimente le
+  // tableau, le chart mensuel et les Top performances.
+  const lignesFiltrees = useMemo(
+    () =>
+      lignesBase.filter(
+        (l) =>
+          (!drillCr || l.codeCr === drillCr) &&
+          (!drillLm || l.codeLigneMetier === drillLm),
+      ),
+    [lignesBase, drillCr, drillLm],
+  );
+
+  // Lot 8.5.C — pour le donut, on applique recherche + classe + drill
+  // mais PAS le filtre niveau (sinon le donut deviendrait mono-couleur).
   const lignesFiltreesSansNiveau = useMemo(() => {
     if (!ecarts) return [];
-    return filtrerLignes(ecarts.lignes, 'TOUS', rechercheTexte, filtreClasse);
-  }, [ecarts, rechercheTexte, filtreClasse]);
+    return filtrerLignes(
+      ecarts.lignes,
+      'TOUS',
+      rechercheTexte,
+      filtreClasse,
+    ).filter(
+      (l) =>
+        (!drillCr || l.codeCr === drillCr) &&
+        (!drillLm || l.codeLigneMetier === drillLm),
+    );
+  }, [ecarts, rechercheTexte, filtreClasse, drillCr, drillLm]);
 
   async function lancerAnalyseAi(): Promise<void> {
     if (!versionId || !scenarioId) return;
@@ -304,6 +335,23 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                 <EcartsDonutNiveaux lignes={lignesFiltreesSansNiveau} />
               </div>
               <EcartsTop10Comptes lignes={lignesFiltrees} />
+
+              {/* ─── PR2 — Visualisations par dimension (CR / LM) ─── */}
+              <div className="mt-4" data-testid="visualisations-dimension">
+                <h4 className="text-sm font-semibold mb-2">
+                  Visualisations par dimension
+                </h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <EcartsBarChartCR
+                    lignes={lignesBase}
+                    onSelectCr={setDrillCr}
+                  />
+                  <EcartsBarChartLM
+                    lignes={lignesBase}
+                    onSelectLm={setDrillLm}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -433,6 +481,30 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                   </div>
                 </div>
               </div>
+
+              {/* ─── PR2 — Indicateur de drill-down actif ───── */}
+              {(drillCr || drillLm) && (
+                <div
+                  className="flex items-center gap-2 mb-3 text-sm"
+                  data-testid="drill-indicateur"
+                >
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium"
+                    style={{ backgroundColor: '#5B4E9114', color: '#5B4E91' }}
+                  >
+                    Filtré sur {drillCr ? `CR ${drillCr}` : `LM ${drillLm}`}
+                    <button
+                      type="button"
+                      onClick={clearDrill}
+                      className="hover:opacity-70"
+                      aria-label="Retirer le filtre"
+                      data-testid="drill-clear"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                </div>
+              )}
 
               {/* État vide après filtre vs après analyse */}
               {lignesFiltrees.length === 0 && ecarts.lignes.length > 0 && (
