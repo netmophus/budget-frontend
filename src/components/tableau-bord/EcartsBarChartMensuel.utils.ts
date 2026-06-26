@@ -17,13 +17,13 @@ export function aggregerParMois(lignes: LigneEcart[]): PointMensuel[] {
   for (const l of lignes) {
     const existing = acc.get(l.mois);
     if (existing) {
-      existing.budget += l.montantBudget;
+      existing.budget += l.montantBudget ?? 0;
       existing.realise += l.montantRealise ?? 0;
     } else {
       acc.set(l.mois, {
         mois: l.mois,
         libelleMois: l.libelleMois,
-        budget: l.montantBudget,
+        budget: l.montantBudget ?? 0,
         realise: l.montantRealise ?? 0,
       });
     }

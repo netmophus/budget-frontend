@@ -25,6 +25,7 @@ function ligne(over: Partial<LigneEcart> = {}): LigneEcart {
     ecart: 0,
     ecartAbs: 0,
     ecartPct: 0,
+    tauxExecution: 100,
     niveauAlerte: 'NORMAL',
     sensEcart: 'NEUTRE',
     ...over,
@@ -34,7 +35,7 @@ function ligne(over: Partial<LigneEcart> = {}): LigneEcart {
 describe('EcartsDonutNiveaux', () => {
   afterEach(() => cleanup());
 
-  it('compterParNiveau : compte les 4 niveaux + pct arrondi à 0.1%', () => {
+  it('compterParNiveau : compte les 5 niveaux + pct arrondi à 0.1%', () => {
     const lignes: LigneEcart[] = [
       ligne({ niveauAlerte: 'CRITIQUE' }),
       ligne({ niveauAlerte: 'CRITIQUE' }),
@@ -48,7 +49,7 @@ describe('EcartsDonutNiveaux', () => {
       ligne({ niveauAlerte: 'MANQUANT' }),
     ];
     const r = compterParNiveau(lignes);
-    expect(r).toHaveLength(4);
+    expect(r).toHaveLength(5);
     const critique = r.find((p) => p.niveau === 'CRITIQUE')!;
     expect(critique.count).toBe(2);
     expect(critique.pct).toBe(20);
@@ -63,9 +64,9 @@ describe('EcartsDonutNiveaux', () => {
     expect(manquant.pct).toBe(40);
   });
 
-  it('compterParNiveau : 0 ligne → 4 segments à count=0 et pct=0', () => {
+  it('compterParNiveau : 0 ligne → 5 segments à count=0 et pct=0', () => {
     const r = compterParNiveau([]);
-    expect(r).toHaveLength(4);
+    expect(r).toHaveLength(5);
     for (const p of r) {
       expect(p.count).toBe(0);
       expect(p.pct).toBe(0);

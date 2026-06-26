@@ -23,7 +23,7 @@ import {
 import { LIBELLES_NIVEAU } from '@/lib/colors/niveaux-alerte';
 import type { LigneEcart } from '@/lib/api/tableau-bord';
 import {
-  selectionnerTopN,
+  selectionnerTopParSens,
   truncate,
   type PointTop,
 } from './EcartsTop10Comptes.utils';
@@ -87,34 +87,34 @@ function CustomTooltip({
   );
 }
 
-export function EcartsTop10Comptes({
-  lignes,
-  limit = 10,
-}: Props): JSX.Element {
-  const data = useMemo(() => selectionnerTopN(lignes, limit), [lignes, limit]);
-
+function TopChart({
+  titre,
+  sousTitre,
+  data,
+  testid,
+}: {
+  titre: string;
+  sousTitre: string;
+  data: PointTop[];
+  testid: string;
+}): JSX.Element {
   // Hauteur dynamique : ~36px par barre + ~30px padding axes (min 120px).
   const height = Math.max(120, data.length * 36 + 30);
-
   return (
     <div
       className="bg-white border border-(--border) rounded-md p-4"
-      data-testid="graph-top10-comptes"
+      data-testid={testid}
     >
       <div className="mb-2">
-        <h4 className="text-sm font-semibold m-0">
-          Top {limit} comptes par écart absolu
-        </h4>
+        <h4 className="text-sm font-semibold m-0">{titre}</h4>
         <p className="text-[11px] text-(--muted-foreground) mt-0.5">
-          Lignes avec réalisé saisi (MANQUANT exclu), colorées par
-          niveau d&apos;alerte
+          {sousTitre}
         </p>
       </div>
-
       {data.length === 0 ? (
         <div
           className="h-[120px] flex items-center justify-center text-xs text-(--muted-foreground)"
-          data-testid="graph-top10-vide"
+          data-testid={`${testid}-vide`}
         >
           Aucune ligne à représenter.
         </div>
@@ -146,6 +146,40 @@ export function EcartsTop10Comptes({
           </BarChart>
         </ResponsiveContainer>
       )}
+    </div>
+  );
+}
+
+export function EcartsTop10Comptes({
+  lignes,
+  limit = 10,
+}: Props): JSX.Element {
+  const surPerf = useMemo(
+    () => selectionnerTopParSens(lignes, limit, 'FAVORABLE'),
+    [lignes, limit],
+  );
+  const sousPerf = useMemo(
+    () => selectionnerTopParSens(lignes, limit, 'DEFAVORABLE'),
+    [lignes, limit],
+  );
+
+  return (
+    <div
+      className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      data-testid="graph-top10-comptes"
+    >
+      <TopChart
+        titre={`Top ${limit} sur-performances`}
+        sousTitre="Écarts favorables (produits en hausse / charges en baisse)"
+        data={surPerf}
+        testid="graph-top10-sur"
+      />
+      <TopChart
+        titre={`Top ${limit} sous-performances`}
+        sousTitre="Écarts défavorables (produits en baisse / charges en hausse)"
+        data={sousPerf}
+        testid="graph-top10-sous"
+      />
     </div>
   );
 }

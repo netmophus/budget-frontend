@@ -26,6 +26,7 @@ function ligne(over: Partial<LigneEcart> = {}): LigneEcart {
     ecart: 10,
     ecartAbs: 10,
     ecartPct: 10,
+    tauxExecution: 110,
     niveauAlerte: 'ATTENTION',
     sensEcart: 'DEFAVORABLE',
     ...over,
@@ -68,13 +69,29 @@ describe('EcartsTop10Comptes', () => {
     expect(top[0]?.label).toContain('…');
   });
 
-  it('affiche l\'état vide quand toutes les lignes sont MANQUANT', () => {
+  it('affiche l\'état vide (sur + sous) quand aucune performance rankable', () => {
     const lignes: LigneEcart[] = [
       ligne({ ecartAbs: null, montantRealise: null, niveauAlerte: 'MANQUANT' }),
     ];
     render(<EcartsTop10Comptes lignes={lignes} />);
-    expect(screen.getByTestId('graph-top10-vide')).toHaveTextContent(
+    expect(screen.getByTestId('graph-top10-sur-vide')).toHaveTextContent(
       'Aucune ligne à représenter',
     );
+    expect(screen.getByTestId('graph-top10-sous-vide')).toBeInTheDocument();
+  });
+
+  it('sépare sur-performances (favorables) et sous-performances (défavorables)', () => {
+    const lignes: LigneEcart[] = [
+      ligne({ codeCompte: '701', sensEcart: 'FAVORABLE', ecartAbs: 9_000 }),
+      ligne({ codeCompte: '601', sensEcart: 'DEFAVORABLE', ecartAbs: 8_000 }),
+    ];
+    render(<EcartsTop10Comptes lignes={lignes} />);
+    expect(screen.getByTestId('graph-top10-sur')).toBeInTheDocument();
+    expect(screen.getByTestId('graph-top10-sous')).toBeInTheDocument();
+    // Aucun des deux n'est en état vide (1 ligne par sens).
+    expect(screen.queryByTestId('graph-top10-sur-vide')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('graph-top10-sous-vide'),
+    ).not.toBeInTheDocument();
   });
 });

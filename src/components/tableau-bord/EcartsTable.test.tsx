@@ -25,6 +25,7 @@ function makeLigne(over: Partial<LigneEcart> = {}): LigneEcart {
     ecart: 200_000,
     ecartAbs: 200_000,
     ecartPct: 20,
+    tauxExecution: 120,
     niveauAlerte: 'CRITIQUE',
     sensEcart: 'DEFAVORABLE',
     ...over,

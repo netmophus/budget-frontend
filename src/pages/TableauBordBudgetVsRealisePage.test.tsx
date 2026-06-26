@@ -42,17 +42,23 @@ vi.mock('@/lib/api/tableau-bord', async () => {
     ...actual,
     analyserEcarts: vi.fn(),
     exporterEcartsExcel: vi.fn(),
+    exporterEcartsPdf: vi.fn(),
   };
 });
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { analyserEcarts, type EcartsResponse } from '@/lib/api/tableau-bord';
+import {
+  analyserEcarts,
+  exporterEcartsPdf,
+  type EcartsResponse,
+} from '@/lib/api/tableau-bord';
 import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
 import { TableauBordBudgetVsRealisePage } from './TableauBordBudgetVsRealisePage';
 
 const mockAnalyser = analyserEcarts as unknown as ReturnType<typeof vi.fn>;
+const mockExportPdf = exporterEcartsPdf as unknown as ReturnType<typeof vi.fn>;
 
 function makeResponse(): EcartsResponse {
   return {
@@ -67,9 +73,38 @@ function makeResponse(): EcartsResponse {
       nbEcartsCritique: 1,
       nbEcartsAttention: 1,
       nbLignesManquantes: 1,
+      nbSansBudget: 0,
       ecartTotalAbs: 1_500_000,
       ecartTotalDefavorable: 1_000_000,
       ecartTotalFavorable: 500_000,
+    },
+    totaux: {
+      produits: {
+        budget: 800_000,
+        realise: 750_000,
+        ecart: -50_000,
+        tauxExecution: 93.8,
+      },
+      charges: {
+        budget: 1_200_000,
+        realise: 1_200_000,
+        ecart: 0,
+        tauxExecution: 100,
+      },
+      solde: {
+        budget: -400_000,
+        realise: -450_000,
+        ecart: -50_000,
+        tauxExecution: 112.5,
+      },
+      pnb: {
+        budget: 800_000,
+        realise: 750_000,
+        ecart: -50_000,
+        tauxExecution: 93.8,
+      },
+      coefExploitationBudget: 150,
+      coefExploitationRealise: 160,
     },
     lignes: [
       {
@@ -87,6 +122,7 @@ function makeResponse(): EcartsResponse {
         ecart: 200_000,
         ecartAbs: 200_000,
         ecartPct: 20,
+        tauxExecution: 120,
         niveauAlerte: 'CRITIQUE',
         sensEcart: 'DEFAVORABLE',
       },
@@ -105,6 +141,7 @@ function makeResponse(): EcartsResponse {
         ecart: -50_000,
         ecartAbs: 50_000,
         ecartPct: -6.25,
+        tauxExecution: 93.8,
         niveauAlerte: 'ATTENTION',
         sensEcart: 'DEFAVORABLE',
       },
@@ -123,6 +160,7 @@ function makeResponse(): EcartsResponse {
         ecart: null,
         ecartAbs: null,
         ecartPct: null,
+        tauxExecution: null,
         niveauAlerte: 'MANQUANT',
         sensEcart: null,
       },
@@ -145,7 +183,10 @@ describe('TableauBordBudgetVsRealisePage', () => {
       loading: false,
       error: null,
       filtreRapide: 'TOUS',
+      filtreClasse: 'TOUTES',
       rechercheTexte: '',
+      drillCr: null,
+      drillLm: null,
     });
     mockAnalyser.mockReset();
   });
@@ -239,5 +280,125 @@ describe('TableauBordBudgetVsRealisePage', () => {
     );
     // Empty state du tableau
     expect(screen.getByTestId('empty-ecarts')).toBeInTheDocument();
+  });
+
+  // ─── Lot 8.6.B — export PDF (dropdown)
+
+  it('export PDF : appelle exporterEcartsPdf sans snapshot IA', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    mockExportPdf.mockResolvedValue(undefined);
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    const trigger = screen.getByTestId('btn-exporter');
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    fireEvent.click(await screen.findByTestId('export-pdf'));
+
+    await waitFor(() => expect(mockExportPdf).toHaveBeenCalledTimes(1));
+    expect(mockExportPdf.mock.calls[0][0]).toMatchObject({
+      versionId: 'v1',
+      scenarioId: 's1',
+    });
+    // Sans analyse IA à l'écran → pas de snapshot (2e argument undefined).
+    expect(mockExportPdf.mock.calls[0][1]).toBeUndefined();
+  });
+
+  it('item « PDF avec analyse IA » désactivé tant qu’aucune analyse IA', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    const trigger = screen.getByTestId('btn-exporter');
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    const item = await screen.findByTestId('export-pdf-ia');
+    // Radix pose `data-disabled` sur un DropdownMenuItem désactivé.
+    expect(item).toHaveAttribute('data-disabled');
+  });
+
+  // ─── PR1 — compte de résultat ────────────────────────────────
+
+  it('KPI compte de résultat : PNB Budget / Réalisé, CE et Sans budget', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('kpi-cards')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('kpi-pnb-budget').textContent).toContain('800');
+    expect(screen.getByTestId('kpi-pnb-realise').textContent).toContain('750');
+    expect(screen.getByTestId('kpi-ce-budget').textContent).toContain('150');
+    expect(screen.getByTestId('kpi-sans-budget').textContent).toBe('0');
+  });
+
+  it('filtre par classe PRODUITS : ne garde que la classe 7', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    useTableauBordStore.setState({ filtreClasse: 'PRODUITS' });
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('1'),
+    );
+  });
+
+  it('affiche les sous-totaux Produits/Charges + Solde', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('sous-total-produits')).toBeInTheDocument();
+    expect(screen.getByTestId('sous-total-charges')).toBeInTheDocument();
+    expect(screen.getByTestId('solde')).toBeInTheDocument();
+  });
+
+  it('colonne % d’exécution présente dans le tableau', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('th-tauxExecution')).toBeInTheDocument();
+  });
+
+  // ─── PR2 — visualisations + drill-down ───────────────────────
+
+  it('affiche la section Visualisations par dimension (CR + LM)', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId('visualisations-dimension'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('graph-barres-cr')).toBeInTheDocument();
+    expect(screen.getByTestId('graph-barres-lm')).toBeInTheDocument();
+  });
+
+  it('drill-down CR : filtre le tableau + chip + clear', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    // Simule un clic sur la barre CR_BANDABARI (2 lignes : 6111, 6112).
+    useTableauBordStore.setState({ drillCr: 'CR_BANDABARI' });
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('2'),
+    );
+    expect(screen.getByTestId('drill-indicateur').textContent).toContain(
+      'CR_BANDABARI',
+    );
+    // Clear → retour aux 3 lignes.
+    fireEvent.click(screen.getByTestId('drill-clear'));
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('3'),
+    );
+    expect(screen.queryByTestId('drill-indicateur')).not.toBeInTheDocument();
   });
 });

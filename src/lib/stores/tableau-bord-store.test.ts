@@ -8,10 +8,10 @@ import { describe, expect, it } from 'vitest';
 import { filtrerLignes } from './tableau-bord-store';
 
 const lignes = [
-  { codeCr: 'CR_BANDABARI', codeCompte: '6111', niveauAlerte: 'CRITIQUE' as const },
-  { codeCr: 'CR_BANDABARI', codeCompte: '6112', niveauAlerte: 'NORMAL' as const },
-  { codeCr: 'CR_DOSSO', codeCompte: '7011', niveauAlerte: 'ATTENTION' as const },
-  { codeCr: 'CR_DOSSO', codeCompte: '7012', niveauAlerte: 'MANQUANT' as const },
+  { codeCr: 'CR_BANDABARI', codeCompte: '6111', classeCompte: '6', niveauAlerte: 'CRITIQUE' as const },
+  { codeCr: 'CR_BANDABARI', codeCompte: '6112', classeCompte: '6', niveauAlerte: 'NORMAL' as const },
+  { codeCr: 'CR_DOSSO', codeCompte: '7011', classeCompte: '7', niveauAlerte: 'ATTENTION' as const },
+  { codeCr: 'CR_DOSSO', codeCompte: '7012', classeCompte: '7', niveauAlerte: 'MANQUANT' as const },
 ];
 
 describe('filtrerLignes', () => {
@@ -50,5 +50,23 @@ describe('filtrerLignes', () => {
 
   it('aucun match : tableau vide', () => {
     expect(filtrerLignes(lignes, 'TOUS', 'inexistant')).toHaveLength(0);
+  });
+
+  it('filtre classe PRODUITS : ne renvoie que la classe 7', () => {
+    const r = filtrerLignes(lignes, 'TOUS', '', 'PRODUITS');
+    expect(r).toHaveLength(2);
+    expect(r.every((l) => l.classeCompte === '7')).toBe(true);
+  });
+
+  it('filtre classe CHARGES : ne renvoie que la classe 6', () => {
+    const r = filtrerLignes(lignes, 'TOUS', '', 'CHARGES');
+    expect(r).toHaveLength(2);
+    expect(r.every((l) => l.classeCompte === '6')).toBe(true);
+  });
+
+  it('combine niveau + classe : intersection', () => {
+    const r = filtrerLignes(lignes, 'ATTENTION', '', 'PRODUITS');
+    expect(r).toHaveLength(1);
+    expect(r[0]!.codeCompte).toBe('7011');
   });
 });

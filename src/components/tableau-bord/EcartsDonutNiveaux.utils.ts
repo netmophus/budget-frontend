@@ -21,6 +21,7 @@ export const ORDRE_NIVEAUX: NiveauAlerte[] = [
   'CRITIQUE',
   'ATTENTION',
   'MANQUANT',
+  'SANS_BUDGET',
   'NORMAL',
 ];
 
@@ -29,6 +30,7 @@ export function compterParNiveau(lignes: LigneEcart[]): PointNiveau[] {
     CRITIQUE: 0,
     ATTENTION: 0,
     MANQUANT: 0,
+    SANS_BUDGET: 0,
     NORMAL: 0,
   };
   for (const l of lignes) counts[l.niveauAlerte]++;

@@ -25,10 +25,13 @@ import {
   CircleCheck,
   Play,
   Search,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { EcartsBarChartCR } from '@/components/tableau-bord/EcartsBarChartCR';
+import { EcartsBarChartLM } from '@/components/tableau-bord/EcartsBarChartLM';
 import { EcartsBarChartMensuel } from '@/components/tableau-bord/EcartsBarChartMensuel';
 import { EcartsDonutNiveaux } from '@/components/tableau-bord/EcartsDonutNiveaux';
 import { EcartsTable } from '@/components/tableau-bord/EcartsTable';
@@ -52,9 +55,13 @@ import {
 } from '@/components/ui/select';
 import {
   exporterEcartsExcel,
+  exporterEcartsPdf,
   type FiltresEcarts,
 } from '@/lib/api/tableau-bord';
-import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
+import {
+  filtrerLignes,
+  useTableauBordStore,
+} from '@/lib/stores/tableau-bord-store';
 
 export function TableauBordBudgetVsRealisePage(): JSX.Element {
   const {
@@ -69,9 +76,16 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     loading,
     error,
     filtreRapide,
+    filtreClasse,
     rechercheTexte,
+    drillCr,
+    drillLm,
     setFiltreRapide,
+    setFiltreClasse,
     setRechercheTexte,
+    setDrillCr,
+    setDrillLm,
+    clearDrill,
     analyser,
   } = useTableauBordStore();
 
@@ -89,32 +103,46 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const lignesFiltrees = useMemo(() => {
+  // Niveau 1 : filtres rapides (niveau + classe + recherche). Alimente
+  // les charts par dimension (CR / LM) → toutes les dimensions restent
+  // visibles pour permettre le drill-down.
+  const lignesBase = useMemo(() => {
     if (!ecarts) return [];
-    const r = rechercheTexte.trim().toLowerCase();
-    return ecarts.lignes.filter((l) => {
-      if (filtreRapide !== 'TOUS' && l.niveauAlerte !== filtreRapide)
-        return false;
-      if (r) {
-        const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
-        if (!target.includes(r)) return false;
-      }
-      return true;
-    });
-  }, [ecarts, filtreRapide, rechercheTexte]);
+    return filtrerLignes(
+      ecarts.lignes,
+      filtreRapide,
+      rechercheTexte,
+      filtreClasse,
+    );
+  }, [ecarts, filtreRapide, rechercheTexte, filtreClasse]);
 
-  // Lot 8.5.C — pour le donut, on applique uniquement la recherche
-  // (pas le filtre niveau). Sinon le donut deviendrait mono-couleur et
-  // perdrait son sens (cf. décision actée brief 8.5.C).
+  // Niveau 2 : drill-down (clic sur une barre CR / LM). Alimente le
+  // tableau, le chart mensuel et les Top performances.
+  const lignesFiltrees = useMemo(
+    () =>
+      lignesBase.filter(
+        (l) =>
+          (!drillCr || l.codeCr === drillCr) &&
+          (!drillLm || l.codeLigneMetier === drillLm),
+      ),
+    [lignesBase, drillCr, drillLm],
+  );
+
+  // Lot 8.5.C — pour le donut, on applique recherche + classe + drill
+  // mais PAS le filtre niveau (sinon le donut deviendrait mono-couleur).
   const lignesFiltreesSansNiveau = useMemo(() => {
     if (!ecarts) return [];
-    const r = rechercheTexte.trim().toLowerCase();
-    if (!r) return ecarts.lignes;
-    return ecarts.lignes.filter((l) => {
-      const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
-      return target.includes(r);
-    });
-  }, [ecarts, rechercheTexte]);
+    return filtrerLignes(
+      ecarts.lignes,
+      'TOUS',
+      rechercheTexte,
+      filtreClasse,
+    ).filter(
+      (l) =>
+        (!drillCr || l.codeCr === drillCr) &&
+        (!drillLm || l.codeLigneMetier === drillLm),
+    );
+  }, [ecarts, rechercheTexte, filtreClasse, drillCr, drillLm]);
 
   async function lancerAnalyseAi(): Promise<void> {
     if (!versionId || !scenarioId) return;
@@ -172,6 +200,48 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     }
   }
 
+  // Lot 8.6.B — export PDF. Si `avecIa`, embarque le snapshot de
+  // l'analyse MIZNAS AI déjà affichée (state `analyseAi`) — AUCUN
+  // nouvel appel Anthropic.
+  async function handleExporterPdf(avecIa: boolean): Promise<void> {
+    if (!versionId || !scenarioId) return;
+    setExporting(true);
+    const filtres: FiltresEcarts = {
+      versionId,
+      scenarioId,
+      crIds: crIds.length > 0 ? crIds : undefined,
+      moisDebut,
+      moisFin,
+      seuilEcartPctAttention,
+      seuilEcartPctCritique,
+    };
+    const snapshot =
+      avecIa && analyseAi
+        ? {
+            analyse: analyseAi.analyse,
+            model: analyseAi.model,
+            tokensInput: analyseAi.tokensInput,
+            tokensOutput: analyseAi.tokensOutput,
+            dureeMs: analyseAi.dureeMs,
+            dryRun: analyseAi.dryRun,
+            generatedAt: new Date().toISOString(),
+          }
+        : undefined;
+    try {
+      await exporterEcartsPdf(filtres, snapshot);
+      toast.success(
+        snapshot
+          ? 'Export PDF (avec analyse IA) téléchargé.'
+          : 'Export PDF téléchargé.',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur';
+      toast.error(`Échec export : ${msg}`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       {/* ─── Header custom ──────────────────────────────────── */}
@@ -200,6 +270,9 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
       <FiltresEcartsForm
         onAnalyser={() => void analyser()}
         onExporter={() => void handleExporter()}
+        onExporterPdf={() => void handleExporterPdf(false)}
+        onExporterPdfIa={() => void handleExporterPdf(true)}
+        analyseDisponible={analyseAi !== null}
         loading={loading || exporting}
         onAnalyseAiClick={() => void lancerAnalyseAi()}
         loadingAi={loadingAi}
@@ -248,7 +321,11 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
 
       {ecarts && !loading && (
         <>
-          <KpiCardsRow kpi={ecarts.kpi} erreur={!!error} />
+          <KpiCardsRow
+            kpi={ecarts.kpi}
+            totaux={ecarts.totaux}
+            erreur={!!error}
+          />
 
           {/* ─── Lot 8.5.C — Graphiques (entre KPI et filtres rapides) ─── */}
           {!error && (
@@ -258,6 +335,23 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                 <EcartsDonutNiveaux lignes={lignesFiltreesSansNiveau} />
               </div>
               <EcartsTop10Comptes lignes={lignesFiltrees} />
+
+              {/* ─── PR2 — Visualisations par dimension (CR / LM) ─── */}
+              <div className="mt-4" data-testid="visualisations-dimension">
+                <h4 className="text-sm font-semibold mb-2">
+                  Visualisations par dimension
+                </h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <EcartsBarChartCR
+                    lignes={lignesBase}
+                    onSelectCr={setDrillCr}
+                  />
+                  <EcartsBarChartLM
+                    lignes={lignesBase}
+                    onSelectLm={setDrillLm}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -286,7 +380,7 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
             <>
               {/* ─── Barre filtres rapides en cadre gris ────── */}
               <div className="bg-(--secondary) border border-(--border) rounded-md p-3 mb-3.5">
-                <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-2.5 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-[200px_180px_1fr_auto] gap-2.5 items-end">
                   <div>
                     <Label
                       htmlFor="tb-filtre-rapide"
@@ -317,6 +411,38 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                         </SelectItem>
                         <SelectItem value="MANQUANT">
                           Manquants uniquement
+                        </SelectItem>
+                        <SelectItem value="SANS_BUDGET">
+                          Sans budget uniquement
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="tb-filtre-classe"
+                      className="text-xs mb-1 block"
+                    >
+                      Classe de compte
+                    </Label>
+                    <Select
+                      value={filtreClasse}
+                      onValueChange={(v) => setFiltreClasse(v as never)}
+                    >
+                      <SelectTrigger
+                        id="tb-filtre-classe"
+                        data-testid="filtre-classe"
+                        className="h-9 bg-white"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TOUTES">Toutes</SelectItem>
+                        <SelectItem value="PRODUITS">
+                          Produits (classe 7)
+                        </SelectItem>
+                        <SelectItem value="CHARGES">
+                          Charges (classe 6)
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -355,6 +481,30 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                   </div>
                 </div>
               </div>
+
+              {/* ─── PR2 — Indicateur de drill-down actif ───── */}
+              {(drillCr || drillLm) && (
+                <div
+                  className="flex items-center gap-2 mb-3 text-sm"
+                  data-testid="drill-indicateur"
+                >
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium"
+                    style={{ backgroundColor: '#5B4E9114', color: '#5B4E91' }}
+                  >
+                    Filtré sur {drillCr ? `CR ${drillCr}` : `LM ${drillLm}`}
+                    <button
+                      type="button"
+                      onClick={clearDrill}
+                      className="hover:opacity-70"
+                      aria-label="Retirer le filtre"
+                      data-testid="drill-clear"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                </div>
+              )}
 
               {/* État vide après filtre vs après analyse */}
               {lignesFiltrees.length === 0 && ecarts.lignes.length > 0 && (
