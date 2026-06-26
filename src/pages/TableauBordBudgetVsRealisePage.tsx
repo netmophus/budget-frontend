@@ -55,7 +55,10 @@ import {
   exporterEcartsPdf,
   type FiltresEcarts,
 } from '@/lib/api/tableau-bord';
-import { useTableauBordStore } from '@/lib/stores/tableau-bord-store';
+import {
+  filtrerLignes,
+  useTableauBordStore,
+} from '@/lib/stores/tableau-bord-store';
 
 export function TableauBordBudgetVsRealisePage(): JSX.Element {
   const {
@@ -70,8 +73,10 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
     loading,
     error,
     filtreRapide,
+    filtreClasse,
     rechercheTexte,
     setFiltreRapide,
+    setFiltreClasse,
     setRechercheTexte,
     analyser,
   } = useTableauBordStore();
@@ -92,30 +97,21 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
 
   const lignesFiltrees = useMemo(() => {
     if (!ecarts) return [];
-    const r = rechercheTexte.trim().toLowerCase();
-    return ecarts.lignes.filter((l) => {
-      if (filtreRapide !== 'TOUS' && l.niveauAlerte !== filtreRapide)
-        return false;
-      if (r) {
-        const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
-        if (!target.includes(r)) return false;
-      }
-      return true;
-    });
-  }, [ecarts, filtreRapide, rechercheTexte]);
+    return filtrerLignes(
+      ecarts.lignes,
+      filtreRapide,
+      rechercheTexte,
+      filtreClasse,
+    );
+  }, [ecarts, filtreRapide, rechercheTexte, filtreClasse]);
 
-  // Lot 8.5.C — pour le donut, on applique uniquement la recherche
-  // (pas le filtre niveau). Sinon le donut deviendrait mono-couleur et
-  // perdrait son sens (cf. décision actée brief 8.5.C).
+  // Lot 8.5.C — pour le donut, on applique la recherche + le filtre
+  // classe, mais PAS le filtre niveau (sinon le donut deviendrait
+  // mono-couleur et perdrait son sens — décision actée brief 8.5.C).
   const lignesFiltreesSansNiveau = useMemo(() => {
     if (!ecarts) return [];
-    const r = rechercheTexte.trim().toLowerCase();
-    if (!r) return ecarts.lignes;
-    return ecarts.lignes.filter((l) => {
-      const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
-      return target.includes(r);
-    });
-  }, [ecarts, rechercheTexte]);
+    return filtrerLignes(ecarts.lignes, 'TOUS', rechercheTexte, filtreClasse);
+  }, [ecarts, rechercheTexte, filtreClasse]);
 
   async function lancerAnalyseAi(): Promise<void> {
     if (!versionId || !scenarioId) return;
@@ -294,7 +290,11 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
 
       {ecarts && !loading && (
         <>
-          <KpiCardsRow kpi={ecarts.kpi} erreur={!!error} />
+          <KpiCardsRow
+            kpi={ecarts.kpi}
+            totaux={ecarts.totaux}
+            erreur={!!error}
+          />
 
           {/* ─── Lot 8.5.C — Graphiques (entre KPI et filtres rapides) ─── */}
           {!error && (
@@ -332,7 +332,7 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
             <>
               {/* ─── Barre filtres rapides en cadre gris ────── */}
               <div className="bg-(--secondary) border border-(--border) rounded-md p-3 mb-3.5">
-                <div className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-2.5 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-[200px_180px_1fr_auto] gap-2.5 items-end">
                   <div>
                     <Label
                       htmlFor="tb-filtre-rapide"
@@ -363,6 +363,38 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
                         </SelectItem>
                         <SelectItem value="MANQUANT">
                           Manquants uniquement
+                        </SelectItem>
+                        <SelectItem value="SANS_BUDGET">
+                          Sans budget uniquement
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="tb-filtre-classe"
+                      className="text-xs mb-1 block"
+                    >
+                      Classe de compte
+                    </Label>
+                    <Select
+                      value={filtreClasse}
+                      onValueChange={(v) => setFiltreClasse(v as never)}
+                    >
+                      <SelectTrigger
+                        id="tb-filtre-classe"
+                        data-testid="filtre-classe"
+                        className="h-9 bg-white"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TOUTES">Toutes</SelectItem>
+                        <SelectItem value="PRODUITS">
+                          Produits (classe 7)
+                        </SelectItem>
+                        <SelectItem value="CHARGES">
+                          Charges (classe 6)
                         </SelectItem>
                       </SelectContent>
                     </Select>

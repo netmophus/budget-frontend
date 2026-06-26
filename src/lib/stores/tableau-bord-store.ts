@@ -13,7 +13,14 @@ import {
   type NiveauAlerte,
 } from '@/lib/api/tableau-bord';
 
-type FiltreRapide = 'TOUS' | 'CRITIQUE' | 'ATTENTION' | 'MANQUANT';
+type FiltreRapide =
+  | 'TOUS'
+  | 'CRITIQUE'
+  | 'ATTENTION'
+  | 'MANQUANT'
+  | 'SANS_BUDGET';
+/** Filtre client par classe de compte (compte de résultat). */
+export type FiltreClasse = 'TOUTES' | 'PRODUITS' | 'CHARGES';
 
 interface FiltresPersisted {
   versionId: string | null;
@@ -31,6 +38,7 @@ interface TableauBordStoreState extends FiltresPersisted {
   loading: boolean;
   error: string | null;
   filtreRapide: FiltreRapide;
+  filtreClasse: FiltreClasse;
   rechercheTexte: string;
 
   // Actions filtres
@@ -40,6 +48,7 @@ interface TableauBordStoreState extends FiltresPersisted {
   setPeriode: (debut: string, fin: string) => void;
   setSeuils: (attention: number, critique: number) => void;
   setFiltreRapide: (f: FiltreRapide) => void;
+  setFiltreClasse: (c: FiltreClasse) => void;
   setRechercheTexte: (q: string) => void;
 
   // Actions API
@@ -75,6 +84,7 @@ export const useTableauBordStore = create<TableauBordStoreState>()(
       loading: false,
       error: null,
       filtreRapide: 'TOUS',
+      filtreClasse: 'TOUTES',
       rechercheTexte: '',
 
       setVersionId: (id) => set({ versionId: id }),
@@ -87,6 +97,7 @@ export const useTableauBordStore = create<TableauBordStoreState>()(
           seuilEcartPctCritique: critique,
         }),
       setFiltreRapide: (f) => set({ filtreRapide: f }),
+      setFiltreClasse: (c) => set({ filtreClasse: c }),
       setRechercheTexte: (q) => set({ rechercheTexte: q }),
 
       analyser: async () => {
@@ -133,18 +144,28 @@ export const useTableauBordStore = create<TableauBordStoreState>()(
 );
 
 /**
- * Helper pur (testable) : applique le filtre rapide + recherche
- * texte sur la liste de lignes.
+ * Helper pur (testable) : applique le filtre rapide (niveau) + le filtre
+ * de classe (Produits 7 / Charges 6) + la recherche texte.
  */
-export function filtrerLignes(
-  lignes: { codeCr: string; codeCompte: string; niveauAlerte: NiveauAlerte }[],
+export function filtrerLignes<
+  T extends {
+    codeCr: string;
+    codeCompte: string;
+    classeCompte: string;
+    niveauAlerte: NiveauAlerte;
+  },
+>(
+  lignes: T[],
   filtreRapide: FiltreRapide,
   recherche: string,
-): unknown[] {
+  filtreClasse: FiltreClasse = 'TOUTES',
+): T[] {
   const r = recherche.trim().toLowerCase();
   return lignes.filter((l) => {
     if (filtreRapide !== 'TOUS' && l.niveauAlerte !== filtreRapide)
       return false;
+    if (filtreClasse === 'PRODUITS' && l.classeCompte !== '7') return false;
+    if (filtreClasse === 'CHARGES' && l.classeCompte !== '6') return false;
     if (r) {
       const target = `${l.codeCr} ${l.codeCompte}`.toLowerCase();
       if (!target.includes(r)) return false;

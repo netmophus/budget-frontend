@@ -19,6 +19,7 @@ export const COULEURS_NIVEAU: Record<NiveauAlerte, string> = {
   ATTENTION: '#BA7517', // ambre MIZNAS Charte v1 (--miznas-ambre / cat-reporting)
   NORMAL: '#0F6E56', // vert validé MIZNAS (--miznas-cat-validation)
   MANQUANT: '#5F6B7A', // gris ardoise MIZNAS (--miznas-cat-config)
+  SANS_BUDGET: '#C2410C', // orange brûlé (réalisé sans budget)
 };
 
 export const LIBELLES_NIVEAU: Record<NiveauAlerte, string> = {
@@ -26,6 +27,7 @@ export const LIBELLES_NIVEAU: Record<NiveauAlerte, string> = {
   ATTENTION: 'Attention',
   NORMAL: 'Normal',
   MANQUANT: 'Manquant',
+  SANS_BUDGET: 'Sans budget',
 };
 
 /**

@@ -1,159 +1,141 @@
 /**
- * KpiCardsRow (Lot 5.2.C + refonte Lot 7.3 V24 Charte v1).
+ * KpiCardsRow — refonte « compte de résultat » (PR1).
  *
- * 4 cards horizontales avec les KPI principaux du tableau de bord
- * Budget vs Réalisé.
+ * 2 lignes de 4 cartes :
+ *  - Ligne 1 : PNB Budget · PNB Réalisé · Coef. exploitation Budget ·
+ *    Coef. exploitation Réalisé
+ *  - Ligne 2 : Lignes avec écart · ≥ critique · ≥ attention · Sans budget
  *
- * État erreur (Lot 5-fix-ui) : affiche `—` au lieu de `0` quand
- * l'API a échoué — `0` était trompeur (pouvait suggérer "aucun
- * écart" alors que la requête n'avait pas abouti).
- *
- * Refonte V24 :
- *  - Pattern KpiAlertCard avec pastille colorée + label uppercase
- *    + valeur 28px tabular-nums (cohérent V19/V21)
- *  - 4e KPI = Écart total absolu avec décomposition fav/défav
- *    (valeur principale = chiffre brut pour préserver l'unicité
- *    du textContent attendu par les tests).
- *  - data-testid kpi-cards / kpi-total / kpi-critique /
- *    kpi-attention / kpi-total-abs PRÉSERVÉS strictement (les
- *    tests vérifient `textContent === '17'` exact, donc pas de
- *    contenu textuel parasite dans le conteneur).
+ * État erreur : affiche « — » au lieu des chiffres.
  */
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { type KpiEcarts, type TotauxEcarts } from '@/lib/api/tableau-bord';
+import { COULEUR_REALISE, COULEURS_NIVEAU } from '@/lib/colors/niveaux-alerte';
 
-import { type KpiEcarts } from '@/lib/api/tableau-bord';
-import { COULEURS_NIVEAU } from '@/lib/colors/niveaux-alerte';
-import { cn } from '@/lib/utils';
-
-// Lot 8.5.C — alias locaux pour préserver la lisibilité des couleurs
-// non-niveau (favorable/défavorable + accent bleu nuit) qui ne sont
-// pas dans COULEURS_NIVEAU. La couleur défavorable = couleur CRITIQUE,
-// la couleur favorable = couleur NORMAL (cohérence métier MIZNAS).
-const COULEUR_ACCENT = '#0C447C'; // --miznas-bleu-nuit, KPI valeur principale
-const COULEUR_DEFAVORABLE = COULEURS_NIVEAU.CRITIQUE;
-const COULEUR_FAVORABLE = COULEURS_NIVEAU.NORMAL;
+const COULEUR_ACCENT = '#0C447C'; // --miznas-bleu-nuit (budget)
 
 interface Props {
   kpi: KpiEcarts;
+  totaux: TotauxEcarts;
   /** Si true, affiche "—" à la place des chiffres (état échec API). */
   erreur?: boolean;
 }
 
-function formatMontant(n: number): string {
+function fmtFcfa(n: number): string {
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(n);
 }
 
-export function KpiCardsRow({ kpi, erreur }: Props): JSX.Element {
-  const nbTotal = erreur ? '—' : String(kpi.nbEcartsTotal);
-  const nbCritique = erreur ? '—' : String(kpi.nbEcartsCritique);
-  const nbAttention = erreur ? '—' : String(kpi.nbEcartsAttention);
-  const totalAbs = erreur ? '—' : formatMontant(kpi.ecartTotalAbs);
-  const defav = erreur ? '—' : formatMontant(kpi.ecartTotalDefavorable);
-  const fav = erreur ? '—' : formatMontant(kpi.ecartTotalFavorable);
+function fmtPct(n: number | null): string {
+  return n === null ? '—' : `${n.toFixed(1)} %`;
+}
 
+export function KpiCardsRow({ kpi, totaux, erreur }: Props): JSX.Element {
   return (
-    <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4"
-      data-testid="kpi-cards"
-    >
-      <KpiAlertShell
-        label="Lignes avec écart"
-        dotHex={COULEURS_NIVEAU.MANQUANT}
-        valueColorHex={erreur ? undefined : COULEUR_ACCENT}
-      >
-        <span data-testid="kpi-total">{nbTotal}</span>
-      </KpiAlertShell>
-
-      <KpiAlertShell
-        label="≥ Seuil critique"
-        dotHex={COULEURS_NIVEAU.CRITIQUE}
-        valueColorHex={
-          erreur
-            ? undefined
-            : kpi.nbEcartsCritique > 0
-              ? COULEURS_NIVEAU.CRITIQUE
-              : COULEUR_ACCENT
-        }
-      >
-        <span data-testid="kpi-critique">{nbCritique}</span>
-      </KpiAlertShell>
-
-      <KpiAlertShell
-        label="≥ Seuil attention"
-        dotHex={COULEURS_NIVEAU.ATTENTION}
-        valueColorHex={
-          erreur
-            ? undefined
-            : kpi.nbEcartsAttention > 0
-              ? COULEURS_NIVEAU.ATTENTION
-              : COULEUR_ACCENT
-        }
-      >
-        <span data-testid="kpi-attention">{nbAttention}</span>
-      </KpiAlertShell>
-
-      {/* 4e KPI : Écart total absolu avec décomposition fav/défav */}
-      <div
-        className={cn(
-          'bg-white border border-(--border) rounded-md p-3.5',
-          erreur && 'bg-(--muted)/30',
-        )}
-      >
-        <div className="flex items-center gap-1.5 mb-1">
-          <span
-            className="w-[7px] h-[7px] rounded-full"
-            style={{ backgroundColor: COULEUR_ACCENT }}
-            aria-hidden="true"
-          />
-          <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider">
-            Écart total absolu
-          </div>
-        </div>
-        <div className="flex items-baseline gap-1.5 mb-1.5">
-          <span
-            className="text-[22px] font-medium tabular-nums leading-none font-mono whitespace-nowrap"
-            style={{ color: erreur ? undefined : COULEUR_ACCENT }}
-            data-testid="kpi-total-abs"
-          >
-            {totalAbs}
+    <div className="space-y-2.5 mb-4" data-testid="kpi-cards">
+      {/* ── Ligne 1 — compte de résultat ─────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <KpiCard
+          label="PNB Budget"
+          dotHex={COULEUR_ACCENT}
+          valueColorHex={erreur ? undefined : COULEUR_ACCENT}
+        >
+          <span data-testid="kpi-pnb-budget" className="text-[20px] font-mono">
+            {erreur ? '—' : fmtFcfa(totaux.pnb.budget)}
           </span>
-          <span className="text-[11px] text-(--muted-foreground)">FCFA</span>
-        </div>
-        <div className="flex flex-wrap gap-2.5 text-[10px] tabular-nums">
-          <span className="inline-flex items-center gap-0.5">
-            <ArrowDownRight
-              className="w-2.5 h-2.5"
-              style={{ color: COULEUR_DEFAVORABLE }}
-            />
-            <span
-              className="font-medium"
-              style={{ color: erreur ? undefined : COULEUR_DEFAVORABLE }}
-            >
-              défavorable : {defav}
-            </span>
+        </KpiCard>
+        <KpiCard
+          label="PNB Réalisé"
+          dotHex={COULEUR_REALISE}
+          valueColorHex={erreur ? undefined : COULEUR_REALISE}
+        >
+          <span data-testid="kpi-pnb-realise" className="text-[20px] font-mono">
+            {erreur ? '—' : fmtFcfa(totaux.pnb.realise)}
           </span>
-          <span className="inline-flex items-center gap-0.5">
-            <ArrowUpRight
-              className="w-2.5 h-2.5"
-              style={{ color: COULEUR_FAVORABLE }}
-            />
-            <span
-              className="font-medium"
-              style={{ color: erreur ? undefined : COULEUR_FAVORABLE }}
-            >
-              favorable : {fav}
-            </span>
+        </KpiCard>
+        <KpiCard
+          label="Coef. exploitation Budget"
+          dotHex={COULEUR_ACCENT}
+          valueColorHex={erreur ? undefined : COULEUR_ACCENT}
+        >
+          <span data-testid="kpi-ce-budget">
+            {erreur ? '—' : fmtPct(totaux.coefExploitationBudget)}
           </span>
-        </div>
+        </KpiCard>
+        <KpiCard
+          label="Coef. exploitation Réalisé"
+          dotHex={COULEUR_REALISE}
+          valueColorHex={erreur ? undefined : COULEUR_REALISE}
+        >
+          <span data-testid="kpi-ce-realise">
+            {erreur ? '—' : fmtPct(totaux.coefExploitationRealise)}
+          </span>
+        </KpiCard>
+      </div>
+
+      {/* ── Ligne 2 — alertes ────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <KpiCard
+          label="Lignes avec écart"
+          dotHex={COULEURS_NIVEAU.MANQUANT}
+          valueColorHex={erreur ? undefined : COULEUR_ACCENT}
+        >
+          <span data-testid="kpi-total">
+            {erreur ? '—' : String(kpi.nbEcartsTotal)}
+          </span>
+        </KpiCard>
+        <KpiCard
+          label="≥ Seuil critique"
+          dotHex={COULEURS_NIVEAU.CRITIQUE}
+          valueColorHex={
+            erreur
+              ? undefined
+              : kpi.nbEcartsCritique > 0
+                ? COULEURS_NIVEAU.CRITIQUE
+                : COULEUR_ACCENT
+          }
+        >
+          <span data-testid="kpi-critique">
+            {erreur ? '—' : String(kpi.nbEcartsCritique)}
+          </span>
+        </KpiCard>
+        <KpiCard
+          label="≥ Seuil attention"
+          dotHex={COULEURS_NIVEAU.ATTENTION}
+          valueColorHex={
+            erreur
+              ? undefined
+              : kpi.nbEcartsAttention > 0
+                ? COULEURS_NIVEAU.ATTENTION
+                : COULEUR_ACCENT
+          }
+        >
+          <span data-testid="kpi-attention">
+            {erreur ? '—' : String(kpi.nbEcartsAttention)}
+          </span>
+        </KpiCard>
+        <KpiCard
+          label="Sans budget"
+          dotHex={COULEURS_NIVEAU.SANS_BUDGET}
+          valueColorHex={
+            erreur
+              ? undefined
+              : kpi.nbSansBudget > 0
+                ? COULEURS_NIVEAU.SANS_BUDGET
+                : COULEUR_ACCENT
+          }
+        >
+          <span data-testid="kpi-sans-budget">
+            {erreur ? '—' : String(kpi.nbSansBudget)}
+          </span>
+        </KpiCard>
       </div>
     </div>
   );
 }
 
-function KpiAlertShell({
+function KpiCard({
   label,
   dotHex,
   valueColorHex,

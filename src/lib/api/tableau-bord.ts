@@ -6,7 +6,12 @@ import { triggerBlobDownload } from '@/lib/blob-download';
 
 import { apiClient } from './client';
 
-export type NiveauAlerte = 'NORMAL' | 'ATTENTION' | 'CRITIQUE' | 'MANQUANT';
+export type NiveauAlerte =
+  | 'NORMAL'
+  | 'ATTENTION'
+  | 'CRITIQUE'
+  | 'MANQUANT'
+  | 'SANS_BUDGET';
 export type NatureCompte = 'CHARGE' | 'PRODUIT' | 'BILAN';
 export type SensEcart = 'FAVORABLE' | 'DEFAVORABLE' | 'NEUTRE';
 
@@ -31,11 +36,12 @@ export interface LigneEcart {
   codeLigneMetier: string;
   mois: string;
   libelleMois: string;
-  montantBudget: number;
+  montantBudget: number | null;
   montantRealise: number | null;
   ecart: number | null;
   ecartAbs: number | null;
   ecartPct: number | null;
+  tauxExecution: number | null;
   niveauAlerte: NiveauAlerte;
   sensEcart: SensEcart | null;
 }
@@ -45,14 +51,33 @@ export interface KpiEcarts {
   nbEcartsCritique: number;
   nbEcartsAttention: number;
   nbLignesManquantes: number;
+  nbSansBudget: number;
   ecartTotalAbs: number;
   ecartTotalDefavorable: number;
   ecartTotalFavorable: number;
 }
 
+/** Agrégat compte de résultat (produits / charges / solde / PNB). */
+export interface TotalEcart {
+  budget: number;
+  realise: number;
+  ecart: number;
+  tauxExecution: number | null;
+}
+
+export interface TotauxEcarts {
+  produits: TotalEcart;
+  charges: TotalEcart;
+  solde: TotalEcart;
+  pnb: TotalEcart;
+  coefExploitationBudget: number | null;
+  coefExploitationRealise: number | null;
+}
+
 export interface EcartsResponse {
   filtres: FiltresEcarts;
   kpi: KpiEcarts;
+  totaux: TotauxEcarts;
   lignes: LigneEcart[];
 }
 
@@ -61,6 +86,7 @@ export const NIVEAU_LABEL: Record<NiveauAlerte, string> = {
   ATTENTION: 'Attention',
   CRITIQUE: 'Critique',
   MANQUANT: 'Manquant',
+  SANS_BUDGET: 'Sans budget',
 };
 
 export const NATURE_LABEL: Record<NatureCompte, string> = {

@@ -73,9 +73,38 @@ function makeResponse(): EcartsResponse {
       nbEcartsCritique: 1,
       nbEcartsAttention: 1,
       nbLignesManquantes: 1,
+      nbSansBudget: 0,
       ecartTotalAbs: 1_500_000,
       ecartTotalDefavorable: 1_000_000,
       ecartTotalFavorable: 500_000,
+    },
+    totaux: {
+      produits: {
+        budget: 800_000,
+        realise: 750_000,
+        ecart: -50_000,
+        tauxExecution: 93.8,
+      },
+      charges: {
+        budget: 1_200_000,
+        realise: 1_200_000,
+        ecart: 0,
+        tauxExecution: 100,
+      },
+      solde: {
+        budget: -400_000,
+        realise: -450_000,
+        ecart: -50_000,
+        tauxExecution: 112.5,
+      },
+      pnb: {
+        budget: 800_000,
+        realise: 750_000,
+        ecart: -50_000,
+        tauxExecution: 93.8,
+      },
+      coefExploitationBudget: 150,
+      coefExploitationRealise: 160,
     },
     lignes: [
       {
@@ -93,6 +122,7 @@ function makeResponse(): EcartsResponse {
         ecart: 200_000,
         ecartAbs: 200_000,
         ecartPct: 20,
+        tauxExecution: 120,
         niveauAlerte: 'CRITIQUE',
         sensEcart: 'DEFAVORABLE',
       },
@@ -111,6 +141,7 @@ function makeResponse(): EcartsResponse {
         ecart: -50_000,
         ecartAbs: 50_000,
         ecartPct: -6.25,
+        tauxExecution: 93.8,
         niveauAlerte: 'ATTENTION',
         sensEcart: 'DEFAVORABLE',
       },
@@ -129,6 +160,7 @@ function makeResponse(): EcartsResponse {
         ecart: null,
         ecartAbs: null,
         ecartPct: null,
+        tauxExecution: null,
         niveauAlerte: 'MANQUANT',
         sensEcart: null,
       },
@@ -151,6 +183,7 @@ describe('TableauBordBudgetVsRealisePage', () => {
       loading: false,
       error: null,
       filtreRapide: 'TOUS',
+      filtreClasse: 'TOUTES',
       rechercheTexte: '',
     });
     mockAnalyser.mockReset();
@@ -282,5 +315,51 @@ describe('TableauBordBudgetVsRealisePage', () => {
     const item = await screen.findByTestId('export-pdf-ia');
     // Radix pose `data-disabled` sur un DropdownMenuItem désactivé.
     expect(item).toHaveAttribute('data-disabled');
+  });
+
+  // ─── PR1 — compte de résultat ────────────────────────────────
+
+  it('KPI compte de résultat : PNB Budget / Réalisé, CE et Sans budget', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('kpi-cards')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('kpi-pnb-budget').textContent).toContain('800');
+    expect(screen.getByTestId('kpi-pnb-realise').textContent).toContain('750');
+    expect(screen.getByTestId('kpi-ce-budget').textContent).toContain('150');
+    expect(screen.getByTestId('kpi-sans-budget').textContent).toBe('0');
+  });
+
+  it('filtre par classe PRODUITS : ne garde que la classe 7', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    useTableauBordStore.setState({ filtreClasse: 'PRODUITS' });
+    await waitFor(() =>
+      expect(screen.getByTestId('compteur-affichees').textContent).toBe('1'),
+    );
+  });
+
+  it('affiche les sous-totaux Produits/Charges + Solde', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('sous-total-produits')).toBeInTheDocument();
+    expect(screen.getByTestId('sous-total-charges')).toBeInTheDocument();
+    expect(screen.getByTestId('solde')).toBeInTheDocument();
+  });
+
+  it('colonne % d’exécution présente dans le tableau', async () => {
+    mockAnalyser.mockResolvedValue(makeResponse());
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('ecarts-table')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('th-tauxExecution')).toBeInTheDocument();
   });
 });
