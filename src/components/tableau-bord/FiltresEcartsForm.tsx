@@ -71,6 +71,12 @@ interface Props {
   onAnalyseAiClick: () => void;
   loadingAi: boolean;
   hasEcarts: boolean;
+  /**
+   * Hotfix IA-0 — true si l'utilisateur a la permission AI.ANALYSER.
+   * Conditionne l'affichage du bouton « Analyser avec MIZNAS AI » et de
+   * l'item d'export « PDF avec analyse IA » (sinon un clic renverrait 403).
+   */
+  canUseAi: boolean;
 }
 
 export function FiltresEcartsForm({
@@ -83,6 +89,7 @@ export function FiltresEcartsForm({
   onAnalyseAiClick,
   loadingAi,
   hasEcarts,
+  canUseAi,
 }: Props): JSX.Element {
   const {
     versionId,
@@ -349,19 +356,21 @@ export function FiltresEcartsForm({
                   <FileText className="w-4 h-4" />
                   PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  data-testid="export-pdf-ia"
-                  onSelect={onExporterPdfIa}
-                  disabled={!analyseDisponible}
-                  title={
-                    analyseDisponible
-                      ? undefined
-                      : "Lancez d'abord une analyse MIZNAS AI"
-                  }
-                >
-                  <Sparkles className="w-4 h-4" />
-                  PDF avec analyse IA
-                </DropdownMenuItem>
+                {canUseAi && (
+                  <DropdownMenuItem
+                    data-testid="export-pdf-ia"
+                    onSelect={onExporterPdfIa}
+                    disabled={!analyseDisponible}
+                    title={
+                      analyseDisponible
+                        ? undefined
+                        : "Lancez d'abord une analyse MIZNAS AI"
+                    }
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    PDF avec analyse IA
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button
@@ -376,21 +385,24 @@ export function FiltresEcartsForm({
             {/* Lot 8.6.A — 3e bouton MIZNAS AI. Désactivé si aucun
                 écart chargé (l'utilisateur doit avoir cliqué
                 « Analyser » classique d'abord). Couleur violet
-                catégorie REALISE (--miznas-cat-realise #5B4E91). */}
-            <Button
-              onClick={onAnalyseAiClick}
-              disabled={loading || loadingAi || !hasEcarts}
-              data-testid="btn-analyser-ai"
-              title={
-                hasEcarts
-                  ? undefined
-                  : "Lancez d'abord une analyse classique pour activer MIZNAS AI."
-              }
-              className="h-9 px-4 bg-(--miznas-cat-realise) hover:bg-(--miznas-cat-realise)/90 text-white gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {loadingAi ? 'Analyse en cours…' : 'Analyser avec MIZNAS AI'}
-            </Button>
+                catégorie REALISE (--miznas-cat-realise #5B4E91).
+                Hotfix IA-0 — masqué sans permission AI.ANALYSER. */}
+            {canUseAi && (
+              <Button
+                onClick={onAnalyseAiClick}
+                disabled={loading || loadingAi || !hasEcarts}
+                data-testid="btn-analyser-ai"
+                title={
+                  hasEcarts
+                    ? undefined
+                    : "Lancez d'abord une analyse classique pour activer MIZNAS AI."
+                }
+                className="h-9 px-4 bg-(--miznas-cat-realise) hover:bg-(--miznas-cat-realise)/90 text-white gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {loadingAi ? 'Analyse en cours…' : 'Analyser avec MIZNAS AI'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
