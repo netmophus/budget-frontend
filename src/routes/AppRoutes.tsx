@@ -41,6 +41,13 @@ const ParametresSystemePage = lazy(() =>
   })),
 );
 
+// PR B — matrice d'édition rôle × permission (gate ROLE.GERER).
+const RolesPermissionsPage = lazy(() =>
+  import('@/pages/RolesPermissionsPage').then((m) => ({
+    default: m.RolesPermissionsPage,
+  })),
+);
+
 // Lazy-loaded — module Budget (Lot 3.2 + 3.4 + 3.5-mini).
 const ScenariosPage = lazy(() =>
   import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
@@ -304,6 +311,16 @@ export function AppRoutes() {
             <PermissionRoute permission="CONFIGURATION.GERER">
               <Suspense fallback={<PageFallback />}>
                 <ParametresSystemePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/administration/roles-permissions"
+          element={
+            <PermissionRoute permission="ROLE.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <RolesPermissionsPage />
               </Suspense>
             </PermissionRoute>
           }
