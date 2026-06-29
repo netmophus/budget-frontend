@@ -250,6 +250,13 @@ const NAV_CONFIGURATION: NavItem[] = [
 
 const NAV_ADMIN: NavItem[] = [
   { to: '/users', label: 'Utilisateurs', icon: Users, permission: 'USER.LIRE' },
+  // PR B — matrice d'édition rôle × permission
+  {
+    to: '/administration/roles-permissions',
+    label: 'Rôles et permissions',
+    icon: ShieldCheck,
+    permission: 'ROLE.GERER',
+  },
   // Lot 4.1 — gestion des affectations multi-périmètres
   {
     to: '/admin/affectations',
