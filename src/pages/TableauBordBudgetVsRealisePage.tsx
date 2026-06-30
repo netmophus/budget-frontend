@@ -62,8 +62,13 @@ import {
   filtrerLignes,
   useTableauBordStore,
 } from '@/lib/stores/tableau-bord-store';
+import { useHasPermission } from '@/lib/auth/permissions';
 
 export function TableauBordBudgetVsRealisePage(): JSX.Element {
+  // Hotfix IA-0 — le déclenchement d'une analyse MIZNAS AI exige la
+  // permission AI.ANALYSER (gate backend POST /tableau-de-bord/analyse-ai).
+  // Sans elle, le bouton ne doit pas s'afficher : un clic renverrait un 403.
+  const canUseAi = useHasPermission('AI.ANALYSER');
   const {
     versionId,
     scenarioId,
@@ -277,6 +282,7 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
         onAnalyseAiClick={() => void lancerAnalyseAi()}
         loadingAi={loadingAi}
         hasEcarts={!!ecarts}
+        canUseAi={canUseAi}
       />
 
       {loading && (
@@ -358,7 +364,9 @@ export function TableauBordBudgetVsRealisePage(): JSX.Element {
           {/* ─── Lot 8.6.A — Panneau MIZNAS AI (entre graphes et filtres
               rapides). Affiché uniquement quand l'utilisateur a déclenché
               une analyse (loading / error / success). ─── */}
-          {!error && (analyseAi !== null || loadingAi || errorAi !== null) && (
+          {canUseAi &&
+            !error &&
+            (analyseAi !== null || loadingAi || errorAi !== null) && (
             <MiznasAiAnalysePanel
               analyse={analyseAi}
               loading={loadingAi}

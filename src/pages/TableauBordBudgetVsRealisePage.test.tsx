@@ -49,6 +49,14 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+// Hotfix IA-0 — gate du bouton MIZNAS AI par AI.ANALYSER. Défaut `true`
+// pour préserver le comportement des tests existants (qui voient les
+// contrôles IA) ; les 2 cas dédiés basculent la valeur.
+const mockCanUseAi = vi.fn(() => true);
+vi.mock('@/lib/auth/permissions', () => ({
+  useHasPermission: () => mockCanUseAi(),
+}));
+
 import {
   analyserEcarts,
   exporterEcartsPdf,
@@ -189,6 +197,7 @@ describe('TableauBordBudgetVsRealisePage', () => {
       drillLm: null,
     });
     mockAnalyser.mockReset();
+    mockCanUseAi.mockReturnValue(true);
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -317,6 +326,25 @@ describe('TableauBordBudgetVsRealisePage', () => {
     const item = await screen.findByTestId('export-pdf-ia');
     // Radix pose `data-disabled` sur un DropdownMenuItem désactivé.
     expect(item).toHaveAttribute('data-disabled');
+  });
+
+  // ─── Hotfix IA-0 — gate bouton MIZNAS AI par AI.ANALYSER ──────
+
+  it('SAISISSEUR (sans AI.ANALYSER) : le bouton MIZNAS AI est masqué', async () => {
+    mockCanUseAi.mockReturnValue(false);
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('filtres-form')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('btn-analyser-ai')).not.toBeInTheDocument();
+  });
+
+  it('PUBLICATEUR (avec AI.ANALYSER) : le bouton MIZNAS AI est affiché', async () => {
+    mockCanUseAi.mockReturnValue(true);
+    render(<TableauBordBudgetVsRealisePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('btn-analyser-ai')).toBeInTheDocument(),
+    );
   });
 
   // ─── PR1 — compte de résultat ────────────────────────────────
