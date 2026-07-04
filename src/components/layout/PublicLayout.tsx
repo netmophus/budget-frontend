@@ -32,9 +32,10 @@ import {
   APP_TAGLINE_LINE_1,
   APP_TAGLINE_LINE_2,
   APP_VERSION,
-  BANK_SIGLE,
   BANK_YEAR,
 } from '@/lib/branding/bank';
+// Lot B4 — sigle banque en runtime (fetch config publique au boot).
+import { useBanque } from '@/lib/branding/banque-context';
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -58,6 +59,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 }
 
 function IdentityZone() {
+  const { banque } = useBanque();
   return (
     <aside
       className="relative overflow-hidden px-12 py-14 flex flex-col min-h-fit md:min-h-screen text-white"
@@ -120,7 +122,7 @@ function IdentityZone() {
         className="relative z-10 text-[10px] opacity-40 tracking-wider"
         data-testid="public-layout-footer"
       >
-        v{APP_VERSION} · {BANK_SIGLE} {BANK_YEAR}
+        v{APP_VERSION} · {banque.sigle} {BANK_YEAR}
       </footer>
     </aside>
   );
