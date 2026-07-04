@@ -15,6 +15,7 @@ import {
   FileText,
   Inbox,
   Layers,
+  Landmark,
   LayoutDashboard,
   Library,
   ListTree,
@@ -284,6 +285,13 @@ const NAV_ADMIN: NavItem[] = [
     label: 'Paramètres système',
     icon: Sliders,
     permission: 'CONFIGURATION.GERER',
+  },
+  // Lot B4 — configuration banque multi-banques
+  {
+    to: '/administration/configuration-banque',
+    label: 'Configuration banque',
+    icon: Landmark,
+    permission: 'BANQUE.GERER',
   },
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];

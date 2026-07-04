@@ -48,6 +48,13 @@ const RolesPermissionsPage = lazy(() =>
   })),
 );
 
+// Lot B4 — configuration banque multi-banques (gate BANQUE.GERER).
+const ConfigurationBanquePage = lazy(() =>
+  import('@/pages/ConfigurationBanquePage').then((m) => ({
+    default: m.ConfigurationBanquePage,
+  })),
+);
+
 // Lazy-loaded — module Budget (Lot 3.2 + 3.4 + 3.5-mini).
 const ScenariosPage = lazy(() =>
   import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
@@ -321,6 +328,16 @@ export function AppRoutes() {
             <PermissionRoute permission="ROLE.GERER">
               <Suspense fallback={<PageFallback />}>
                 <RolesPermissionsPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/administration/configuration-banque"
+          element={
+            <PermissionRoute permission="BANQUE.GERER">
+              <Suspense fallback={<PageFallback />}>
+                <ConfigurationBanquePage />
               </Suspense>
             </PermissionRoute>
           }
