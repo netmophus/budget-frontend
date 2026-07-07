@@ -20,12 +20,23 @@ vi.mock('@/components/admin/config-banque/MembresComiteEditor', () => ({
   MembresComiteEditor: () => <div data-testid="membres-editor-stub" />,
 }));
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   getConfigurationBanque,
   updateConfigurationBanque,
   type ConfigurationBanque,
 } from '@/lib/api/configurationBanque';
 import { ConfigurationBanquePage } from './ConfigurationBanquePage';
+
+// La page utilise des Tooltips Radix (section Contexte IA) qui exigent un
+// TooltipProvider ancêtre — présent en prod via App. On le reproduit ici.
+function renderPage() {
+  return render(
+    <TooltipProvider>
+      <ConfigurationBanquePage />
+    </TooltipProvider>,
+  );
+}
 
 const mockGet = getConfigurationBanque as unknown as ReturnType<typeof vi.fn>;
 const mockUpdate = updateConfigurationBanque as unknown as ReturnType<
@@ -66,7 +77,7 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
   });
 
   it('charge et affiche la configuration (nom pré-rempli)', async () => {
-    render(<ConfigurationBanquePage />);
+    renderPage();
     await waitFor(() =>
       expect(screen.getByTestId('nom')).toHaveValue('BSIC NIGER'),
     );
@@ -74,7 +85,7 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
   });
 
   it('Enregistrer → confirmation → appelle updateConfigurationBanque', async () => {
-    render(<ConfigurationBanquePage />);
+    renderPage();
     await waitFor(() => screen.getByTestId('nom'));
 
     // Modifie le nom.
@@ -96,11 +107,22 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
   });
 
   it('désactive Enregistrer si une couleur est invalide', async () => {
-    render(<ConfigurationBanquePage />);
+    renderPage();
     await waitFor(() => screen.getByTestId('couleurPrimaire'));
     fireEvent.change(screen.getByTestId('couleurPrimaire'), {
       target: { value: 'pasunecouleur' },
     });
     expect(screen.getByTestId('btn-enregistrer')).toBeDisabled();
+  });
+
+  it('Chantier A : placeholders + aide sur la section Contexte IA', async () => {
+    renderPage();
+    await waitFor(() => screen.getByTestId('positionnement'));
+    expect(screen.getByTestId('positionnement')).toHaveAttribute('placeholder');
+    expect(screen.getByTestId('contexteMarche')).toHaveAttribute('placeholder');
+    expect(screen.getByTestId('concurrents')).toHaveAttribute('placeholder');
+    expect(
+      screen.getByTestId('hint-Contexte IA (Chantier A)'),
+    ).toBeInTheDocument();
   });
 });

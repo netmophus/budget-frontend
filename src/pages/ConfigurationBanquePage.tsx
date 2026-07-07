@@ -8,6 +8,7 @@
  * pour que l'en-tête / le titre se rafraîchissent immédiatement.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/common/PageHeader';
@@ -16,6 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   ColorPicker,
   HEX_COLOR,
@@ -224,10 +230,34 @@ export function ConfigurationBanquePage() {
           <TextField id="exerciceFiscalLibelle" label="Exercice fiscal (libellé)" value={form.exerciceFiscalLibelle} onChange={(v) => setField('exerciceFiscalLibelle', v)} disabled={!canGerer} />
         </Section>
 
-        <Section title="Contexte IA (Chantier A)">
-          <TextAreaField id="positionnement" label="Positionnement" value={form.positionnement} onChange={(v) => setField('positionnement', v)} disabled={!canGerer} />
-          <TextAreaField id="contexteMarche" label="Contexte marché" value={form.contexteMarche} onChange={(v) => setField('contexteMarche', v)} disabled={!canGerer} />
-          <TextAreaField id="concurrents" label="Concurrents" value={form.concurrents} onChange={(v) => setField('concurrents', v)} disabled={!canGerer} />
+        <Section
+          title="Contexte IA (Chantier A)"
+          hint="Ces champs enrichissent l'analyse IA (MIZNAS AI) : le modèle les utilise pour contextualiser les écarts, proposer des actions adaptées à votre marché et anticiper les questions du Comité."
+        >
+          <TextAreaField
+            id="positionnement"
+            label="Positionnement"
+            value={form.positionnement}
+            onChange={(v) => setField('positionnement', v)}
+            disabled={!canGerer}
+            placeholder="Ex. : Retail (Particuliers + PME) et Corporate (Grandes Entreprises + Etat). Réseau d'agences à Niamey, Zinder, Maradi, Tahoua."
+          />
+          <TextAreaField
+            id="contexteMarche"
+            label="Contexte marché"
+            value={form.contexteMarche}
+            onChange={(v) => setField('contexteMarche', v)}
+            disabled={!canGerer}
+            placeholder="Ex. : marché nigérien en transformation, essor du mobile money (Airtel/Orange/Moov Money), pression réglementaire LCB-FT, digitalisation des services."
+          />
+          <TextAreaField
+            id="concurrents"
+            label="Concurrents"
+            value={form.concurrents}
+            onChange={(v) => setField('concurrents', v)}
+            disabled={!canGerer}
+            placeholder="Ex. : Ecobank Niger, BOA Niger, Sonibank, SGB Niger, Bank of Africa"
+          />
         </Section>
 
         <Section title="Membres du Comité Budgétaire">
@@ -249,11 +279,34 @@ export function ConfigurationBanquePage() {
 
 // ─── Sous-composants de présentation ─────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="border-b border-(--border) pb-1 text-lg font-semibold">
+      <h2 className="flex items-center gap-1.5 border-b border-(--border) pb-1 text-lg font-semibold">
         {title}
+        {hint && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="Aide"
+                data-testid={`hint-${title}`}
+                className="text-(--muted-foreground) hover:text-(--foreground)"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">{hint}</TooltipContent>
+          </Tooltip>
+        )}
       </h2>
       {children}
     </section>
@@ -266,6 +319,7 @@ interface FieldProps {
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 function TextField({ id, label, value, onChange, disabled }: FieldProps) {
@@ -277,7 +331,14 @@ function TextField({ id, label, value, onChange, disabled }: FieldProps) {
   );
 }
 
-function TextAreaField({ id, label, value, onChange, disabled }: FieldProps) {
+function TextAreaField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: FieldProps) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -287,8 +348,9 @@ function TextAreaField({ id, label, value, onChange, disabled }: FieldProps) {
         value={value}
         disabled={disabled}
         rows={3}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="flex w-full rounded-md border border-(--border) bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-(--ring) disabled:opacity-50"
+        className="flex w-full rounded-md border border-(--border) bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-(--ring) disabled:opacity-50 placeholder:text-(--muted-foreground)"
       />
     </div>
   );
