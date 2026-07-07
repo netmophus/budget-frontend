@@ -55,6 +55,13 @@ const ConfigurationBanquePage = lazy(() =>
   })),
 );
 
+// Chantier C2 — historique des analyses IA (gate AI.ANALYSER).
+const HistoriqueAnalysesIaPage = lazy(() =>
+  import('@/pages/HistoriqueAnalysesIaPage').then((m) => ({
+    default: m.HistoriqueAnalysesIaPage,
+  })),
+);
+
 // Lazy-loaded — module Budget (Lot 3.2 + 3.4 + 3.5-mini).
 const ScenariosPage = lazy(() =>
   import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
@@ -574,6 +581,17 @@ export function AppRoutes() {
             >
               <Suspense fallback={<PageFallback />}>
                 <TableauBordBudgetVsRealisePage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Chantier C2 — historique des analyses IA */}
+        <Route
+          path="/execution/historique-analyses-ia"
+          element={
+            <PermissionRoute permission="AI.ANALYSER">
+              <Suspense fallback={<PageFallback />}>
+                <HistoriqueAnalysesIaPage />
               </Suspense>
             </PermissionRoute>
           }

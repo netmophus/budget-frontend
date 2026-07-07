@@ -13,6 +13,7 @@ import {
   Coins,
   FileSignature,
   FileText,
+  History,
   Inbox,
   Layers,
   Landmark,
@@ -210,6 +211,13 @@ const NAV_EXECUTION: NavItem[] = [
     label: 'Reforecasts',
     icon: RefreshCcw,
     permission: 'BUDGET.LIRE',
+  },
+  // Chantier C2 — historique des analyses IA
+  {
+    to: '/execution/historique-analyses-ia',
+    label: 'Historique analyses IA',
+    icon: History,
+    permission: 'AI.ANALYSER',
   },
 ];
 
