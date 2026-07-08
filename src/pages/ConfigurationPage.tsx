@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { RefSecondaireTable } from '@/components/configuration/RefSecondaireTable';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { listRefSecondaires, type RefKey } from '@/lib/api/configuration';
 import {
   categorieIcon,
+  type RefCategorie,
   REF_CATEGORIES,
   REF_KEYS_ORDERED,
   refMeta,
@@ -29,6 +31,10 @@ export function ConfigurationPage() {
   const [counts, setCounts] = useState<Partial<Record<RefKey, number>>>({});
   const [countsLoading, setCountsLoading] = useState(true);
   const [countsRefreshKey, setCountsRefreshKey] = useState(0);
+  // Repli/dépli des catégories (toutes ouvertes par défaut).
+  const [catFermees, setCatFermees] = useState<Record<string, boolean>>({});
+  const toggleCat = (key: RefCategorie): void =>
+    setCatFermees((s) => ({ ...s, [key]: !s[key] }));
 
   // Synchronise l'URL quand on change d'onglet (sans push history).
   useEffect(() => {
@@ -86,18 +92,32 @@ export function ConfigurationPage() {
               const items = grouped[cat.key];
               if (items.length === 0) return null;
               const CatIcon = categorieIcon(cat.key);
+              const ouvert = catFermees[cat.key] !== true;
               return (
                 <div key={cat.key} className="space-y-1">
-                  {/* En-tête de catégorie (gros menu) */}
-                  <div className="flex items-center gap-2.5 px-1 pt-1">
+                  {/* En-tête de catégorie (gros menu) — repliable */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCat(cat.key)}
+                    aria-expanded={ouvert}
+                    data-testid={`cat-toggle-${cat.key}`}
+                    className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-(--accent)/40"
+                  >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-(--secondary) text-(--foreground)">
                       <CatIcon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="text-sm font-semibold text-(--foreground)">
+                    <span className="flex-1 text-sm font-semibold text-(--foreground)">
                       {cat.label}
                     </span>
-                  </div>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 shrink-0 text-(--muted-foreground) transition-transform',
+                        !ouvert && '-rotate-90',
+                      )}
+                    />
+                  </button>
                   {/* Sous-items indentés avec filet vertical (arborescence) */}
+                  {ouvert && (
                   <div className="ml-3 space-y-0.5 border-l border-(--border) pl-2">
                     {items.map((m) => {
                       const Icon = m.icon;
@@ -143,6 +163,7 @@ export function ConfigurationPage() {
                       );
                     })}
                   </div>
+                  )}
                 </div>
               );
             })}
