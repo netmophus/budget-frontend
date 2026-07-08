@@ -56,6 +56,10 @@ const DETAIL: AnalyseIaDetail = {
   reponseMarkdown: '## Diagnostic\nExecution maitrisee.',
   kpiSnapshot: { nbEcartsCritique: 2 },
   hasDataset: true,
+  pnbBudget: 100,
+  pnbRealise: 82,
+  coefExploitationBudget: 70,
+  coefExploitationRealise: 65,
 };
 
 describe('AnalyseIaDetailModal (Chantier C2)', () => {

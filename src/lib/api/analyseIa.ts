@@ -32,6 +32,11 @@ export interface AnalyseIaDetail extends AnalyseIaListItem {
   kpiSnapshot: Record<string, unknown> | null;
   /** C-fix : true si le dataset complet est figé → PDF fidèle (sinon recalcul). */
   hasDataset: boolean;
+  // C3 add-on — métriques bancaires (null si analyse ancienne sans dataset).
+  pnbBudget: number | null;
+  pnbRealise: number | null;
+  coefExploitationBudget: number | null;
+  coefExploitationRealise: number | null;
 }
 
 export interface PaginatedAnalysesIa {
