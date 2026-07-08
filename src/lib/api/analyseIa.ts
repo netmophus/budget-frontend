@@ -6,6 +6,7 @@
  *   DELETE /analyses-ia/:id   → suppression (AI.HISTORIQUE)
  */
 import { apiClient } from './client';
+import { triggerBlobDownload } from '@/lib/blob-download';
 
 export interface AnalyseIaListItem {
   id: string;
@@ -29,6 +30,8 @@ export interface AnalyseIaDetail extends AnalyseIaListItem {
   promptVersion: string;
   reponseMarkdown: string;
   kpiSnapshot: Record<string, unknown> | null;
+  /** C-fix : true si le dataset complet est figé → PDF fidèle (sinon recalcul). */
+  hasDataset: boolean;
 }
 
 export interface PaginatedAnalysesIa {
@@ -68,4 +71,23 @@ export async function supprimerAnalyseIa(
     `/analyses-ia/${id}`,
   );
   return data;
+}
+
+/**
+ * C-fix — export PDF d'une analyse historisée par id (GET). Le serveur
+ * utilise le dataset figé si présent (PDF fidèle) sinon recalcule. Télécharge
+ * le blob directement (pas de round-trip du dataset).
+ */
+export async function exporterPdfAnalyseHistorisee(id: string): Promise<void> {
+  const { data, headers } = await apiClient.get<Blob>(
+    `/analyses-ia/${id}/pdf`,
+    { responseType: 'blob' },
+  );
+  const cd = headers['content-disposition'] as string | undefined;
+  let filename = `MIZNAS_AnalyseIA_${id}.pdf`;
+  if (cd) {
+    const m = /filename="([^"]+)"/.exec(cd);
+    if (m) filename = m[1]!;
+  }
+  triggerBlobDownload(data, filename);
 }

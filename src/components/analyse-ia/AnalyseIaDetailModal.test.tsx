@@ -12,8 +12,8 @@ const permState = vi.hoisted(() => ({ hist: false }));
 vi.mock('@/lib/api/analyseIa', () => ({
   getAnalyseIaDetail: vi.fn(),
   supprimerAnalyseIa: vi.fn(),
+  exporterPdfAnalyseHistorisee: vi.fn(),
 }));
-vi.mock('@/lib/api/tableau-bord', () => ({ exporterEcartsPdf: vi.fn() }));
 vi.mock('@/lib/auth/permissions', () => ({
   useHasPermission: (code: string) =>
     code === 'AI.HISTORIQUE' ? permState.hist : true,
@@ -22,15 +22,19 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
+import { toast } from 'sonner';
 import {
+  exporterPdfAnalyseHistorisee,
   getAnalyseIaDetail,
   type AnalyseIaDetail,
 } from '@/lib/api/analyseIa';
-import { exporterEcartsPdf } from '@/lib/api/tableau-bord';
 import { AnalyseIaDetailModal } from './AnalyseIaDetailModal';
 
 const mockDetail = getAnalyseIaDetail as unknown as ReturnType<typeof vi.fn>;
-const mockExport = exporterEcartsPdf as unknown as ReturnType<typeof vi.fn>;
+const mockExport = exporterPdfAnalyseHistorisee as unknown as ReturnType<
+  typeof vi.fn
+>;
+const mockToastInfo = toast.info as unknown as ReturnType<typeof vi.fn>;
 
 const DETAIL: AnalyseIaDetail = {
   id: '1',
@@ -51,6 +55,7 @@ const DETAIL: AnalyseIaDetail = {
   promptVersion: 'chantier-a-v1',
   reponseMarkdown: '## Diagnostic\nExecution maitrisee.',
   kpiSnapshot: { nbEcartsCritique: 2 },
+  hasDataset: true,
 };
 
 describe('AnalyseIaDetailModal (Chantier C2)', () => {
@@ -76,17 +81,35 @@ describe('AnalyseIaDetailModal (Chantier C2)', () => {
     expect(screen.getByTestId('kpi-snapshot')).toHaveTextContent('CRITIQUE');
   });
 
-  it('Exporter PDF appelle exporterEcartsPdf avec filtres + snapshot', async () => {
+  it('C-fix : Exporter PDF appelle le nouvel endpoint by-id', async () => {
     render(
       <AnalyseIaDetailModal id="1" onClose={vi.fn()} onDeleted={vi.fn()} />,
     );
     await waitFor(() => screen.getByTestId('btn-export-pdf'));
     fireEvent.click(screen.getByTestId('btn-export-pdf'));
-    await waitFor(() => expect(mockExport).toHaveBeenCalledTimes(1));
-    expect(mockExport).toHaveBeenCalledWith(
-      expect.objectContaining({ versionId: '10', moisDebut: '2027-01' }),
-      expect.objectContaining({ analyse: DETAIL.reponseMarkdown, model: 'claude-sonnet-4-6' }),
+    await waitFor(() => expect(mockExport).toHaveBeenCalledWith('1'));
+  });
+
+  it('C-fix : pas de mention "recalcul" si hasDataset', async () => {
+    mockDetail.mockResolvedValue({ ...DETAIL, hasDataset: true });
+    render(
+      <AnalyseIaDetailModal id="1" onClose={vi.fn()} onDeleted={vi.fn()} />,
     );
+    await waitFor(() => screen.getByTestId('btn-export-pdf'));
+    fireEvent.click(screen.getByTestId('btn-export-pdf'));
+    await waitFor(() => expect(mockToastInfo).toHaveBeenCalled());
+    expect(mockToastInfo.mock.calls[0][0]).not.toMatch(/recalcul/i);
+  });
+
+  it('C-fix : mention "recalcul" si !hasDataset (ancienne analyse)', async () => {
+    mockDetail.mockResolvedValue({ ...DETAIL, hasDataset: false });
+    render(
+      <AnalyseIaDetailModal id="1" onClose={vi.fn()} onDeleted={vi.fn()} />,
+    );
+    await waitFor(() => screen.getByTestId('btn-export-pdf'));
+    fireEvent.click(screen.getByTestId('btn-export-pdf'));
+    await waitFor(() => expect(mockToastInfo).toHaveBeenCalled());
+    expect(mockToastInfo.mock.calls[0][0]).toMatch(/recalcul/i);
   });
 
   it('bouton Supprimer masqué sans AI.HISTORIQUE', async () => {
