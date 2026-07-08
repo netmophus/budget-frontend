@@ -88,45 +88,61 @@ export function ConfigurationPage() {
               const CatIcon = categorieIcon(cat.key);
               return (
                 <div key={cat.key} className="space-y-1">
-                  <div className="flex items-center gap-2 px-2 pt-1 text-xs font-semibold uppercase text-(--muted-foreground)">
-                    <CatIcon className="h-3.5 w-3.5" />
-                    {cat.label}
+                  {/* En-tête de catégorie (gros menu) */}
+                  <div className="flex items-center gap-2.5 px-1 pt-1">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-(--secondary) text-(--foreground)">
+                      <CatIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-sm font-semibold text-(--foreground)">
+                      {cat.label}
+                    </span>
                   </div>
-                  {items.map((m) => {
-                    const Icon = m.icon;
-                    const isActive = m.refKey === activeRef;
-                    const count = counts[m.refKey];
-                    return (
-                      <button
-                        key={m.refKey}
-                        type="button"
-                        onClick={() => setActiveRef(m.refKey)}
-                        className={cn(
-                          'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors text-left',
-                          isActive
-                            ? 'bg-(--accent) text-(--accent-foreground) font-medium border-l-2 border-(--primary)'
-                            : 'hover:bg-(--accent)/50',
-                        )}
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{m.label}</span>
-                        </span>
-                        {!countsLoading && count !== undefined && (
-                          <span
-                            className={cn(
-                              'text-xs rounded-full px-2 py-0.5 shrink-0',
-                              isActive
-                                ? 'bg-(--background) text-(--foreground)'
-                                : 'bg-(--secondary) text-(--secondary-foreground)',
-                            )}
-                          >
-                            {count}
+                  {/* Sous-items indentés avec filet vertical (arborescence) */}
+                  <div className="ml-3 space-y-0.5 border-l border-(--border) pl-2">
+                    {items.map((m) => {
+                      const Icon = m.icon;
+                      const isActive = m.refKey === activeRef;
+                      const count = counts[m.refKey];
+                      return (
+                        <button
+                          key={m.refKey}
+                          type="button"
+                          onClick={() => setActiveRef(m.refKey)}
+                          className={cn(
+                            'relative flex w-full items-center justify-between gap-2 rounded-md py-2 pl-4 pr-3 text-sm text-left transition-colors',
+                            isActive
+                              ? 'bg-(--accent) font-medium text-(--accent-foreground)'
+                              : 'text-(--muted-foreground) hover:bg-(--accent)/50 hover:text-(--foreground)',
+                          )}
+                        >
+                          {isActive && (
+                            <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--primary)" />
+                          )}
+                          <span className="flex items-center gap-2 min-w-0">
+                            <Icon
+                              className={cn(
+                                'h-4 w-4 shrink-0',
+                                isActive && 'text-(--primary)',
+                              )}
+                            />
+                            <span className="truncate">{m.label}</span>
                           </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          {!countsLoading && count !== undefined && (
+                            <span
+                              className={cn(
+                                'text-xs rounded-full px-2 py-0.5 shrink-0',
+                                isActive
+                                  ? 'bg-(--background) text-(--foreground)'
+                                  : 'bg-(--secondary) text-(--secondary-foreground)',
+                              )}
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
