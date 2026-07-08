@@ -24,9 +24,8 @@ import {
 } from '@/components/ui/table';
 import { AnalyseIaDetailModal } from '@/components/analyse-ia/AnalyseIaDetailModal';
 import { useHasPermission } from '@/lib/auth/permissions';
-import { exporterEcartsPdf } from '@/lib/api/tableau-bord';
 import {
-  getAnalyseIaDetail,
+  exporterPdfAnalyseHistorisee,
   listerAnalysesIa,
   supprimerAnalyseIa,
   type AnalyseIaListItem,
@@ -68,29 +67,11 @@ export function HistoriqueAnalysesIaPage() {
     setFiltres((f) => ({ ...f, [k]: v || undefined }));
   };
 
-  /** Export depuis la liste : récupère le détail puis génère le PDF. */
+  /** Export depuis la liste : C-fix — simple GET by-id (dataset figé côté serveur). */
   async function exporter(id: string): Promise<void> {
     try {
-      const d = await getAnalyseIaDetail(id);
-      await exporterEcartsPdf(
-        {
-          versionId: d.versionId,
-          scenarioId: d.scenarioId,
-          moisDebut: d.moisDebut,
-          moisFin: d.moisFin,
-          crIds: d.crsSelectionnes ?? undefined,
-        },
-        {
-          analyse: d.reponseMarkdown,
-          model: d.modele,
-          tokensInput: d.tokensIn,
-          tokensOutput: d.tokensOut,
-          dureeMs: d.dureeMs,
-          dryRun: d.dryRun,
-          generatedAt: d.dateGeneration,
-        },
-      );
-      toast.info('PDF exporté (écarts recalculés à l’export, analyse figée).');
+      await exporterPdfAnalyseHistorisee(id);
+      toast.success('PDF exporté.');
     } catch {
       toast.error("Échec de l'export PDF.");
     }

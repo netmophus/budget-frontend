@@ -22,11 +22,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useHasPermission } from '@/lib/auth/permissions';
 import {
+  exporterPdfAnalyseHistorisee,
   getAnalyseIaDetail,
   supprimerAnalyseIa,
   type AnalyseIaDetail,
 } from '@/lib/api/analyseIa';
-import { exporterEcartsPdf } from '@/lib/api/tableau-bord';
 
 interface Props {
   id: string;
@@ -61,26 +61,12 @@ export function AnalyseIaDetailModal({ id, onClose, onDeleted }: Props) {
     if (!detail) return;
     setExporting(true);
     try {
-      await exporterEcartsPdf(
-        {
-          versionId: detail.versionId,
-          scenarioId: detail.scenarioId,
-          moisDebut: detail.moisDebut,
-          moisFin: detail.moisFin,
-          crIds: detail.crsSelectionnes ?? undefined,
-        },
-        {
-          analyse: detail.reponseMarkdown,
-          model: detail.modele,
-          tokensInput: detail.tokensIn,
-          tokensOutput: detail.tokensOut,
-          dureeMs: detail.dureeMs,
-          dryRun: detail.dryRun,
-          generatedAt: detail.dateGeneration,
-        },
-      );
+      // C-fix — export par id : le serveur utilise le dataset figé si présent.
+      await exporterPdfAnalyseHistorisee(detail.id);
       toast.info(
-        'PDF exporté — note : les écarts sont recalculés à l’export (l’analyse, elle, est figée).',
+        detail.hasDataset
+          ? 'PDF exporté — document d’archive fidèle (données figées).'
+          : 'PDF exporté — analyse ancienne : écarts recalculés à l’export.',
       );
     } catch {
       toast.error("Échec de l'export PDF.");

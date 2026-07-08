@@ -11,10 +11,9 @@ const permState = vi.hoisted(() => ({ hist: false }));
 
 vi.mock('@/lib/api/analyseIa', () => ({
   listerAnalysesIa: vi.fn(),
-  getAnalyseIaDetail: vi.fn(),
   supprimerAnalyseIa: vi.fn(),
+  exporterPdfAnalyseHistorisee: vi.fn(),
 }));
-vi.mock('@/lib/api/tableau-bord', () => ({ exporterEcartsPdf: vi.fn() }));
 vi.mock('@/lib/auth/permissions', () => ({
   useHasPermission: (code: string) =>
     code === 'AI.HISTORIQUE' ? permState.hist : true,
@@ -27,10 +26,17 @@ vi.mock('@/components/analyse-ia/AnalyseIaDetailModal', () => ({
   ),
 }));
 
-import { listerAnalysesIa, type AnalyseIaListItem } from '@/lib/api/analyseIa';
+import {
+  exporterPdfAnalyseHistorisee,
+  listerAnalysesIa,
+  type AnalyseIaListItem,
+} from '@/lib/api/analyseIa';
 import { HistoriqueAnalysesIaPage } from './HistoriqueAnalysesIaPage';
 
 const mockLister = listerAnalysesIa as unknown as ReturnType<typeof vi.fn>;
+const mockExport = exporterPdfAnalyseHistorisee as unknown as ReturnType<
+  typeof vi.fn
+>;
 
 function item(id: string): AnalyseIaListItem {
   return {
@@ -83,6 +89,14 @@ describe('HistoriqueAnalysesIaPage (Chantier C2)', () => {
         expect.objectContaining({ moisDebut: '2027-01' }),
       ),
     );
+  });
+
+  it('C-fix : clic Exporter PDF appelle le nouvel endpoint by-id', async () => {
+    mockExport.mockResolvedValue(undefined);
+    render(<HistoriqueAnalysesIaPage />);
+    await waitFor(() => screen.getByTestId('export-1'));
+    fireEvent.click(screen.getByTestId('export-1'));
+    await waitFor(() => expect(mockExport).toHaveBeenCalledWith('1'));
   });
 
   it('clic Voir ouvre le détail', async () => {
