@@ -2,11 +2,11 @@ import {
   BarChart3,
   CheckCircle2,
   ClipboardCheck,
-  Database,
   FileEdit,
   Handshake,
   History,
   Settings,
+  Tags,
   TrendingUp,
 } from 'lucide-react';
 import { Can } from '@/components/common/Can';
@@ -90,9 +90,9 @@ export function DashboardPage() {
         <Can permission="CONFIGURATION.LIRE">
           <DashboardCard
             to="/configuration"
-            icon={Database}
-            title="Référentiels"
-            description="Consulter et configurer les dimensions et référentiels secondaires."
+            icon={Tags}
+            title="Nomenclatures"
+            description="Types, statuts et catégories du système utilisés par les référentiels."
             color="config"
           />
         </Can>

@@ -29,7 +29,7 @@ import {
   RefreshCcw,
   ScrollText,
   Send,
-  Settings,
+  Tags,
   ShieldCheck,
   Sliders,
   Target,
@@ -250,7 +250,7 @@ const NAV_DOCUMENTS_OFFICIELS: NavItem[] = [
 const NAV_CONFIGURATION: NavItem[] = [
   {
     to: '/configuration',
-    label: 'Configuration',
+    label: 'Nomenclatures',
     icon: Sliders,
     permission: 'CONFIGURATION.LIRE',
   },
@@ -612,8 +612,8 @@ export function AuthLayout() {
 
           <NavGroup
             groupKey="configuration"
-            label="Configuration"
-            icon={Settings}
+            label="Nomenclatures"
+            icon={Tags}
             permission="CONFIGURATION.LIRE"
             items={NAV_CONFIGURATION}
             collapsed={collapsed}

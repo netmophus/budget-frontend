@@ -141,13 +141,25 @@ describe('AuthLayout — UX A.4 sidebar collapsible', () => {
     useAuthStore.getState().clearSession();
   });
 
-  it('affiche les 5 groupes (Référentiels / Budget / Exécution / Configuration / Administration)', () => {
+  it('affiche les 5 groupes (Référentiels / Budget / Exécution / Nomenclatures / Administration)', () => {
     renderLayout();
     expect(screen.getByTestId('nav-group-referentiels')).toBeInTheDocument();
     expect(screen.getByTestId('nav-group-budget')).toBeInTheDocument();
     expect(screen.getByTestId('nav-group-execution')).toBeInTheDocument();
     expect(screen.getByTestId('nav-group-configuration')).toBeInTheDocument();
     expect(screen.getByTestId('nav-group-administration')).toBeInTheDocument();
+  });
+
+  it('le groupe /configuration est libellé « Nomenclatures » ; « Référentiels » reste pour les dim_*', () => {
+    renderLayout();
+    // Le groupe pointant vers /configuration porte désormais « Nomenclatures ».
+    expect(
+      screen.getByTestId('nav-group-toggle-configuration'),
+    ).toHaveTextContent('Nomenclatures');
+    // Le groupe des données maîtresses garde le libellé « Référentiels ».
+    expect(
+      screen.getByTestId('nav-group-toggle-referentiels'),
+    ).toHaveTextContent('Référentiels');
   });
 
   it('par défaut tous les groupes sont déployés (aria-expanded=true)', () => {

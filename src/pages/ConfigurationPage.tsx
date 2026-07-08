@@ -74,8 +74,8 @@ export function ConfigurationPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Configuration"
-        description="Gérez les valeurs des référentiels secondaires (énumérations métier centralisées). Chaque modification est journalisée dans l'audit log."
+        title="Nomenclatures"
+        description="Types, statuts et catégories utilisés par les référentiels (énumérations métier centralisées). Chaque modification est journalisée dans l'audit log."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
