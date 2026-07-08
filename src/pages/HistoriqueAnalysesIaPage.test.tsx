@@ -8,7 +8,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const permState = vi.hoisted(() => ({ hist: false }));
+const mockNavigate = vi.hoisted(() => vi.fn());
 
+vi.mock('react-router-dom', () => ({ useNavigate: () => mockNavigate }));
 vi.mock('@/lib/api/analyseIa', () => ({
   listerAnalysesIa: vi.fn(),
   supprimerAnalyseIa: vi.fn(),
@@ -97,6 +99,20 @@ describe('HistoriqueAnalysesIaPage (Chantier C2)', () => {
     await waitFor(() => screen.getByTestId('export-1'));
     fireEvent.click(screen.getByTestId('export-1'));
     await waitFor(() => expect(mockExport).toHaveBeenCalledWith('1'));
+  });
+
+  it('C3 : cocher 2 analyses active Comparer + navigue avec ?a&b', async () => {
+    render(<HistoriqueAnalysesIaPage />);
+    await waitFor(() => screen.getByTestId('analyse-row-1'));
+    // Bouton désactivé tant que 2 ne sont pas cochées.
+    expect(screen.getByTestId('btn-comparer')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('compare-check-1'));
+    fireEvent.click(screen.getByTestId('compare-check-2'));
+    expect(screen.getByTestId('btn-comparer')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('btn-comparer'));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/execution/comparaison-analyses-ia?a=1&b=2',
+    );
   });
 
   it('clic Voir ouvre le détail', async () => {

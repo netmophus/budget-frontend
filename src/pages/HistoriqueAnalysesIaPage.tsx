@@ -5,7 +5,8 @@
  * export PDF et suppression (AI.HISTORIQUE).
  */
 import { useEffect, useState } from 'react';
-import { Download, Eye, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, Eye, GitCompare, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/common/PageHeader';
@@ -36,6 +37,7 @@ const LIMIT = 20;
 
 export function HistoriqueAnalysesIaPage() {
   const canGererHistorique = useHasPermission('AI.HISTORIQUE');
+  const navigate = useNavigate();
 
   const [items, setItems] = useState<AnalyseIaListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -46,6 +48,18 @@ export function HistoriqueAnalysesIaPage() {
   >({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<AnalyseIaListItem | null>(null);
+  // Chantier C3 — sélection de 2 analyses à comparer.
+  const [comparaison, setComparaison] = useState<string[]>([]);
+
+  const toggleComparaison = (id: string): void => {
+    setComparaison((sel) =>
+      sel.includes(id)
+        ? sel.filter((x) => x !== id)
+        : sel.length < 2
+          ? [...sel, id]
+          : sel, // max 2 : décocher d'abord
+    );
+  };
 
   function charger(): void {
     setLoading(true);
@@ -94,6 +108,22 @@ export function HistoriqueAnalysesIaPage() {
             ? 'Toutes les analyses IA générées (AI.HISTORIQUE).'
             : 'Vos analyses IA générées.'
         }
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="btn-comparer"
+            disabled={comparaison.length !== 2}
+            onClick={() =>
+              navigate(
+                `/execution/comparaison-analyses-ia?a=${comparaison[0]}&b=${comparaison[1]}`,
+              )
+            }
+          >
+            <GitCompare className="mr-1 h-4 w-4" />
+            Comparer les 2 sélectionnées
+          </Button>
+        }
       />
 
       {/* Filtres */}
@@ -109,6 +139,7 @@ export function HistoriqueAnalysesIaPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8" title="Comparer" />
               <TableHead>Généré le</TableHead>
               {canGererHistorique && <TableHead>Demandeur</TableHead>}
               <TableHead>Période</TableHead>
@@ -121,14 +152,14 @@ export function HistoriqueAnalysesIaPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <Skeleton className="h-24 w-full" />
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center text-sm text-(--muted-foreground)"
                 >
                   Aucune analyse historisée.
@@ -137,6 +168,18 @@ export function HistoriqueAnalysesIaPage() {
             ) : (
               items.map((a) => (
                 <TableRow key={a.id} data-testid={`analyse-row-${a.id}`}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      aria-label="Sélectionner pour comparaison"
+                      data-testid={`compare-check-${a.id}`}
+                      checked={comparaison.includes(a.id)}
+                      disabled={
+                        comparaison.length >= 2 && !comparaison.includes(a.id)
+                      }
+                      onChange={() => toggleComparaison(a.id)}
+                    />
+                  </TableCell>
                   <TableCell>{formatDate(a.dateGeneration)}</TableCell>
                   {canGererHistorique && <TableCell>{a.demandeurEmail}</TableCell>}
                   <TableCell>

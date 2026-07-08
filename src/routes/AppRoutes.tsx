@@ -62,6 +62,13 @@ const HistoriqueAnalysesIaPage = lazy(() =>
   })),
 );
 
+// Chantier C3 — comparaison de 2 analyses IA (gate AI.ANALYSER).
+const ComparaisonAnalysesIaPage = lazy(() =>
+  import('@/pages/ComparaisonAnalysesIaPage').then((m) => ({
+    default: m.ComparaisonAnalysesIaPage,
+  })),
+);
+
 // Lazy-loaded — module Budget (Lot 3.2 + 3.4 + 3.5-mini).
 const ScenariosPage = lazy(() =>
   import('@/pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })),
@@ -592,6 +599,17 @@ export function AppRoutes() {
             <PermissionRoute permission="AI.ANALYSER">
               <Suspense fallback={<PageFallback />}>
                 <HistoriqueAnalysesIaPage />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        {/* Chantier C3 — comparaison de 2 analyses IA */}
+        <Route
+          path="/execution/comparaison-analyses-ia"
+          element={
+            <PermissionRoute permission="AI.ANALYSER">
+              <Suspense fallback={<PageFallback />}>
+                <ComparaisonAnalysesIaPage />
               </Suspense>
             </PermissionRoute>
           }
