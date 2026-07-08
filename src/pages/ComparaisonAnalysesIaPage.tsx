@@ -30,13 +30,16 @@ import {
   type AnalyseIaListItem,
 } from '@/lib/api/analyseIa';
 
-/** KPIs comparables (présents dans kpi_snapshot = ecarts.kpi). */
-const KPI_DEFS: Array<{
+interface KpiDef {
   key: string;
   label: string;
   betterWhenLower: boolean;
   montant?: boolean;
-}> = [
+  percent?: boolean;
+}
+
+/** KPIs comparables (présents dans kpi_snapshot = ecarts.kpi). */
+const KPI_DEFS: KpiDef[] = [
   { key: 'nbEcartsCritique', label: 'Écarts CRITIQUE', betterWhenLower: true },
   { key: 'nbEcartsAttention', label: 'Écarts ATTENTION', betterWhenLower: true },
   { key: 'nbSansBudget', label: 'Sans budget', betterWhenLower: true },
@@ -44,6 +47,22 @@ const KPI_DEFS: Array<{
   { key: 'ecartTotalAbs', label: 'Écart total absolu', betterWhenLower: true, montant: true },
   { key: 'ecartTotalDefavorable', label: 'Écart défavorable', betterWhenLower: true, montant: true },
   { key: 'ecartTotalFavorable', label: 'Écart favorable', betterWhenLower: false, montant: true },
+];
+
+/**
+ * C3 add-on — métriques bancaires (top-level du détail, issues du dataset figé).
+ * PNB : hausse = amélioration. Coef exploitation : baisse = amélioration
+ * (cible <= 65 %).
+ */
+type MetriqueField =
+  | 'pnbBudget'
+  | 'pnbRealise'
+  | 'coefExploitationRealise';
+
+const METRIQUE_DEFS: Array<KpiDef & { field: MetriqueField }> = [
+  { field: 'pnbBudget', key: 'pnbBudget', label: 'PNB Budget', betterWhenLower: false, montant: true },
+  { field: 'pnbRealise', key: 'pnbRealise', label: 'PNB Réalisé', betterWhenLower: false, montant: true },
+  { field: 'coefExploitationRealise', key: 'coefExploitationRealise', label: 'Coef. exploitation Réalisé', betterWhenLower: true, percent: true },
 ];
 
 function num(snap: Record<string, unknown> | null, key: string): number | null {
@@ -152,6 +171,15 @@ export function ComparaisonAnalysesIaPage() {
                       valB={num(b.kpiSnapshot, def.key)}
                     />
                   ))}
+                  {/* C3 add-on — métriques bancaires (PNB, coef exploitation). */}
+                  {METRIQUE_DEFS.map((def) => (
+                    <LigneKpi
+                      key={def.key}
+                      def={def}
+                      valA={a[def.field]}
+                      valB={b[def.field]}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -210,12 +238,16 @@ function LigneKpi({
   valA,
   valB,
 }: {
-  def: (typeof KPI_DEFS)[number];
+  def: KpiDef;
   valA: number | null;
   valB: number | null;
 }) {
-  const fmt = (v: number | null): string =>
-    v === null ? '—' : def.montant ? `${formatMontant(v)} FCFA` : String(v);
+  const fmt = (v: number | null): string => {
+    if (v === null) return '—';
+    if (def.montant) return `${formatMontant(v)} FCFA`;
+    if (def.percent) return `${v.toFixed(1)} %`;
+    return String(v);
+  };
 
   let couleur = 'text-(--muted-foreground)';
   let fleche = <ArrowRight className="h-3.5 w-3.5" />;
@@ -226,8 +258,12 @@ function LigneKpi({
       const amelioration = def.betterWhenLower ? diff < 0 : diff > 0;
       couleur = amelioration ? 'text-green-600' : 'text-red-600';
       fleche = diff < 0 ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />;
-      const pct = valA !== 0 ? ` (${((diff / Math.abs(valA)) * 100).toFixed(0)} %)` : '';
-      delta = `${diff > 0 ? '+' : ''}${def.montant ? formatMontant(diff) : String(diff)}${pct}`;
+      if (def.percent) {
+        delta = `${diff > 0 ? '+' : ''}${diff.toFixed(1)} pts`;
+      } else {
+        const pct = valA !== 0 ? ` (${((diff / Math.abs(valA)) * 100).toFixed(0)} %)` : '';
+        delta = `${diff > 0 ? '+' : ''}${def.montant ? formatMontant(diff) : String(diff)}${pct}`;
+      }
     } else {
       delta = '=';
     }

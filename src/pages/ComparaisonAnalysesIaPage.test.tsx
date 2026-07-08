@@ -45,6 +45,10 @@ function detail(over: Partial<AnalyseIaDetail>): AnalyseIaDetail {
     reponseMarkdown: 'md',
     kpiSnapshot: { nbEcartsCritique: 5, nbEcartsAttention: 2 },
     hasDataset: true,
+    pnbBudget: 100,
+    pnbRealise: 82,
+    coefExploitationBudget: 70,
+    coefExploitationRealise: 65,
     ...over,
   };
 }
@@ -107,6 +111,37 @@ describe('ComparaisonAnalysesIaPage (Chantier C3)', () => {
     const att = screen.getByTestId('kpi-nbEcartsAttention');
     expect(att).toHaveTextContent('+2');
     expect(within(att).getByText(/\+2/).closest('td')?.className).toMatch(/red/);
+  });
+
+  it('C3 add-on : PNB affiché + coef exploitation à coloration inversée', async () => {
+    mockDetail.mockImplementation((id: string) =>
+      Promise.resolve(
+        detail({
+          id,
+          // A : PNB 82, coef 65 ; B : PNB 90 (mieux), coef 60 (mieux car baisse).
+          pnbRealise: id === '1' ? 82 : 90,
+          coefExploitationRealise: id === '1' ? 65 : 60,
+        }),
+      ),
+    );
+    renderAt('?a=1&b=2');
+    await waitFor(() => screen.getByTestId('kpi-comparatif'));
+    // PNB Réalisé 82 -> 90 = amélioration (hausse = vert).
+    const pnb = screen.getByTestId('kpi-pnbRealise');
+    expect(within(pnb).getByText(/\+/).closest('td')?.className).toMatch(/green/);
+    // Coef 65 -> 60 = amélioration (BAISSE = vert, logique inversée) + "pts".
+    const coef = screen.getByTestId('kpi-coefExploitationRealise');
+    expect(coef).toHaveTextContent('pts');
+    expect(within(coef).getByText(/pts/).closest('td')?.className).toMatch(/green/);
+  });
+
+  it('C3 add-on : métrique absente (analyse sans dataset) affiche —', async () => {
+    mockDetail.mockImplementation((id: string) =>
+      Promise.resolve(detail({ id, pnbRealise: id === '2' ? null : 82 })),
+    );
+    renderAt('?a=1&b=2');
+    await waitFor(() => screen.getByTestId('kpi-pnbRealise'));
+    expect(screen.getByTestId('kpi-pnbRealise')).toHaveTextContent('—');
   });
 
   it('avertissement si périmètres différents (version)', async () => {
