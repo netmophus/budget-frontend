@@ -1,35 +1,28 @@
 /**
- * DashboardCard (Lot 7.3 V7 — variante C : fond pastel + cercle blanc).
+ * DashboardCard (V8 — design accentué : dégradé vibrant + texte blanc).
  *
- * Carte pédagogique du dashboard. Chaque carte appartient à une
- * famille métier matérialisée visuellement par 3 accents :
- *  - fond de carte coloré pastel (~6 % opacité de la couleur catégorie)
- *  - cercle blanc 36 px contenant l'icône Lucide en couleur catégorie
- *  - titre dans la couleur catégorie
+ * Carte pédagogique du dashboard. Chaque carte appartient à une famille
+ * métier matérialisée par un DÉGRADÉ plein et saturé (couleurs très
+ * accentuées), avec icône et texte en blanc pour un contraste fort et
+ * un rendu moderne.
  *
- * Pas de bordure visible (la V6 l'avait sur le côté gauche), pas
- * d'ombre portée sauf le subtle shadow-sm du cercle blanc qui fait
- * ressortir l'icône sur le fond pastel.
+ *  - fond : dégradé diagonal `linear-gradient(135deg, c1, c2)` (inline style)
+ *  - icône Lucide blanche dans une pastille translucide (bg-white/20)
+ *  - titre blanc en gras, description blanche à 85 %
+ *  - hover : légère élévation (-translate-y) + ombre accentuée
  *
- * Catégories disponibles (cf. tokens `--miznas-cat-*` dans index.css) :
- *  - budget        (#0C447C) : saisie / élaboration budget
- *  - validation    (#0F6E56) : workflow validation / publication
- *  - realise       (#5B4E91) : saisie réalisé
- *  - reporting     (#BA7517) : analyse, écarts, reforecast
- *  - collaboration (#B05D3F) : délégations, échanges
- *  - config        (#5F6B7A) : admin, référentiels, audit
+ * Catégories (dégradés vibrants) :
+ *  - budget        : bleu → indigo
+ *  - validation    : émeraude → vert
+ *  - realise       : violet → pourpre
+ *  - reporting     : ambre → orange
+ *  - collaboration : rose → rouge
+ *  - config        : cyan → bleu
  *
- * Note technique : couleurs en INLINE STYLE
- * -----------------------------------------
- * Voir l'historique du fix V6.1 : `text-(--var)` et `bg-(--var)`
- * fonctionnent en Tailwind v4 mais le composé utility-fonction
- * comme `border-l-(--var)` est ambigu (width vs color) et n'est
- * pas généré. Pour la cohérence + garantie cross-utility, on
- * applique TOUTES les couleurs catégorie via inline style.
- *
- * `${hex}0F` ajoute un alpha de 0x0F (15/255 ≈ 6 %) sur la couleur
- * catégorie pour obtenir le fond pastel. JSDom et browsers modernes
- * acceptent la syntaxe hex 8-digit (#RRGGBBAA).
+ * Note technique : le dégradé est appliqué en INLINE STYLE (backgroundImage)
+ * car Tailwind ne génère pas de gradient dynamique à partir de valeurs hex
+ * arbitraires par catégorie. `data-color` conserve la valeur logique pour
+ * les tests et le ciblage éventuel.
  */
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -49,23 +42,20 @@ interface DashboardCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  /** Catégorie métier — pilote les 3 accents (fond, icône, titre). */
+  /** Catégorie métier — pilote le dégradé de la carte. */
   color: DashboardCardColor;
   /** Classes Tailwind additionnelles (utilisé pour delays d'animation). */
   className?: string;
 }
 
-/**
- * Mapping color → hex. À garder synchronisé avec les tokens
- * `--miznas-cat-*` dans `src/index.css` (source de vérité documentée).
- */
-const COLOR_VALUES: Record<DashboardCardColor, string> = {
-  budget: '#0C447C',
-  validation: '#0F6E56',
-  realise: '#5B4E91',
-  reporting: '#BA7517',
-  collaboration: '#B05D3F',
-  config: '#5F6B7A',
+/** Dégradés vibrants par catégorie (couleurs très accentuées). */
+const GRADIENTS: Record<DashboardCardColor, [string, string]> = {
+  budget: ['#3b82f6', '#4f46e5'],
+  validation: ['#10b981', '#059669'],
+  realise: ['#8b5cf6', '#6d28d9'],
+  reporting: ['#f59e0b', '#ea580c'],
+  collaboration: ['#fb7185', '#e11d48'],
+  config: ['#06b6d4', '#0891b2'],
 };
 
 export function DashboardCard({
@@ -76,42 +66,32 @@ export function DashboardCard({
   color,
   className,
 }: DashboardCardProps) {
-  const couleurHex = COLOR_VALUES[color];
-  const fondPastel = `${couleurHex}0F`; // alpha 0x0F ≈ 6 %
+  const [c1, c2] = GRADIENTS[color];
   return (
     <Link
       to={to}
-      style={{ backgroundColor: fondPastel }}
       data-color={color}
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
       className={cn(
-        'block rounded-md p-4',
-        'hover:shadow-sm transition-shadow',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)',
+        'group block rounded-xl p-4 text-white shadow-lg',
+        'transition-all hover:-translate-y-0.5 hover:shadow-xl',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2',
         className,
       )}
     >
       <div className="flex items-start gap-3">
         <div
-          className="w-9 h-9 rounded-md bg-white flex items-center justify-center flex-shrink-0 shadow-sm"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/20 shadow-sm transition-transform group-hover:scale-110"
           aria-hidden="true"
         >
-          <Icon
-            className="w-5 h-5"
-            style={{ color: couleurHex }}
-            aria-hidden="true"
-          />
+          <Icon className="h-5 w-5 text-white" aria-hidden="true" />
         </div>
 
         <div>
           {/* <h3> pour préserver la sémantique heading (les tests
               DashboardPage existants utilisent getByRole('heading')). */}
-          <h3
-            className="text-sm font-medium"
-            style={{ color: couleurHex }}
-          >
-            {title}
-          </h3>
-          <div className="text-xs text-(--muted-foreground) mt-1 leading-relaxed">
+          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <div className="mt-1 text-sm leading-relaxed text-white/90">
             {description}
           </div>
         </div>

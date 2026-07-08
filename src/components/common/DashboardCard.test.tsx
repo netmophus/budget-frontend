@@ -70,33 +70,17 @@ describe('DashboardCard', () => {
     expect(screen.getByText('Page cible')).toBeInTheDocument();
   });
 
-  // Note V7 : on teste les valeurs hex appliquées en INLINE STYLE
-  // - link.style.backgroundColor : couleur catégorie + alpha (~6 %)
-  // - svg.style.color            : couleur catégorie pure
-  // - h3.style.color             : couleur catégorie pure
-  // Les patterns sont tolérants (rgb / rgba / hex) car JSDom peut
-  // normaliser `#RRGGBBAA` en `rgba(R, G, B, 0.06)` selon la version.
+  // V8 : chaque catégorie applique un DÉGRADÉ vibrant (inline style
+  // backgroundImage: linear-gradient) débutant par une couleur hex
+  // spécifique ; icône + titre en blanc.
+  // JSDom sérialise les hex en rgb(...) dans le style inline.
   it.each([
-    [
-      'budget',
-      // Couleur pure (icône, titre)
-      /(rgb\(12,\s*68,\s*124\)|#0c447c)$/i,
-      // Couleur + alpha (fond pastel)
-      /background-color:\s*(rgba?\(12,\s*68,\s*124|#0c447c)/i,
-    ],
-    [
-      'validation',
-      /(rgb\(15,\s*110,\s*86\)|#0f6e56)$/i,
-      /background-color:\s*(rgba?\(15,\s*110,\s*86|#0f6e56)/i,
-    ],
-    [
-      'config',
-      /(rgb\(95,\s*107,\s*122\)|#5f6b7a)$/i,
-      /background-color:\s*(rgba?\(95,\s*107,\s*122|#5f6b7a)/i,
-    ],
+    ['budget', /rgb\(59,\s*130,\s*246\)/],
+    ['validation', /rgb\(16,\s*185,\s*129\)/],
+    ['config', /rgb\(6,\s*182,\s*212\)/],
   ] as const)(
-    'color=%s → fond pastel + icône + titre stylés via inline style',
-    (color: DashboardCardColor, patternPure: RegExp, patternBg: RegExp) => {
+    'color=%s → dégradé vibrant (inline style) + texte blanc',
+    (color: DashboardCardColor, rgbDebut: RegExp) => {
       render(
         <MemoryRouter>
           <DashboardCard
@@ -109,27 +93,24 @@ describe('DashboardCard', () => {
         </MemoryRouter>,
       );
       const link = screen.getByRole('link');
+      const style = (link.getAttribute('style') ?? '').toLowerCase();
 
-      // Fond pastel via style inline (background-color avec alpha)
-      expect(link.getAttribute('style')).toMatch(patternBg);
+      // Dégradé via style inline + couleur de départ de la catégorie.
+      expect(style).toMatch(/linear-gradient/);
+      expect(style).toMatch(rgbDebut);
 
-      // data-color permet de vérifier la valeur logique
+      // data-color = valeur logique.
       expect(link.getAttribute('data-color')).toBe(color);
 
-      // Icône Lucide en couleur catégorie pure
+      // Icône + titre en blanc.
       const svg = link.querySelector('svg');
-      expect(svg).not.toBeNull();
-      // svg.style.color renvoie la valeur résolue ; on matche depuis
-      // la fin de la chaîne (car style sérialise "color: …")
-      expect(svg?.style.color).toMatch(patternPure);
-
-      // Titre <h3> en couleur catégorie pure
+      expect(svg?.getAttribute('class')).toContain('text-white');
       const heading = screen.getByRole('heading', { name: 'Mon titre' });
-      expect(heading.style.color).toMatch(patternPure);
+      expect(heading.className).toContain('text-white');
     },
   );
 
-  it('rend un cercle blanc 36 px autour de l\'icône (rounded-md bg-white)', () => {
+  it('rend une pastille translucide autour de l\'icône (rounded-lg bg-white/20)', () => {
     render(
       <MemoryRouter>
         <DashboardCard
@@ -142,17 +123,16 @@ describe('DashboardCard', () => {
       </MemoryRouter>,
     );
     const link = screen.getByRole('link');
-    // Le cercle blanc est le wrapper direct de l'<svg> de l'icône.
     const svg = link.querySelector('svg');
     const circle = svg?.parentElement;
     expect(circle).not.toBeNull();
-    expect(circle?.className).toContain('rounded-md');
-    expect(circle?.className).toContain('bg-white');
+    expect(circle?.className).toContain('rounded-lg');
+    expect(circle?.className).toContain('bg-white/20');
     expect(circle?.className).toContain('w-9');
     expect(circle?.className).toContain('h-9');
   });
 
-  it('rend les classes structurelles permanentes (rounded-md, p-4)', () => {
+  it('rend les classes structurelles permanentes (rounded-xl, p-4, texte blanc)', () => {
     render(
       <MemoryRouter>
         <DashboardCard
@@ -165,10 +145,9 @@ describe('DashboardCard', () => {
       </MemoryRouter>,
     );
     const link = screen.getByRole('link');
-    expect(link.className).toContain('rounded-md');
+    expect(link.className).toContain('rounded-xl');
     expect(link.className).toContain('p-4');
-    // V7 : pas de bordure visible (suppression de border-l-[3px] et
-    // border-(--border) introduits en V6).
+    expect(link.className).toContain('text-white');
     expect(link.className).not.toContain('border-l-[3px]');
   });
 
@@ -190,7 +169,7 @@ describe('DashboardCard', () => {
     expect(link.className).toContain('fade-in');
     expect(link.className).toContain('delay-200');
     // Les classes par défaut restent (cn ne les écrase pas).
-    expect(link.className).toContain('rounded-md');
+    expect(link.className).toContain('rounded-xl');
   });
 
   it('rend l\'icône Lucide avec aria-hidden (purement décorative)', () => {
