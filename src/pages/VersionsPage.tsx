@@ -235,10 +235,10 @@ export function VersionsPage() {
             <Layers className="w-5 h-5" style={{ color: '#0C447C' }} />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Versions budgétaires
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Cycles budgétaires — workflow Brouillon → Soumis → Validé →
               Publié
             </p>
@@ -257,29 +257,29 @@ export function VersionsPage() {
       </div>
 
       {/* ─── 4 KPI workflow ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <KpiWorkflowCard
           label="Brouillons"
           value={kpi.brouillons}
-          colorHex="#5F6B7A"
+          gradient={['#64748b', '#475569']}
           testId="kpi-vers-brouillons"
         />
         <KpiWorkflowCard
           label="Soumis"
           value={kpi.soumis}
-          colorHex="#BA7517"
+          gradient={['#f59e0b', '#ea580c']}
           testId="kpi-vers-soumis"
         />
         <KpiWorkflowCard
           label="Validés"
           value={kpi.valides}
-          colorHex="#2E5BAE"
+          gradient={['#3b82f6', '#4f46e5']}
           testId="kpi-vers-valides"
         />
         <KpiWorkflowCard
           label="Publiés (gelés)"
           value={kpi.publies}
-          colorHex="#0F6E56"
+          gradient={['#10b981', '#059669']}
           testId="kpi-vers-publies"
         />
       </div>
@@ -611,37 +611,34 @@ export function VersionsPage() {
 interface KpiWorkflowCardProps {
   label: string;
   value: number;
-  colorHex: string;
+  /** Dégradé vibrant [c1, c2] (design accentué V8, cf. DashboardCard). */
+  gradient: [string, string];
   testId: string;
 }
 
 function KpiWorkflowCard({
   label,
   value,
-  colorHex,
+  gradient,
   testId,
 }: KpiWorkflowCardProps): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
       <div className="flex items-center gap-1.5 mb-1">
         <span
-          className="w-[7px] h-[7px] rounded-full"
-          style={{ backgroundColor: colorHex }}
+          className="w-[7px] h-[7px] rounded-full bg-white/80"
           aria-hidden="true"
         />
-        <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider">
+        <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider">
           {label}
         </div>
       </div>
-      <div
-        className="text-2xl font-medium tabular-nums"
-        style={{ color: colorHex }}
-      >
-        {value}
-      </div>
+      <div className="text-3xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

@@ -78,9 +78,12 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
 
   it('charge et affiche la configuration (nom pré-rempli)', async () => {
     renderPage();
+    // Onglet Identité actif par défaut → nom visible.
     await waitFor(() =>
       expect(screen.getByTestId('nom')).toHaveValue('BSIC NIGER'),
     );
+    // La couleur primaire est dans l'onglet Charte visuelle.
+    fireEvent.click(screen.getByTestId('tab-charte'));
     expect(screen.getByTestId('couleurPrimaire')).toHaveValue('#1B2A4E');
   });
 
@@ -108,7 +111,9 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
 
   it('désactive Enregistrer si une couleur est invalide', async () => {
     renderPage();
-    await waitFor(() => screen.getByTestId('couleurPrimaire'));
+    await waitFor(() => screen.getByTestId('nom'));
+    // La couleur primaire est dans l'onglet Charte visuelle.
+    fireEvent.click(screen.getByTestId('tab-charte'));
     fireEvent.change(screen.getByTestId('couleurPrimaire'), {
       target: { value: 'pasunecouleur' },
     });
@@ -117,7 +122,9 @@ describe('ConfigurationBanquePage (Lot B4)', () => {
 
   it('Chantier A : placeholders + aide sur la section Contexte IA', async () => {
     renderPage();
-    await waitFor(() => screen.getByTestId('positionnement'));
+    await waitFor(() => screen.getByTestId('nom'));
+    // Les champs IA sont dans l'onglet Contexte IA.
+    fireEvent.click(screen.getByTestId('tab-contexte-ia'));
     expect(screen.getByTestId('positionnement')).toHaveAttribute('placeholder');
     expect(screen.getByTestId('contexteMarche')).toHaveAttribute('placeholder');
     expect(screen.getByTestId('concurrents')).toHaveAttribute('placeholder');

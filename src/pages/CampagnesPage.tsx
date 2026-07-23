@@ -146,7 +146,12 @@ export function CampagnesPage() {
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
-  const anneeProchaine = new Date().getFullYear() + 1;
+  const kpi = {
+    total: data.length,
+    parametrage: data.filter((c) => c.statut === 'PARAMETRAGE').length,
+    enCours: data.filter((c) => c.statut === 'EN_COURS').length,
+    terminees: data.filter((c) => c.statut === 'TERMINEE').length,
+  };
 
   return (
     <div>
@@ -163,10 +168,10 @@ export function CampagnesPage() {
             />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Campagnes budgétaires
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Cycles annuels — lettre cadrage, notes, PV, workflow visa /
               signature
             </p>
@@ -180,9 +185,17 @@ export function CampagnesPage() {
             className="h-9 px-3.5 bg-(--miznas-bleu-nuit-dark) hover:bg-(--miznas-bleu-nuit-dark)/90 text-white gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            Créer une campagne {anneeProchaine}
+            Créer une campagne
           </Button>
         )}
+      </div>
+
+      {/* ─── 4 KPI cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <KpiCard label="Total" value={kpi.total} gradient={['#3b82f6', '#4f46e5']} testId="kpi-camp-total" />
+        <KpiCard label="En paramétrage" value={kpi.parametrage} gradient={['#64748b', '#475569']} testId="kpi-camp-parametrage" />
+        <KpiCard label="Actives" value={kpi.enCours} gradient={['#10b981', '#059669']} testId="kpi-camp-actives" />
+        <KpiCard label="Terminées" value={kpi.terminees} gradient={['#8b5cf6', '#6d28d9']} testId="kpi-camp-terminees" />
       </div>
 
       <div
@@ -259,6 +272,33 @@ function ColumnHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className="text-[11px] font-semibold text-(--muted-foreground) uppercase tracking-wider">
       {children}
+    </div>
+  );
+}
+
+/** KPI card à dégradé vibrant (design accentué V8, cf. DashboardCard). */
+function KpiCard({
+  label,
+  value,
+  gradient,
+  testId,
+}: {
+  label: string;
+  value: number;
+  gradient: [string, string];
+  testId: string;
+}): JSX.Element {
+  const [c1, c2] = gradient;
+  return (
+    <div
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      data-testid={testId}
+    >
+      <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider mb-1">
+        {label}
+      </div>
+      <div className="text-3xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

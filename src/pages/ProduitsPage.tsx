@@ -198,10 +198,10 @@ export function ProduitsPage() {
             <Package className="w-5 h-5" style={{ color: '#5F6B7A' }} />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Produits bancaires
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Catalogue des produits crédit / dépôt / service / marché —
               hiérarchie 4 niveaux
             </p>
@@ -220,12 +220,12 @@ export function ProduitsPage() {
       </div>
 
       {/* ─── 5 KPI cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-5">
-        <KpiNumberCard label="Total actifs" value={kpi.totalActifs} color="#0F6E56" testId="kpi-prod-total-actifs" />
-        <KpiNumberCard label="Crédits" value={kpi.credits} color="#DC2626" testId="kpi-prod-credits" />
-        <KpiNumberCard label="Dépôts" value={kpi.depots} color="#0F6E56" testId="kpi-prod-depots" />
-        <KpiNumberCard label="Services" value={kpi.services} color="#0C447C" testId="kpi-prod-services" />
-        <KpiNumberCard label="Porteurs PNB" value={kpi.porteursPnb} color="#BA7517" testId="kpi-prod-porteurs" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+        <KpiNumberCard label="Total actifs" value={kpi.totalActifs} gradient={['#10b981', '#059669']} testId="kpi-prod-total-actifs" />
+        <KpiNumberCard label="Crédits" value={kpi.credits} gradient={['#fb7185', '#e11d48']} testId="kpi-prod-credits" />
+        <KpiNumberCard label="Dépôts" value={kpi.depots} gradient={['#8b5cf6', '#6d28d9']} testId="kpi-prod-depots" />
+        <KpiNumberCard label="Services" value={kpi.services} gradient={['#3b82f6', '#4f46e5']} testId="kpi-prod-services" />
+        <KpiNumberCard label="Porteurs PNB" value={kpi.porteursPnb} gradient={['#f59e0b', '#ea580c']} testId="kpi-prod-porteurs" />
       </div>
 
       {/* ─── Barre de filtres ──────────────────────────────────── */}
@@ -595,30 +595,28 @@ export function ProduitsPage() {
 interface KpiNumberCardProps {
   label: string;
   value: number;
-  color: string;
+  /** Dégradé vibrant [c1, c2] (design accentué V8, cf. DashboardCard). */
+  gradient: [string, string];
   testId: string;
 }
 
 function KpiNumberCard({
   label,
   value,
-  color,
+  gradient,
   testId,
 }: KpiNumberCardProps): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-2.5 px-3"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-3.5 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
-      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-0.5">
+      <div className="text-[10px] font-medium text-white/85 uppercase tracking-wider mb-0.5">
         {label}
       </div>
-      <div
-        className="text-xl font-medium tabular-nums"
-        style={{ color }}
-      >
-        {value}
-      </div>
+      <div className="text-2xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

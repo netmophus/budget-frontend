@@ -138,6 +138,27 @@ describe('ConfigurationPage', () => {
     });
   });
 
+  it('chevron : replie puis déplie les sous-items d\'une catégorie', async () => {
+    mockList.mockResolvedValue({ items: [], total: 5, page: 1, limit: 1 });
+
+    renderPage();
+
+    const toggle = await screen.findByTestId('cat-toggle-metier');
+    // Ouvert par défaut : item "Types de produit" (catégorie Métier, non
+    // sélectionné → présent uniquement dans la nav) visible.
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('Types de produit')).toBeInTheDocument();
+
+    // Repli → l'item disparaît.
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Types de produit')).not.toBeInTheDocument();
+
+    // Dépli → l'item réapparaît.
+    fireEvent.click(toggle);
+    expect(screen.getByText('Types de produit')).toBeInTheDocument();
+  });
+
   it("clic sur 'Pays UEMOA' bascule la sélection", async () => {
     mockList.mockResolvedValue({ items: [], total: 5, page: 1, limit: 1 });
 

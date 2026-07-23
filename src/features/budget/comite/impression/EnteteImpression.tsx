@@ -3,6 +3,8 @@
  * CR (palier 7). Logo placeholder + organisation + référence version +
  * date de génération. Réutilisé par les 3 vues (CR / périmètre / Comité).
  */
+import { useBanque } from '@/lib/branding/banque-context';
+
 interface EnteteImpressionProps {
   titre: string;
   version: { codeVersion: string; libelle: string };
@@ -14,6 +16,7 @@ export function EnteteImpression({
   version,
   dateGeneration,
 }: EnteteImpressionProps): JSX.Element {
+  const { banque } = useBanque();
   return (
     <header className="border-b-2 border-(--miznas-bleu-nuit-dark) pb-3 mb-4">
       <div className="flex items-center gap-3">
@@ -26,7 +29,7 @@ export function EnteteImpression({
         />
         <div className="min-w-0">
           <div className="text-sm font-bold tracking-tight text-(--miznas-bleu-nuit-dark)">
-            BSIC NIGER
+            {banque.nom}
           </div>
           <div className="text-[11px] text-(--muted-foreground)">
             Système MIZNAS — Budgétisation

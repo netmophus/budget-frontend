@@ -231,10 +231,10 @@ export function UsersPage() {
             <UsersIcon className="w-5 h-5" style={{ color: '#B05D3F' }} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Utilisateurs
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Création, modification, désactivation et gestion des rôles —{' '}
               <code className="font-mono text-[11px] bg-(--secondary) px-1.5 py-0.5 rounded-sm">
                 USER.GERER
@@ -255,29 +255,29 @@ export function UsersPage() {
       </div>
 
       {/* ─── 4 KPI cards ────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <KpiNumberCard
           label="Total"
           value={kpi.totalCount}
-          colorHex="#0C447C"
+          gradient={['#3b82f6', '#4f46e5']}
           testId="kpi-users-total"
         />
         <KpiWithDotCard
           label="Actifs"
           value={kpi.actifs}
-          colorHex="#0F6E56"
+          gradient={['#10b981', '#059669']}
           testId="kpi-users-actifs"
         />
         <KpiWithDotCard
           label="Inactifs"
           value={kpi.inactifs}
-          colorHex="#5F6B7A"
+          gradient={['#64748b', '#475569']}
           testId="kpi-users-inactifs"
         />
         <KpiWithDotCard
           label="Connectés 7j"
           value={kpi.connectes7j}
-          colorHex="#0C447C"
+          gradient={['#06b6d4', '#0891b2']}
           testId="kpi-users-connectes-7j"
         />
       </div>
@@ -644,29 +644,29 @@ function ColumnHeader({
   );
 }
 
+/** Dégradé vibrant [c1, c2] (design accentué V8, cf. DashboardCard). */
 function KpiNumberCard({
   label,
   value,
-  colorHex,
+  gradient,
   testId,
 }: {
   label: string;
   value: number;
-  colorHex: string;
+  gradient: [string, string];
   testId: string;
 }): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
-      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
+      <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider mb-1">
         {label}
       </div>
-      <div
-        className="text-[22px] font-medium tabular-nums leading-tight"
-        style={{ color: colorHex }}
-      >
+      <div className="text-3xl font-bold tabular-nums leading-tight text-white">
         {value}
       </div>
     </div>
@@ -676,33 +676,31 @@ function KpiNumberCard({
 function KpiWithDotCard({
   label,
   value,
-  colorHex,
+  gradient,
   testId,
 }: {
   label: string;
   value: number;
-  colorHex: string;
+  gradient: [string, string];
   testId: string;
 }): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
       <div className="flex items-center gap-1.5 mb-1">
         <span
-          className="w-[7px] h-[7px] rounded-full"
-          style={{ backgroundColor: colorHex }}
+          className="w-[7px] h-[7px] rounded-full bg-white/80"
           aria-hidden="true"
         />
-        <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider">
+        <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider">
           {label}
         </div>
       </div>
-      <div
-        className="text-[22px] font-medium tabular-nums leading-tight"
-        style={{ color: colorHex }}
-      >
+      <div className="text-3xl font-bold tabular-nums leading-tight text-white">
         {value}
       </div>
     </div>

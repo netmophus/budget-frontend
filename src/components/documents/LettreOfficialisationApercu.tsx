@@ -27,6 +27,7 @@
  * TODO : durcir avec sanitize-html à terme si le périmètre s'ouvre
  * à des contenus externes ou multi-tenants.
  */
+import { useBanque } from '@/lib/branding/banque-context';
 import type { DocumentOfficiel } from '@/types/document';
 import type { LettreOfficialisationDetail } from '@/types/lettre-officialisation';
 
@@ -50,6 +51,7 @@ export function LettreOfficialisationApercu({
   document,
   detail,
 }: LettreOfficialisationApercuProps) {
+  const { banque } = useBanque();
   return (
     <div
       className="bg-white p-12 max-w-4xl mx-auto shadow-lg border border-(--border)"
@@ -58,7 +60,7 @@ export function LettreOfficialisationApercu({
       {/* En-tête institutionnelle */}
       <div className="border-b-2 border-slate-800 pb-4 mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight m-0">
-          BSIC NIGER
+          {banque.nom}
         </h1>
         <p className="text-sm text-slate-600 mt-1">
           Direction Générale — Boulevard de la Liberté, BP 12 080, Niamey

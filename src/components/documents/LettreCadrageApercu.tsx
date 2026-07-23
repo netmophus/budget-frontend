@@ -10,6 +10,7 @@
  * Format imprimable (max-w-4xl, ombre, bordures tableau). Si statut
  * SIGNE, mention "Signé électroniquement" + date.
  */
+import { useBanque } from '@/lib/branding/banque-context';
 import type { DocumentOfficiel } from '@/types/document';
 import type { LettreCadrageDetail } from '@/types/lettre-cadrage';
 
@@ -45,6 +46,7 @@ export function LettreCadrageApercu({
   document,
   detail,
 }: LettreCadrageApercuProps) {
+  const { banque } = useBanque();
   return (
     <div
       className="bg-white p-12 max-w-4xl mx-auto shadow-lg border border-(--border)"
@@ -53,10 +55,10 @@ export function LettreCadrageApercu({
       {/* En-tête bancaire */}
       <div className="border-b-2 border-slate-800 pb-4 mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight m-0">
-          BSIC NIGER
+          {banque.nom}
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          Banque Sahélo-Saharienne pour l'Investissement et le Commerce
+          {banque.nomCommercialComplet}
         </p>
       </div>
 

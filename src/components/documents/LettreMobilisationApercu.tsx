@@ -15,6 +15,7 @@
  * — compromis ASSUMÉ et documenté (cohérent NoteOrientationApercu).
  * TipTap émet du HTML sécurisé par défaut.
  */
+import { useBanque } from '@/lib/branding/banque-context';
 import type { DocumentOfficiel } from '@/types/document';
 import type { LettreMobilisationDetail } from '@/types/lettre-mobilisation';
 
@@ -53,6 +54,7 @@ export function LettreMobilisationApercu({
   document,
   detail,
 }: LettreMobilisationApercuProps) {
+  const { banque } = useBanque();
   // Y a-t-il au moins une date d'échéance renseignée ?
   const hasAnyEcheance = !!(
     detail?.dateReunionMobilisation ||
@@ -70,7 +72,7 @@ export function LettreMobilisationApercu({
       {/* En-tête bancaire */}
       <div className="border-b-2 border-slate-800 pb-4 mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight m-0">
-          BSIC NIGER
+          {banque.nom}
         </h1>
         <p className="text-sm text-slate-600 mt-1">Direction Générale</p>
       </div>
@@ -118,7 +120,7 @@ export function LettreMobilisationApercu({
 
       {/* 1. Objectifs globaux */}
       <h3 className="font-bold mb-2 text-base">
-        1. Objectifs globaux BSIC NIGER
+        1. Objectifs globaux {banque.nom}
       </h3>
       <table className="w-full mb-6 border-collapse text-sm">
         <tbody>

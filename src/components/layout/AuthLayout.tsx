@@ -8,7 +8,6 @@ import {
   CheckCheck,
   CheckSquare,
   ChevronDown,
-  ChevronRight,
   ClipboardList,
   Coins,
   FileSignature,
@@ -30,7 +29,7 @@ import {
   RefreshCcw,
   ScrollText,
   Send,
-  Settings,
+  Tags,
   ShieldCheck,
   Sliders,
   Target,
@@ -251,7 +250,7 @@ const NAV_DOCUMENTS_OFFICIELS: NavItem[] = [
 const NAV_CONFIGURATION: NavItem[] = [
   {
     to: '/configuration',
-    label: 'Configuration',
+    label: 'Nomenclatures',
     icon: Sliders,
     permission: 'CONFIGURATION.LIRE',
   },
@@ -304,28 +303,44 @@ const NAV_ADMIN: NavItem[] = [
   { to: '/audit-logs', label: "Journal d'audit", icon: ScrollText, permission: 'AUDIT.LIRE' },
 ];
 
-function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function NavLink({
+  item,
+  collapsed,
+  nested = false,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  nested?: boolean;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const visible = useHasPermission(item.permission ? [item.permission] : []);
   if (!visible) return null;
 
-  const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+  const active =
+    location.pathname === item.to ||
+    location.pathname.startsWith(`${item.to}/`);
   const Icon = item.icon;
 
   return (
     <button
       onClick={() => navigate(item.to)}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+        'relative flex w-full items-center gap-3 rounded-md py-2 text-sm transition-colors',
+        collapsed ? 'justify-center px-0' : nested ? 'pl-4 pr-3' : 'px-3',
         active
-          ? 'bg-(--accent) text-(--accent-foreground) font-medium'
-          : 'hover:bg-(--accent)/50',
+          ? 'bg-(--accent) font-medium text-(--accent-foreground)'
+          : 'text-(--muted-foreground) hover:bg-(--accent)/50 hover:text-(--foreground)',
       )}
       title={collapsed ? item.label : undefined}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      {!collapsed && <span>{item.label}</span>}
+      {active && !collapsed && (
+        <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--primary)" />
+      )}
+      <Icon
+        className={cn('h-4 w-4 shrink-0', active && 'text-(--primary)')}
+      />
+      {!collapsed && <span className="truncate">{item.label}</span>}
     </button>
   );
 }
@@ -402,27 +417,46 @@ function NavGroup({
 
   return (
     <div data-testid={`nav-group-${groupKey}`}>
-      {!collapsed && (
-        <button
-          type="button"
-          onClick={() => onToggle(groupKey)}
-          className="flex w-full items-center gap-2 px-3 pt-4 pb-1 text-xs font-semibold uppercase text-(--muted-foreground) hover:text-(--foreground) transition-colors"
-          aria-expanded={ouvert}
-          data-testid={`nav-group-toggle-${groupKey}`}
-        >
-          {ouvert ? (
-            <ChevronDown className="h-3 w-3 shrink-0" />
-          ) : (
-            <ChevronRight className="h-3 w-3 shrink-0" />
-          )}
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 text-left">{label}</span>
-        </button>
-      )}
-      {(collapsed || ouvert) &&
+      {collapsed ? (
         items.map((item) => (
           <NavLink key={item.to} item={item} collapsed={collapsed} />
-        ))}
+        ))
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onToggle(groupKey)}
+            className="mt-2 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-(--accent)/40"
+            aria-expanded={ouvert}
+            data-testid={`nav-group-toggle-${groupKey}`}
+          >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-(--secondary) text-(--foreground)">
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+            <span className="flex-1 text-sm font-semibold text-(--foreground)">
+              {label}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 text-(--muted-foreground) transition-transform',
+                !ouvert && '-rotate-90',
+              )}
+            />
+          </button>
+          {ouvert && (
+            <div className="mt-0.5 mb-1 ml-5 space-y-0.5 border-l border-(--border) pl-2">
+              {items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  item={item}
+                  collapsed={collapsed}
+                  nested
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -465,8 +499,8 @@ export function AuthLayout() {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="font-semibold tracking-tight">MIZNAS</span>
-          <span className="text-xs text-(--muted-foreground) hidden md:inline">
-            Module Budgétaire Bancaire UEMOA
+          <span className="text-base text-(--muted-foreground) hidden md:inline">
+            — Pilotage Budgétaire Bancaire
           </span>
         </div>
 
@@ -528,17 +562,6 @@ export function AuthLayout() {
           ))}
 
           <NavGroup
-            groupKey="referentiels"
-            label="Référentiels"
-            icon={Library}
-            permission="REFERENTIEL.LIRE"
-            items={NAV_REFERENTIELS}
-            collapsed={collapsed}
-            state={groupStates}
-            onToggle={toggleGroup}
-          />
-
-          <NavGroup
             groupKey="budget"
             label="Budget"
             icon={Wallet}
@@ -577,9 +600,20 @@ export function AuthLayout() {
           />
 
           <NavGroup
+            groupKey="referentiels"
+            label="Référentiels"
+            icon={Library}
+            permission="REFERENTIEL.LIRE"
+            items={NAV_REFERENTIELS}
+            collapsed={collapsed}
+            state={groupStates}
+            onToggle={toggleGroup}
+          />
+
+          <NavGroup
             groupKey="configuration"
-            label="Configuration"
-            icon={Settings}
+            label="Nomenclatures"
+            icon={Tags}
             permission="CONFIGURATION.LIRE"
             items={NAV_CONFIGURATION}
             collapsed={collapsed}

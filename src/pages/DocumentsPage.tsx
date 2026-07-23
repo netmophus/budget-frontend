@@ -178,6 +178,14 @@ export function DocumentsPage() {
     setFilterRole(ALL);
   }
 
+  const kpi = {
+    total: data.length,
+    brouillons: data.filter((d) => d.statut === 'BROUILLON').length,
+    enVisa: data.filter((d) => d.statut === 'SOUMIS_VISA').length,
+    vises: data.filter((d) => d.statut === 'VISE').length,
+    signes: data.filter((d) => d.statut === 'SIGNE').length,
+  };
+
   async function handleDownload(doc: DocumentOfficiel) {
     if (!doc.fichierJointNom) return;
     try {
@@ -202,10 +210,10 @@ export function DocumentsPage() {
             <FileText className="w-5 h-5" style={{ color: '#0C447C' }} />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Documents officiels
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Lettres de cadrage, notes d'orientation, PV — workflow
               visa / signature
             </p>
@@ -222,6 +230,15 @@ export function DocumentsPage() {
             Créer un document
           </Button>
         )}
+      </div>
+
+      {/* ─── 5 KPI cards ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+        <KpiCard label="Total" value={kpi.total} gradient={['#3b82f6', '#4f46e5']} testId="kpi-doc-total" />
+        <KpiCard label="Brouillons" value={kpi.brouillons} gradient={['#64748b', '#475569']} testId="kpi-doc-brouillons" />
+        <KpiCard label="En visa" value={kpi.enVisa} gradient={['#f59e0b', '#ea580c']} testId="kpi-doc-en-visa" />
+        <KpiCard label="Visés" value={kpi.vises} gradient={['#06b6d4', '#0891b2']} testId="kpi-doc-vises" />
+        <KpiCard label="Signés" value={kpi.signes} gradient={['#10b981', '#059669']} testId="kpi-doc-signes" />
       </div>
 
       {/* Filtres */}
@@ -289,7 +306,7 @@ export function DocumentsPage() {
 
       {/* Tableau */}
       <div
-        className="bg-white border border-(--border) rounded-md overflow-hidden"
+        className="bg-white border border-(--border) rounded-xl overflow-hidden shadow-sm"
         data-testid="doc-table"
       >
         <Table>
@@ -408,6 +425,33 @@ export function DocumentsPage() {
         open={creerOpen}
         onClose={() => setCreerOpen(false)}
       />
+    </div>
+  );
+}
+
+/** KPI card à dégradé vibrant (design accentué V8, cf. DashboardCard). */
+function KpiCard({
+  label,
+  value,
+  gradient,
+  testId,
+}: {
+  label: string;
+  value: number;
+  gradient: [string, string];
+  testId: string;
+}): JSX.Element {
+  const [c1, c2] = gradient;
+  return (
+    <div
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-3.5 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      data-testid={testId}
+    >
+      <div className="text-[10px] font-medium text-white/85 uppercase tracking-wider mb-0.5">
+        {label}
+      </div>
+      <div className="text-2xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

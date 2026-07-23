@@ -2,11 +2,11 @@ import {
   BarChart3,
   CheckCircle2,
   ClipboardCheck,
-  Database,
   FileEdit,
   Handshake,
   History,
   Settings,
+  Tags,
   TrendingUp,
 } from 'lucide-react';
 import { Can } from '@/components/common/Can';
@@ -23,7 +23,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title={title}
-        description="Module Budgétaire Bancaire UEMOA — accédez à vos modules selon vos permissions."
+        description="Pilotage Budgétaire Bancaire — accédez à vos modules selon vos permissions."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -90,9 +90,9 @@ export function DashboardPage() {
         <Can permission="CONFIGURATION.LIRE">
           <DashboardCard
             to="/configuration"
-            icon={Database}
-            title="Référentiels"
-            description="Consulter et configurer les dimensions et référentiels secondaires."
+            icon={Tags}
+            title="Nomenclatures"
+            description="Types, statuts et catégories du système utilisés par les référentiels."
             color="config"
           />
         </Can>

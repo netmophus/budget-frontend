@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { RefSecondaireTable } from '@/components/configuration/RefSecondaireTable';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { listRefSecondaires, type RefKey } from '@/lib/api/configuration';
 import {
   categorieIcon,
+  type RefCategorie,
   REF_CATEGORIES,
   REF_KEYS_ORDERED,
   refMeta,
@@ -29,6 +31,10 @@ export function ConfigurationPage() {
   const [counts, setCounts] = useState<Partial<Record<RefKey, number>>>({});
   const [countsLoading, setCountsLoading] = useState(true);
   const [countsRefreshKey, setCountsRefreshKey] = useState(0);
+  // Repli/dépli des catégories (toutes ouvertes par défaut).
+  const [catFermees, setCatFermees] = useState<Record<string, boolean>>({});
+  const toggleCat = (key: RefCategorie): void =>
+    setCatFermees((s) => ({ ...s, [key]: !s[key] }));
 
   // Synchronise l'URL quand on change d'onglet (sans push history).
   useEffect(() => {
@@ -74,8 +80,8 @@ export function ConfigurationPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Configuration"
-        description="Gérez les valeurs des référentiels secondaires (énumérations métier centralisées). Chaque modification est journalisée dans l'audit log."
+        title="Nomenclatures"
+        description="Types, statuts et catégories utilisés par les référentiels (énumérations métier centralisées). Chaque modification est journalisée dans l'audit log."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -86,47 +92,78 @@ export function ConfigurationPage() {
               const items = grouped[cat.key];
               if (items.length === 0) return null;
               const CatIcon = categorieIcon(cat.key);
+              const ouvert = catFermees[cat.key] !== true;
               return (
                 <div key={cat.key} className="space-y-1">
-                  <div className="flex items-center gap-2 px-2 pt-1 text-xs font-semibold uppercase text-(--muted-foreground)">
-                    <CatIcon className="h-3.5 w-3.5" />
-                    {cat.label}
-                  </div>
-                  {items.map((m) => {
-                    const Icon = m.icon;
-                    const isActive = m.refKey === activeRef;
-                    const count = counts[m.refKey];
-                    return (
-                      <button
-                        key={m.refKey}
-                        type="button"
-                        onClick={() => setActiveRef(m.refKey)}
-                        className={cn(
-                          'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-sm transition-colors text-left',
-                          isActive
-                            ? 'bg-(--accent) text-(--accent-foreground) font-medium border-l-2 border-(--primary)'
-                            : 'hover:bg-(--accent)/50',
-                        )}
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <Icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{m.label}</span>
-                        </span>
-                        {!countsLoading && count !== undefined && (
-                          <span
-                            className={cn(
-                              'text-xs rounded-full px-2 py-0.5 shrink-0',
-                              isActive
-                                ? 'bg-(--background) text-(--foreground)'
-                                : 'bg-(--secondary) text-(--secondary-foreground)',
-                            )}
-                          >
-                            {count}
+                  {/* En-tête de catégorie (gros menu) — repliable */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCat(cat.key)}
+                    aria-expanded={ouvert}
+                    data-testid={`cat-toggle-${cat.key}`}
+                    className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-(--accent)/40"
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-(--secondary) text-(--foreground)">
+                      <CatIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="flex-1 text-sm font-semibold text-(--foreground)">
+                      {cat.label}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 shrink-0 text-(--muted-foreground) transition-transform',
+                        !ouvert && '-rotate-90',
+                      )}
+                    />
+                  </button>
+                  {/* Sous-items indentés avec filet vertical (arborescence) */}
+                  {ouvert && (
+                  <div className="ml-3 space-y-0.5 border-l border-(--border) pl-2">
+                    {items.map((m) => {
+                      const Icon = m.icon;
+                      const isActive = m.refKey === activeRef;
+                      const count = counts[m.refKey];
+                      return (
+                        <button
+                          key={m.refKey}
+                          type="button"
+                          onClick={() => setActiveRef(m.refKey)}
+                          className={cn(
+                            'relative flex w-full items-center justify-between gap-2 rounded-md py-2 pl-4 pr-3 text-sm text-left transition-colors',
+                            isActive
+                              ? 'bg-(--accent) font-medium text-(--accent-foreground)'
+                              : 'text-(--muted-foreground) hover:bg-(--accent)/50 hover:text-(--foreground)',
+                          )}
+                        >
+                          {isActive && (
+                            <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--primary)" />
+                          )}
+                          <span className="flex items-center gap-2 min-w-0">
+                            <Icon
+                              className={cn(
+                                'h-4 w-4 shrink-0',
+                                isActive && 'text-(--primary)',
+                              )}
+                            />
+                            <span className="truncate">{m.label}</span>
                           </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          {!countsLoading && count !== undefined && (
+                            <span
+                              className={cn(
+                                'text-xs rounded-full px-2 py-0.5 shrink-0',
+                                isActive
+                                  ? 'bg-(--background) text-(--foreground)'
+                                  : 'bg-(--secondary) text-(--secondary-foreground)',
+                              )}
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  )}
                 </div>
               );
             })}

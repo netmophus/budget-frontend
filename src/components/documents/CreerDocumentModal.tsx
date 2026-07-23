@@ -211,10 +211,10 @@ export function CreerDocumentModal({
         </DialogHeader>
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
+          className="space-y-3"
           data-testid="form-creer-document"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <div>
               <Label htmlFor="doc-code">Code</Label>
               <Input
@@ -244,7 +244,7 @@ export function CreerDocumentModal({
                   >
                     <SelectTrigger
                       id="doc-type"
-                      className="mt-1"
+                      className="mt-1 w-full"
                       data-testid="select-type"
                     >
                       <SelectValue />
@@ -260,109 +260,107 @@ export function CreerDocumentModal({
                 )}
               />
             </div>
-          </div>
 
-          <div>
-            <Label htmlFor="doc-campagne">Campagne</Label>
-            <Controller
-              control={control}
-              name="fkCampagne"
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                >
-                  <SelectTrigger
-                    id="doc-campagne"
-                    className="mt-1"
-                    data-testid="select-campagne"
+            <div>
+              <Label htmlFor="doc-campagne">Campagne</Label>
+              <Controller
+                control={control}
+                name="fkCampagne"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
                   >
-                    <SelectValue placeholder="Choisir une campagne EN_COURS" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campagnes.length === 0 && (
-                      <div className="px-2 py-2 text-xs text-(--muted-foreground)">
-                        Aucune campagne EN_COURS disponible.
-                      </div>
-                    )}
-                    {campagnes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.code} — {c.libelle}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      id="doc-campagne"
+                      className="mt-1 w-full"
+                      data-testid="select-campagne"
+                    >
+                      <SelectValue placeholder="Choisir une campagne EN_COURS" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campagnes.length === 0 && (
+                        <div className="px-2 py-2 text-xs text-(--muted-foreground)">
+                          Aucune campagne EN_COURS disponible.
+                        </div>
+                      )}
+                      {campagnes.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.code} — {c.libelle}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.fkCampagne && (
+                <p className="text-xs text-(--destructive) mt-1">
+                  {errors.fkCampagne.message}
+                </p>
               )}
-            />
-            {errors.fkCampagne && (
-              <p className="text-xs text-(--destructive) mt-1">
-                {errors.fkCampagne.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="doc-titre">Titre</Label>
-            <Input
-              id="doc-titre"
-              {...register('titre')}
-              placeholder="Lettre de cadrage budgétaire 2027"
-              className="mt-1"
-            />
-            {errors.titre && (
-              <p className="text-xs text-(--destructive) mt-1">
-                {errors.titre.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="doc-ref">
-              Référence externe{' '}
-              <span className="text-(--muted-foreground)">
-                (optionnel)
-              </span>
-            </Label>
-            <Input
-              id="doc-ref"
-              {...register('referenceExterne')}
-              placeholder="Ex: CA/BSIC/2027/001"
-              className="mt-1 font-mono text-xs"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="doc-signataire">Signataire désigné</Label>
-            <Controller
-              control={control}
-              name="fkUserSignataire"
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                >
-                  <SelectTrigger
-                    id="doc-signataire"
-                    className="mt-1"
-                    data-testid="select-signataire"
+            </div>
+            <div>
+              <Label htmlFor="doc-signataire">Signataire désigné</Label>
+              <Controller
+                control={control}
+                name="fkUserSignataire"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
                   >
-                    <SelectValue placeholder="Choisir un utilisateur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.prenom} {u.nom} ({u.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      id="doc-signataire"
+                      className="mt-1 w-full"
+                      data-testid="select-signataire"
+                    >
+                      <SelectValue placeholder="Choisir un utilisateur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.prenom} {u.nom} ({u.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.fkUserSignataire && (
+                <p className="text-xs text-(--destructive) mt-1">
+                  {errors.fkUserSignataire.message}
+                </p>
               )}
-            />
-            {errors.fkUserSignataire && (
-              <p className="text-xs text-(--destructive) mt-1">
-                {errors.fkUserSignataire.message}
-              </p>
-            )}
+            </div>
+
+            <div>
+              <Label htmlFor="doc-titre">Titre</Label>
+              <Input
+                id="doc-titre"
+                {...register('titre')}
+                placeholder="Lettre de cadrage budgétaire 2027"
+                className="mt-1"
+              />
+              {errors.titre && (
+                <p className="text-xs text-(--destructive) mt-1">
+                  {errors.titre.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="doc-ref">
+                Référence externe{' '}
+                <span className="text-(--muted-foreground)">
+                  (optionnel)
+                </span>
+              </Label>
+              <Input
+                id="doc-ref"
+                {...register('referenceExterne')}
+                placeholder="Ex: CA/BRU/2027/001"
+                className="mt-1 font-mono text-xs"
+              />
+            </div>
           </div>
 
           <div>
@@ -370,7 +368,7 @@ export function CreerDocumentModal({
             <textarea
               id="doc-contenu"
               {...register('contenuHtml')}
-              rows={5}
+              rows={3}
               className="w-full mt-1 px-3 py-2 text-sm border border-(--border) rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-(--ring)"
               placeholder="Saisissez les grandes lignes du document (le texte intégral reste dans le PDF original)."
             />

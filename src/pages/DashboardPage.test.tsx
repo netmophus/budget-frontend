@@ -75,7 +75,7 @@ describe('DashboardPage', () => {
       screen.getByRole('heading', { name: 'Mes délégations' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Référentiels' }),
+      screen.getByRole('heading', { name: 'Nomenclatures' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Administration' }),
@@ -107,7 +107,7 @@ describe('DashboardPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('AUDITEUR (lecture seule) voit Analyser, Référentiels et Audit mais pas Élaborer', () => {
+  it('AUDITEUR (lecture seule) voit Analyser, Nomenclatures et Audit mais pas Élaborer', () => {
     setPermissions([
       'BUDGET.LIRE',
       'REALISE.LIRE',
@@ -124,7 +124,7 @@ describe('DashboardPage', () => {
       screen.getByRole('heading', { name: 'Analyser les écarts' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Référentiels' }),
+      screen.getByRole('heading', { name: 'Nomenclatures' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Audit' })).toBeInTheDocument();
   });

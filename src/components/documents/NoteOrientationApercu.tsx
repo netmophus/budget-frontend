@@ -17,6 +17,7 @@
  * autre source non maîtrisée), il faudra ajouter DOMPurify ici.
  * Les autres champs sont rendus en JSX pur (échappement React natif).
  */
+import { useBanque } from '@/lib/branding/banque-context';
 import type { DocumentOfficiel } from '@/types/document';
 import type { NoteOrientationDetail } from '@/types/note-orientation';
 
@@ -55,6 +56,7 @@ export function NoteOrientationApercu({
   document,
   detail,
 }: NoteOrientationApercuProps) {
+  const { banque } = useBanque();
   return (
     <div
       className="bg-white p-12 max-w-4xl mx-auto shadow-lg border border-(--border)"
@@ -63,7 +65,7 @@ export function NoteOrientationApercu({
       {/* En-tête bancaire — note interne */}
       <div className="border-b-2 border-slate-800 pb-4 mb-8">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight m-0">
-          BSIC NIGER
+          {banque.nom}
         </h1>
         <p className="text-sm text-slate-600 mt-1">
           Note Interne de Direction
@@ -139,7 +141,7 @@ export function NoteOrientationApercu({
 
       {/* 2. Positionnement marché */}
       <h3 className="font-bold mb-2 text-base">
-        2. Positionnement marché BSIC NIGER
+        2. Positionnement marché {banque.nom}
       </h3>
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="border border-slate-300 p-3 rounded-md">
