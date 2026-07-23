@@ -188,10 +188,10 @@ export function LignesMetierPage() {
             <LayoutGrid className="w-5 h-5" style={{ color: '#5F6B7A' }} />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Lignes métier
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Référentiel hiérarchique des axes d&apos;activité bancaire (SCD2)
             </p>
           </div>
@@ -209,23 +209,23 @@ export function LignesMetierPage() {
       </div>
 
       {/* ─── 3 KPI cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2.5 mb-5">
+      <div className="grid grid-cols-3 gap-3 mb-5">
         <KpiNumberCard
           label="Total actives"
           value={kpi.totalActives}
-          color="#0F6E56"
+          gradient={['#10b981', '#059669']}
           testId="kpi-lm-total-actives"
         />
         <KpiNumberCard
           label="Racines"
           value={kpi.racines}
-          color="#0C447C"
+          gradient={['#3b82f6', '#4f46e5']}
           testId="kpi-lm-racines"
         />
         <KpiNumberCard
           label="Niveaux max"
           value={kpi.niveauMax}
-          color="#BA7517"
+          gradient={['#f59e0b', '#ea580c']}
           testId="kpi-lm-niveau-max"
         />
       </div>
@@ -590,27 +590,28 @@ export function LignesMetierPage() {
 interface KpiNumberCardProps {
   label: string;
   value: number;
-  color: string;
+  /** Dégradé vibrant [c1, c2] (design accentué V8, cf. DashboardCard). */
+  gradient: [string, string];
   testId: string;
 }
 
 function KpiNumberCard({
   label,
   value,
-  color,
+  gradient,
   testId,
 }: KpiNumberCardProps): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
-      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
+      <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider mb-1">
         {label}
       </div>
-      <div className="text-2xl font-medium tabular-nums" style={{ color }}>
-        {value}
-      </div>
+      <div className="text-3xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

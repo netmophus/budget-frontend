@@ -24,6 +24,7 @@
  * à des contenus externes ou multi-tenants (cf. décision Lot 8.2.B P1
  * — DOMPurify pas installé dans le projet à ce stade).
  */
+import { useBanque } from '@/lib/branding/banque-context';
 import type { DocumentOfficiel } from '@/types/document';
 import {
   type PvApprobationDetail,
@@ -57,6 +58,7 @@ export function PvApprobationApercu({
   document,
   detail,
 }: PvApprobationApercuProps) {
+  const { banque } = useBanque();
   const quorumBadge = detail?.quorumAtteint
     ? {
         label: '✓ Atteint',
@@ -75,7 +77,7 @@ export function PvApprobationApercu({
       {/* En-tête institutionnelle */}
       <div className="border-b-2 border-slate-800 pb-4 mb-8 text-center">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight m-0">
-          BSIC NIGER
+          {banque.nom}
         </h1>
         <p className="text-sm text-slate-600 mt-1">
           Conseil d'Administration — Procès-Verbal d'Approbation

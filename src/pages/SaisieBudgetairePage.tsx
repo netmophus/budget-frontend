@@ -625,10 +625,10 @@ export function SaisieBudgetairePage(): JSX.Element {
       {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h3 className="text-[19px] font-semibold tracking-tight m-0">
+          <h3 className="text-2xl font-semibold tracking-tight m-0">
             Saisie budgétaire
           </h3>
-          <p className="text-xs text-(--muted-foreground) mt-0.5">
+          <p className="text-sm text-(--muted-foreground) mt-0.5">
             Saisie focalisée compte par compte — mode annuel (réparti /12)
             ou mensuel
           </p>
@@ -926,9 +926,39 @@ export function SaisieBudgetairePage(): JSX.Element {
         </div>
       )}
 
-      {/* ─── Tableau récapitulatif des lignes saisies ─────────────── */}
+      {/* ─── Synthèse PNB (cartes accentuées) + tableau récap ─────── */}
       {contexteComplet && (
-        <div className="mt-6">
+        <div className="mt-6 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiSaisieCard
+              label="Produits (cl. 7)"
+              value={FMT.format(recapSoumission.totalProduits)}
+              gradient={['#10b981', '#059669']}
+              testId="kpi-saisie-produits"
+            />
+            <KpiSaisieCard
+              label="Charges (cl. 6)"
+              value={FMT.format(recapSoumission.totalCharges)}
+              gradient={['#fb7185', '#e11d48']}
+              testId="kpi-saisie-charges"
+            />
+            <KpiSaisieCard
+              label="PNB (Produits − Charges)"
+              value={FMT.format(recapSoumission.pnb)}
+              gradient={
+                recapSoumission.pnb >= 0
+                  ? ['#3b82f6', '#4f46e5']
+                  : ['#f59e0b', '#ea580c']
+              }
+              testId="kpi-saisie-pnb"
+            />
+            <KpiSaisieCard
+              label="Lignes saisies"
+              value={String(recapSoumission.nbLignes)}
+              gradient={['#8b5cf6', '#6d28d9']}
+              testId="kpi-saisie-lignes"
+            />
+          </div>
           <LignesSaisiesTable
             lignes={lignesSaisies}
             moisKeys={moisKeys}
@@ -1016,6 +1046,33 @@ export function SaisieBudgetairePage(): JSX.Element {
           recap={recapSoumission}
         />
       )}
+    </div>
+  );
+}
+
+/** Carte de synthèse à dégradé vibrant (design accentué V8). */
+function KpiSaisieCard({
+  label,
+  value,
+  gradient,
+  testId,
+}: {
+  label: string;
+  value: string;
+  gradient: [string, string];
+  testId: string;
+}): JSX.Element {
+  const [c1, c2] = gradient;
+  return (
+    <div
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-3.5 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      data-testid={testId}
+    >
+      <div className="text-[10px] font-medium text-white/85 uppercase tracking-wider mb-0.5">
+        {label}
+      </div>
+      <div className="text-2xl font-bold tabular-nums text-white">{value}</div>
     </div>
   );
 }

@@ -499,8 +499,8 @@ export function AuthLayout() {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="font-semibold tracking-tight">MIZNAS</span>
-          <span className="text-xs text-(--muted-foreground) hidden md:inline">
-            Module Budgétaire Bancaire UEMOA
+          <span className="text-base text-(--muted-foreground) hidden md:inline">
+            — Pilotage Budgétaire Bancaire
           </span>
         </div>
 

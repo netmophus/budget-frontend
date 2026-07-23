@@ -199,10 +199,10 @@ export function CentresResponsabilitePage() {
             <Building2 className="w-5 h-5" style={{ color: '#5F6B7A' }} />
           </div>
           <div>
-            <h3 className="text-[19px] font-semibold tracking-tight m-0">
+            <h3 className="text-2xl font-semibold tracking-tight m-0">
               Centres de responsabilité
             </h3>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Axes d&apos;imputation budgétaire (SCD2 + rattachement structure)
             </p>
           </div>
@@ -220,29 +220,29 @@ export function CentresResponsabilitePage() {
       </div>
 
       {/* ─── 4 KPI cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <KpiCard
           label="Total CR actifs"
           value={kpi.totalActifs}
-          color="#0F6E56"
+          gradient={['#10b981', '#059669']}
           testId="kpi-cr-total-actifs"
         />
         <KpiCard
           label="CDP (profit)"
           value={kpi.cdp}
-          color="#0C447C"
+          gradient={['#3b82f6', '#4f46e5']}
           testId="kpi-cr-cdp"
         />
         <KpiCard
           label="CDC (coût)"
           value={kpi.cdc}
-          color="#BA7517"
+          gradient={['#f59e0b', '#ea580c']}
           testId="kpi-cr-cdc"
         />
         <KpiCard
           label="CDR (revenu)"
           value={kpi.cdr}
-          color="#5B4E91"
+          gradient={['#8b5cf6', '#6d28d9']}
           testId="kpi-cr-cdr"
         />
       </div>
@@ -566,24 +566,28 @@ export function CentresResponsabilitePage() {
 interface KpiCardProps {
   label: string;
   value: number;
-  /** Hex de couleur (charte v1) appliqué à la valeur. */
-  color: string;
+  /** Dégradé vibrant [c1, c2] (design accentué V8, cf. DashboardCard). */
+  gradient: [string, string];
   testId: string;
 }
 
-function KpiCard({ label, value, color, testId }: KpiCardProps): JSX.Element {
+function KpiCard({
+  label,
+  value,
+  gradient,
+  testId,
+}: KpiCardProps): JSX.Element {
+  const [c1, c2] = gradient;
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-3.5"
+      style={{ backgroundImage: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      className="rounded-xl p-4 text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
       data-testid={testId}
     >
-      <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
+      <div className="text-[11px] font-medium text-white/85 uppercase tracking-wider mb-1">
         {label}
       </div>
-      <div
-        className="text-2xl font-medium tabular-nums"
-        style={{ color }}
-      >
+      <div className="text-3xl font-bold tabular-nums text-white">
         {value}
       </div>
     </div>

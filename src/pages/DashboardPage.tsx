@@ -23,7 +23,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title={title}
-        description="Module Budgétaire Bancaire UEMOA — accédez à vos modules selon vos permissions."
+        description="Pilotage Budgétaire Bancaire — accédez à vos modules selon vos permissions."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

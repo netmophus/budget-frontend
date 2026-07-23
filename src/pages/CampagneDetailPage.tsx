@@ -173,12 +173,12 @@ export function CampagneDetailPage() {
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[19px] font-semibold tracking-tight m-0 font-mono">
+              <h3 className="text-2xl font-semibold tracking-tight m-0 font-mono">
                 {campagne.code}
               </h3>
               <StatutCampagneBadge statut={campagne.statut} />
             </div>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               Exercice {campagne.exerciceFiscal} — {campagne.libelle}
             </p>
           </div>
@@ -200,7 +200,7 @@ export function CampagneDetailPage() {
           ))}
       </div>
 
-      <div className="bg-(--secondary) border border-(--border) rounded-md p-4 mb-5 grid grid-cols-3 gap-4 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <InfoCell
           label="Signataire par défaut"
           value={
@@ -300,11 +300,11 @@ function InfoCell({
   value: ReactNode;
 }) {
   return (
-    <div>
+    <div className="rounded-xl border border-(--border) bg-white p-3.5 shadow-sm">
       <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
         {label}
       </div>
-      <div className="text-[13px]">{value}</div>
+      <div className="text-[13px] break-words">{value}</div>
     </div>
   );
 }
@@ -336,7 +336,7 @@ function OngletComite({
       )}
 
       <div
-        className="bg-white border border-(--border) rounded-md overflow-hidden"
+        className="bg-white border border-(--border) rounded-xl overflow-hidden shadow-sm"
         data-testid="comite-table"
       >
         <div className="grid grid-cols-[60px_1fr_280px_1fr_120px] bg-(--secondary) px-4 py-3 border-b border-(--border)">
@@ -358,7 +358,7 @@ function OngletComite({
           <div
             key={m.id}
             data-testid={`membre-row-${m.id}`}
-            className="grid grid-cols-[60px_1fr_280px_1fr_120px] px-4 py-3 items-center border-b border-(--border) last:border-b-0"
+            className="grid grid-cols-[60px_1fr_280px_1fr_120px] px-4 py-3 items-center border-b border-(--border) last:border-b-0 hover:bg-(--muted)/30 transition-colors"
           >
             <div className="text-[13px] tabular-nums font-medium">
               {m.ordre}
@@ -372,11 +372,19 @@ function OngletComite({
             <div className="text-[13px]">{m.libelleFonction ?? '—'}</div>
             <div className="text-[13px]">
               {m.estObligatoire ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-(--primary)/10 text-(--primary)">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium w-fit bg-(--miznas-cat-validation)/10 text-(--miznas-cat-validation)">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-(--miznas-cat-validation)"
+                    aria-hidden="true"
+                  />
                   Obligatoire
                 </span>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-(--muted) text-(--muted-foreground)">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium w-fit bg-(--muted) text-(--muted-foreground)">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-(--muted-foreground)"
+                    aria-hidden="true"
+                  />
                   Consultatif
                 </span>
               )}
@@ -400,7 +408,7 @@ function OngletComite({
 
 function OngletDocumentsPlaceholder() {
   return (
-    <div className="bg-white border border-(--border) rounded-md p-10 text-center text-sm text-(--muted-foreground)">
+    <div className="bg-white border border-(--border) rounded-xl p-10 text-center text-sm text-(--muted-foreground) shadow-sm">
       Les documents officiels (lettre cadrage, notes, PV) seront
       disponibles après la livraison du Lot 8.2.B.
     </div>

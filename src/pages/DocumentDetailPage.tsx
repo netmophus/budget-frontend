@@ -317,7 +317,7 @@ export function DocumentDetailPage() {
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className="text-[19px] font-semibold tracking-tight m-0 font-mono">
+              <h3 className="text-2xl font-semibold tracking-tight m-0 font-mono">
                 {doc.codeDocument}
               </h3>
               <StatutDocumentBadge statut={doc.statut} />
@@ -325,7 +325,7 @@ export function DocumentDetailPage() {
                 {TYPE_DOCUMENT_LABEL[doc.typeDocument] ?? doc.typeDocument}
               </span>
             </div>
-            <p className="text-xs text-(--muted-foreground) mt-0.5">
+            <p className="text-sm text-(--muted-foreground) mt-0.5">
               {doc.titre}
             </p>
           </div>
@@ -348,7 +348,7 @@ export function DocumentDetailPage() {
       <BordereauBar doc={doc} />
 
       {/* Cartouche infos */}
-      <div className="bg-(--secondary) border border-(--border) rounded-md p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {/* Lot 8.1.E Palier 2 : `emetteur`/`signataire` désormais
             enrichis par le backend (mapping UserResume). Le fallback
             précédent "user.id=<id>" devient inutile en cas nominal —
@@ -989,11 +989,11 @@ function ActionButton({
 
 function InfoCell({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div>
+    <div className="rounded-xl border border-(--border) bg-white p-3.5 shadow-sm">
       <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
         {label}
       </div>
-      <div className="text-[13px]">{value}</div>
+      <div className="text-[13px] break-words">{value}</div>
     </div>
   );
 }
@@ -1002,7 +1002,7 @@ function InfoCell({ label, value }: { label: string; value: ReactNode }) {
 
 function OngletContenu({ doc }: { doc: DocumentOfficiel }) {
   return (
-    <div className="bg-white border border-(--border) rounded-md p-6">
+    <div className="bg-white border border-(--border) rounded-xl shadow-sm p-6">
       {doc.referenceExterne && (
         <div className="mb-4">
           <div className="text-[10px] text-(--muted-foreground) uppercase tracking-wider mb-1">
@@ -1063,7 +1063,7 @@ function OngletVisas({ visas }: { visas: DocumentVisaResume[] }) {
   const sorted = [...visas].sort((a, b) => a.ordreVisa - b.ordreVisa);
   if (sorted.length === 0) {
     return (
-      <div className="bg-white border border-(--border) rounded-md p-10 text-center text-sm text-(--muted-foreground)">
+      <div className="bg-white border border-(--border) rounded-xl shadow-sm p-10 text-center text-sm text-(--muted-foreground)">
         Aucun visa enregistré. Le snapshot du Comité est créé au moment
         de la soumission au visa.
       </div>
@@ -1071,7 +1071,7 @@ function OngletVisas({ visas }: { visas: DocumentVisaResume[] }) {
   }
   return (
     <div
-      className="bg-white border border-(--border) rounded-md overflow-hidden"
+      className="bg-white border border-(--border) rounded-xl shadow-sm overflow-hidden"
       data-testid="visas-table"
     >
       <Table>
@@ -1153,7 +1153,7 @@ function OngletHistorique({ documentId }: { documentId: string }) {
 
   if (loading) {
     return (
-      <div className="bg-white border border-(--border) rounded-md p-6 text-sm text-(--muted-foreground)">
+      <div className="bg-white border border-(--border) rounded-xl shadow-sm p-6 text-sm text-(--muted-foreground)">
         Chargement de l'historique…
       </div>
     );
@@ -1161,7 +1161,7 @@ function OngletHistorique({ documentId }: { documentId: string }) {
   if (!evenements || evenements.length === 0) {
     return (
       <div
-        className="bg-white border border-(--border) rounded-md p-10 text-center text-sm text-(--muted-foreground)"
+        className="bg-white border border-(--border) rounded-xl shadow-sm p-10 text-center text-sm text-(--muted-foreground)"
         data-testid="historique-empty"
       >
         Aucun événement enregistré dans l'audit pour ce document.
@@ -1170,7 +1170,7 @@ function OngletHistorique({ documentId }: { documentId: string }) {
   }
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-6"
+      className="bg-white border border-(--border) rounded-xl shadow-sm p-6"
       data-testid="historique-timeline"
     >
       <ol className="relative space-y-6 pl-6">
@@ -1239,7 +1239,7 @@ function OngletFichier({
   if (doc.fichierJointNom) {
     return (
       <div
-        className="bg-white border border-(--border) rounded-md p-6"
+        className="bg-white border border-(--border) rounded-xl shadow-sm p-6"
         data-testid="fichier-present"
       >
         <div className="flex items-center gap-4">
@@ -1286,7 +1286,7 @@ function OngletFichier({
 
   return (
     <div
-      className="bg-white border border-(--border) rounded-md p-10 text-center"
+      className="bg-white border border-(--border) rounded-xl shadow-sm p-10 text-center"
       data-testid="fichier-empty"
     >
       <FileText className="w-10 h-10 mx-auto mb-3 text-(--muted-foreground)" />
